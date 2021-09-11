@@ -1,0 +1,134 @@
+# interfaces subest of typescript-grammar
+# for typescript see: https://www.typescriptlang.org/docs/
+# for examples of typescript-interfaces
+# see: https://microsoft.github.io/language-server-protocol/specifications/specification-current/
+
+#######################################################################
+#
+#  EBNF-Directives
+#
+#######################################################################
+
+@ whitespace  = /\s*/           # implicit whitespace, includes linefeeds
+@ literalws   = right           # literals have implicit whitespace on the right hand side
+@ comment     = /(?:\/\/.*)|(?:\/\*(?:.|\n)*?\*\/)/   # /* ... */ or // to EOL
+@ ignorecase  = False           # literals and regular expressions are case-sensitive
+@ reduction   = merge_treetops  # anonymous nodes are being reduced where possible
+@ disposable  = INT, NEG, FRAC, DOT, EXP, EOF,
+                _array_ellipsis, _top_level_assignment, _top_level_literal
+@ drop        = whitespace, strings, EOF,
+                _array_ellipsis, _top_level_assignment, _top_level_literal
+
+
+#######################################################################
+#
+#:  Typescript Document
+#
+#######################################################################
+
+document    = ~ { interface | type_alias | namespace | enum | const
+                | declaration ";" | _top_level_assignment
+                | _array_ellipsis | _top_level_literal } EOF
+
+#######################################################################
+#
+#:  Interfaces
+#
+#######################################################################
+
+interface   = ["export"] "interface" §identifier [type_parameter]
+              [extends] declarations_block
+  type_parameter = "<" identifier ">"
+extends     = "extends" identifier { "," identifier}
+type_alias  = ["export"] "type" §identifier "=" types ";"
+
+declarations_block = "{"  [declaration { [";"] declaration }
+                           [";" map_signature] [";"]] "}"
+declaration = [qualifier] identifier [optional] [":" types]
+  qualifier = "readonly"
+  optional  = "?"
+  index_signature = "[" identifier (":" | "in" "keyof") type "]"
+
+types       = type { "|" type }
+type        = array_of | basic_type | type_name | "(" types ")"
+             | mapped_type | declarations_block | type_tuple | literal
+type_name   = identifier
+array_of    = (basic_type | "(" types ")" | type_name) "[]"
+type_tuple  = "[" type {"," type} "]"
+mapped_type = "{" map_signature [";"] "}"
+map_signature = index_signature ":" types
+
+
+#######################################################################
+#
+#:  Namespaces
+#
+#######################################################################
+
+namespace   = ["export"] "namespace" §identifier "{"
+              { interface | type_alias | enum | const
+              | declaration ";" }  "}"
+
+#######################################################################
+#
+#:  Enums
+#
+#######################################################################
+
+enum        = ["export"] "enum" identifier §"{" item { "," item } "}"
+  item      = identifier ["=" literal]
+
+
+#######################################################################
+#
+#: Consts
+#
+#######################################################################
+
+const       = ["export"] "const" §declaration "=" (literal | identifier) ";"
+_top_level_assignment = assignment
+assignment  = variable "=" (literal | variable) ";"  # no expressions, yet
+
+#######################################################################
+#
+#: literals
+#
+#######################################################################
+
+_array_ellipsis = literal { "," literal }
+
+_top_level_literal = literal
+literal    = integer | number | string | array | object
+integer    = INT !/[.Ee]/ ~
+number     = INT FRAC EXP ~
+string     = /"[^"\n]*"/~ | /'[^'\n]*'/~
+array      = "[" [ literal { "," literal } ] "]"
+object     = "{" [ association { "," association } ] "}"
+  association = name ":" literal
+  name        = identifier | '"' identifier '"'
+
+#######################################################################
+#
+#: Keywords
+#
+#######################################################################
+
+basic_type   = (`object` | `array` | `string` | `number` | `boolean` | `null`
+               | `integer` | `uinteger` | `decimal` | `unknown` | `any` ) ~
+
+#######################################################################
+#
+#: Entities
+#
+#######################################################################
+
+variable   = identifier { `.` identifier }
+identifier = /(?!\d)\w+/~
+
+INT         = [NEG] ( /[1-9][0-9]+/ | /[0-9]/ )
+NEG         = `-`
+FRAC        = [ DOT /[0-9]+/ ]
+DOT         = `.`
+EXP         = [ (`E`|`e`) [`+`|`-`] /[0-9]+/ ]
+
+EOF        =  !/./        # no more characters ahead, end of file reached

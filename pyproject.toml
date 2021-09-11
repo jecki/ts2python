@@ -1,0 +1,62 @@
+[tool.poetry]
+name = "ts2python"
+version = "0.1"
+description = "Python-Interoperability for Typescript-Interfaces"
+
+license = "Apache-2.0"
+
+authors = ["Eckhart Arnold <eckhart.arnold@posteo.de>"]
+
+readme = "README.md"
+repository = "https://github.com/jecki/ts2python"
+homepage = "https://github.com/jecki/ts2python"
+
+keywords = [
+    'Typescript to Python converter',
+    'Typescript Interface',
+    'Python TypedDict',
+]
+
+classifiers = [
+    'Development Status :: 4 - Beta',
+    'Intended Audience :: Developers',
+    'Environment :: Console',
+    'License :: OSI Approved :: Apache Software License',
+    'Operating System :: OS Independent',
+    'Programming Language :: Python :: 3',
+    'Programming Language :: Python :: 3.6',
+    'Programming Language :: Python :: 3.7',
+    'Programming Language :: Python :: 3.8',
+    'Programming Language :: Python :: 3.9',
+    'Programming Language :: Python :: Implementation :: CPython',
+    'Programming Language :: Python :: Implementation :: PyPy',
+    'Topic :: Text Processing :: Markup',
+    'Topic :: Software Development :: Code Generators',
+    'Topic :: Software Development :: Compilers'
+]
+
+packages = [
+    { include = "." },
+    { include = "demo" },
+    { include = "tests_grammar", format="sdist" },
+    { include = "tests", format = "sdist" },
+]
+
+# build = "DHParser/scripts/dhparser_build_cython.py"
+
+# IN THE FUTURE, MAYBE:
+# [tool.poetry.build]
+# script = "DHParser/scripts/dhparser_build_cython.py"
+# generate-setup-file = false
+
+
+[tool.poetry.dependencies]
+python = "^3.6"
+DHParser = { version = "^0.9.8", optional = false }
+
+[tool.poetry.scripts]
+ts2python = 'ts2python:main'
+
+[build-system]
+requires = ["poetry-core>=1.0.0", "setuptools", "wheel"]
+build-backend = "poetry.core.masonry.api"

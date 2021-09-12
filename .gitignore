@@ -129,7 +129,7 @@ dmypy.json
 .pyre/
 
 # PyCharm
-.idea
+.idea/
 
 
 # DHParser-stuff

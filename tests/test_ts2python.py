@@ -2,10 +2,15 @@
 
 """test_ts2python.py -- test code for ts2python.py."""
 
-import functools
 import os
 import subprocess
 import sys
+
+try:
+    from ts2python.ts2pythonParser import compile_src
+except ImportError:
+    sys.path.append(os.path.abspath(os.path.join('..', '..')))
+    from ts2python.ts2pythonParser import compile_src
 
 
 TEST_DATA = """
@@ -95,16 +100,10 @@ export interface Diagnostic {
 
 class TestValidation:
     def setup(self):
-        sys.path.append(os.path.join('..', '..'))
-        from ts2python.ts2python import compile_src
         self.test_code, err = compile_src(TEST_DATA)
         assert not err
         code = compile(self.test_code, '<string>', 'exec')
         exec(code, globals())
-
-    def teardown(self):
-        if sys.path[-1].replace('\\', '/') == '../..':
-            sys.path.pop()
 
     def test_type_validation(self):
         from ts2python.validation import validate_type
@@ -176,18 +175,11 @@ class TestValidation:
 
 
 class TestOptions:
-    def setup(self):
-        sys.path.append(os.path.join('..', '..'))
-
-    def teardown(self):
-        if sys.path[-1].replace('\\', '/') == '../..':
-            sys.path.pop()
-
     def test_different_settings(self):
-        from ts2python import ts2python
+        from ts2python import ts2pythonParser
         from DHParser.configuration import set_config_value
         set_config_value('ts2python.UseNotRequired', True, allow_new_key=True)
-        code, _ = ts2python.compile_src(TEST_DATA)
+        code, _ = ts2pythonParser.compile_src(TEST_DATA)
         assert code.find('NotRequired[') >= 0
 
 
@@ -203,7 +195,7 @@ class TestScriptCall:
             os.remove('testdata.py')
 
     def test_ts2python_call(self):
-        cmd = os.path.join('..', 'ts2python.py')
+        cmd = os.path.abspath(os.path.join('..', 'ts2pythonParser.py'))
         result = subprocess.run(['python', cmd, 'testdata.ts'])
         assert result.returncode == 0
         assert os.path.exists('testdata.py')
@@ -218,5 +210,5 @@ class TestScriptCall:
 
 
 if __name__ == "__main__":
-    from DHParser.testing import runner
+    from runner import runner
     runner("", globals())

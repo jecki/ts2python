@@ -37,7 +37,7 @@ try:
     scriptpath = os.path.dirname(__file__)
 except NameError:
     scriptpath = ''
-dhparser_parentdir = os.path.abspath(os.path.join(scriptpath, r'../..'))
+dhparser_parentdir = os.path.abspath(os.path.join(scriptpath, '..', 'DHParser'))
 if scriptpath not in sys.path:
     sys.path.append(scriptpath)
 if dhparser_parentdir not in sys.path:
@@ -117,7 +117,7 @@ class ts2pythonGrammar(Grammar):
     literal = Forward()
     type = Forward()
     types = Forward()
-    source_hash__ = "c2b9d066338a8ee6013115ce09acfa55"
+    source_hash__ = "c62eab8c5ac80d57e9db4eb1402957ae"
     disposable__ = re.compile('INT$|NEG$|FRAC$|DOT$|EXP$|EOF$|_array_ellipsis$|_top_level_assignment$|_top_level_literal$')
     static_analysis_pending__ = []  # type: List[bool]
     parser_initialization__ = ["upon instantiation"]
@@ -274,8 +274,9 @@ class ts2pythonCompiler(Compiler):
     """Compiler for the abstract-syntax-tree of a ts2python source file.
     """
 
-    def __init__(self):
-        super(ts2pythonCompiler, self).__init__()
+    def reset(self):
+        super().reset()
+
         bcn = get_config_value('ts2python.BaseClassName', 'TypedDict')
         i = bcn.rfind('.')
         if i >= 0:
@@ -294,8 +295,6 @@ class ts2pythonCompiler(Compiler):
         self.use_literal_type = get_config_value('ts2python.UseLiteralType', True)
         self.use_not_required = get_config_value('ts2python.UseNotRequired', False)
 
-    def reset(self):
-        super().reset()
         self.overloaded_type_names: Set[str] = set()
         self.known_types: Set[str] = set()
         self.local_classes: List[List[str]] = [[]]

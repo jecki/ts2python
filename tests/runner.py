@@ -1,5 +1,12 @@
 # stolen from DHParser.testing
 
+import collections
+import concurrent.futures
+import inspect
+import os
+import sys
+
+
 def run_tests_in_class(cls_name, namespace, methods=()):
     """
     Runs tests in test-class `test` in the given namespace.
@@ -72,20 +79,6 @@ def runner(tests, namespace, profile=False):
         results will be displayed after the test-results. Profiling will
         also be turned on, if the parameter `--profile` has been provided
         on the command line.
-
-    Example::
-
-        class TestSomething()
-            def setup(self):
-                pass
-            def teardown(self):
-                pass
-            def test_something(self):
-                pass
-
-        if __name__ == "__main__":
-            from DHParser.testing import runner
-            runner("", globals())
     """
     test_classes = collections.OrderedDict()
     test_functions = []
@@ -138,14 +131,35 @@ def run_file(fname):
         runner('', eval(fname[:-3]).__dict__)
 
 
+class SingleThreadExecutor(concurrent.futures.Executor):
+    """SingleThreadExecutor is a replacement for
+    concurrent.future.ProcessPoolExecutor and
+    concurrent.future.ThreadPoolExecutor that executes any submitted
+    task immediately in the submitting thread. This helps to avoid
+    writing extra code for the case that multithreading or
+    multiprocesssing has been turned off in the configuration. To do
+    so is helpful for debugging.
+
+    It is not recommended to use this in asynchronous code or code that
+    relies on the submit() or map()-method of executors to return quickly.
+    """
+    def submit(self, fn, *args, **kwargs):
+        future = concurrent.futures.Future()
+        try:
+            result = fn(*args, **kwargs)
+            future.set_result(result)
+        except BaseException as e:
+            future.set_exception(e)
+        return future
+
+
 def run_path(path):
     """Runs all unit tests in `path`"""
     if os.path.isdir(path):
         sys.path.append(path)
         files = os.listdir(path)
         results = []
-        with instantiate_executor(get_config_value('test_parallelization') and len(files) > 1,
-                                  concurrent.futures.ProcessPoolExecutor) as pool:
+        with SingleThreadExecutor() as pool:
             for f in files:
                 results.append(pool.submit(run_file, f))
                 # run_file(f)  # for testing!
@@ -161,3 +175,13 @@ def run_path(path):
         sys.path.append(path)
         run_file(fname)
     sys.path.pop()
+
+
+if __name__ == "__main__":
+    path = '.'
+    if len(sys.argv) > 1:
+        path = sys.argv[1]
+    if os.path.isdir(path):
+        run_path(path)
+    else:
+        run_file(path)

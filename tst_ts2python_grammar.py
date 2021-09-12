@@ -10,8 +10,8 @@ LOGGING = 'LOGS'
 DEBUG = True
 TEST_DIRNAME = 'tests_grammar'
 
-scriptpath = os.path.dirname(__file__)
-dhparserdir = os.path.abspath(os.path.join(scriptpath, '..', '..'))
+scriptpath = os.path.abspath(os.path.dirname(__file__))
+dhparserdir = os.path.abspath(os.path.join(scriptpath, '..', 'DHParser'))
 if scriptpath not in sys.path:
     sys.path.append(scriptpath)
 if dhparserdir not in sys.path:
@@ -76,10 +76,10 @@ if __name__ == '__main__':
         recompile_grammar(arg, force=True)
     else:
         recompile_grammar(os.path.join(scriptpath, 'ts2python.ebnf'),
-                          os.path.join(scriptpath, 'ts2python.py'),
+                          os.path.join(scriptpath, 'ts2pythonParser.py'),
                           force=False)
         sys.path.append('.')
-        from ts2python import get_grammar, get_transformer, get_compiler
+        from ts2pythonParser import get_grammar, get_transformer, get_compiler
         error_report = run_grammar_tests(arg, get_grammar, get_transformer, get_compiler)
         if error_report:
             print('\n')

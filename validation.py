@@ -35,12 +35,15 @@ except ImportError:
     _GenericAlias = GenericMeta
     _SpecialForm = GenericMeta
 from typing_extensions import Generic, ClassVar, Final, Protocol, NoReturn, \
-    TypeVar, TypedDict, PEP_560
+    TypeVar
 try:
    from typing_extensions import get_origin
 except ImportError:
     def get_origin(typ):
-        return typ.__origin__
+        try:
+            return typ.__origin__
+        except AttributeError:
+            return Generic
 
 
 # The following functions have been copied from the Python
@@ -147,56 +150,62 @@ class _TypedDictMeta(type):
 
     def __subclasscheck__(cls, other):
         # Typed dicts are only for static structural subtyping.
+        if other is type(None):  return False  # hack to support Python 3.6
         raise TypeError('TypedDict does not support instance and class checks')
 
     __instancecheck__ = __subclasscheck__
 
 
-def TypedDict(typename, fields=None, *, total=True, **kwargs):
-    """A simple typed namespace. At runtime it is equivalent to a plain dict.
-    TypedDict creates a dictionary type that expects all of its
-    instances to have a certain set of keys, where each key is
-    associated with a value of a consistent type. This expectation
-    is not checked at runtime but is only enforced by type checkers.
-    Usage::
-        class Point2D(TypedDict):
-            x: int
-            y: int
-            label: str
-        a: Point2D = {'x': 1, 'y': 2, 'label': 'good'}  # OK
-        b: Point2D = {'z': 3, 'label': 'bad'}           # Fails type check
-        assert Point2D(x=1, y=2, label='first') == dict(x=1, y=2, label='first')
-    The type info can be accessed via the Point2D.__annotations__ dict, and
-    the Point2D.__required_keys__ and Point2D.__optional_keys__ frozensets.
-    TypedDict supports two additional equivalent forms::
-        Point2D = TypedDict('Point2D', x=int, y=int, label=str)
-        Point2D = TypedDict('Point2D', {'x': int, 'y': int, 'label': str})
-    By default, all keys must be present in a TypedDict. It is possible
-    to override this by specifying totality.
-    Usage::
-        class point2D(TypedDict, total=False):
-            x: int
-            y: int
-    This means that a point2D TypedDict can have any of the keys omitted.A type
-    checker is only expected to support a literal False or True as the value of
-    the total argument. True is the default, and makes all items defined in the
-    class body be required.
-    The class syntax is only supported in Python 3.6+, while two other
-    syntax forms work for Python 2.7 and 3.2+
-    """
-    if fields is None:
-        fields = kwargs
-    elif kwargs:
-        raise TypeError("TypedDict takes either a dict or keyword arguments,"
-                        " but not both")
+if sys.version_info >= (3, 7):
+    def TypedDict(typename, fields=None, *, total=True, **kwargs):
+        """A simple typed namespace. At runtime it is equivalent to a plain dict.
+        TypedDict creates a dictionary type that expects all of its
+        instances to have a certain set of keys, where each key is
+        associated with a value of a consistent type. This expectation
+        is not checked at runtime but is only enforced by type checkers.
+        Usage::
+            class Point2D(TypedDict):
+                x: int
+                y: int
+                label: str
+            a: Point2D = {'x': 1, 'y': 2, 'label': 'good'}  # OK
+            b: Point2D = {'z': 3, 'label': 'bad'}           # Fails type check
+            assert Point2D(x=1, y=2, label='first') == dict(x=1, y=2, label='first')
+        The type info can be accessed via the Point2D.__annotations__ dict, and
+        the Point2D.__required_keys__ and Point2D.__optional_keys__ frozensets.
+        TypedDict supports two additional equivalent forms::
+            Point2D = TypedDict('Point2D', x=int, y=int, label=str)
+            Point2D = TypedDict('Point2D', {'x': int, 'y': int, 'label': str})
+        By default, all keys must be present in a TypedDict. It is possible
+        to override this by specifying totality.
+        Usage::
+            class point2D(TypedDict, total=False):
+                x: int
+                y: int
+        This means that a point2D TypedDict can have any of the keys omitted.A type
+        checker is only expected to support a literal False or True as the value of
+        the total argument. True is the default, and makes all items defined in the
+        class body be required.
+        The class syntax is only supported in Python 3.6+, while two other
+        syntax forms work for Python 2.7 and 3.2+
+        """
+        if fields is None:
+            fields = kwargs
+        elif kwargs:
+            raise TypeError("TypedDict takes either a dict or keyword arguments,"
+                            " but not both")
 
-    ns = {'__annotations__': dict(fields)}
-    module = _caller()
-    if module is not None:
-        # Setting correct module is necessary to make typed dict classes pickleable.
-        ns['__module__'] = module
+        ns = {'__annotations__': dict(fields)}
+        module = _caller()
+        if module is not None:
+            # Setting correct module is necessary to make typed dict classes pickleable.
+            ns['__module__'] = module
 
-    return _TypedDictMeta(typename, (), ns)
+        return _TypedDictMeta(typename, (), ns)
+
+else:  # Python Version 3.6
+    TypedDict = _TypedDictMeta('TypedDict', (dict,), {})
+    TypedDict.__module__ = __name__
 
 
 _TypedDict = type.__new__(_TypedDictMeta, 'TypedDict', (), {})

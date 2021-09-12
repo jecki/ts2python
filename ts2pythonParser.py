@@ -251,9 +251,9 @@ except ImportError:
         from typing_extensions import NotRequired
     except ImportError:
         NotRequired = Optional
-        if sys.version_info >= (3, 8):
+        if sys.version_info >= (3, 6):
             try:
-                from ts2python.validation import TypedDict
+                from ts2python.validation import TypedDict, _TypedDictMeta
             except ImportError:
                 print("Module ts2python not found. Only coarse-grained " 
                       "type-validation of TypedDicts possible")        

@@ -251,12 +251,17 @@ except ImportError:
         from typing_extensions import NotRequired
     except ImportError:
         NotRequired = Optional
-        if sys.version_info >= (3, 6):
-            try:
-                from ts2python.validation import TypedDict, _TypedDictMeta
-            except ImportError:
-                print("Module ts2python not found. Only coarse-grained " 
-                      "type-validation of TypedDicts possible")        
+        try:
+            from ts2python.validation import TypedDict, _TypedDictMeta
+            GenericTypedDict = TypedDict
+        except ImportError:
+            print("Module ts2python not found. Only coarse-grained " 
+                  "type-validation of TypedDicts possible")
+            class _GenericTypedDictMeta(type):
+                def __new__(cls, name, bases, ns, total=True):
+                    return type.__new__(_GenericTypedDictMeta, name, (dict,), ns)
+            GenericTypedDict = _GenericTypedDictMeta('TypedDict', (dict,), {})
+            GenericTypedDict.__module__ = __name__        
 """
 
 
@@ -359,14 +364,15 @@ class ts2pythonCompiler(Compiler):
             total = not bool(optional_key_list)
             if base_classes:
                 if base_classes.find('Generic[') >= 0:
-                    return decorator + f"class {name}({base_classes}):\n"
+                    td_name = 'GenericTypedDict'
                 else:
-                    if self.use_not_required:
-                        return decorator + \
-                               f"class {name}({base_classes}, TypedDict):\n"
-                    else:
-                        return decorator + f"class {name}({base_classes}, "\
-                               f"TypedDict, total={total}):\n"
+                    td_name = 'TypedDict'
+                if self.use_not_required:
+                    return decorator + \
+                           f"class {name}({base_classes}, {td_name}):\n"
+                else:
+                    return decorator + f"class {name}({base_classes}, "\
+                           f"{td_name}, total={total}):\n"
             else:
                 if self.use_not_required:
                     return decorator + f"class {name}(TypedDict):\n"

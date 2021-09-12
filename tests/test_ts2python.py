@@ -5,6 +5,7 @@
 import os
 import subprocess
 import sys
+from typing import TypeVar, Generic
 
 try:
     from ts2python.ts2pythonParser import compile_src
@@ -96,6 +97,24 @@ export interface Diagnostic {
 #         sys.path.append('..')
 #
 #     def test_different_BaseClass(self):
+
+
+class TestGenericTypedDictSurrogate:
+    def test_generic_typed_dict(self):
+        class _GenericTypedDictMeta(type):
+            def __new__(cls, name, bases, ns, total=True):
+                return type.__new__(_GenericTypedDictMeta, name, (dict,), ns)
+
+        GenericTypedDict = _GenericTypedDictMeta('TypedDict', (dict,), {})
+        GenericTypedDict.__module__ = __name__
+        T = TypeVar('T')
+
+        class ProgressParams(Generic[T], GenericTypedDict, total=True):
+            token: str
+            value: 'T'
+        pp = ProgressParams(token='tok', value=1)
+        assert isinstance(pp, dict)
+        assert pp == {'token': 'tok', 'value': 1}
 
 
 class TestValidation:

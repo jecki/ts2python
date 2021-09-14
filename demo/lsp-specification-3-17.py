@@ -30,11 +30,19 @@ except ImportError:
         except ImportError:
             print("Module ts2python not found. Only coarse-grained " 
                   "type-validation of TypedDicts possible")
-            class _GenericTypedDictMeta(type):
-                def __new__(cls, name, bases, ns, total=True):
-                    return type.__new__(_GenericTypedDictMeta, name, (dict,), ns)
+            if sys.version_info >= (3, 7, 0):
+                class _GenericTypedDictMeta(type):
+                    def __new__(cls, name, bases, ns, total=True):
+                        return type.__new__(_GenericTypedDictMeta, name, (dict,), ns)
+                    __call__ = dict
+            else:
+                from typing import GenericMeta
+                class _GenericTypedDictMeta(GenericMeta):
+                    def __new__(cls, name, bases, ns, total=True):
+                        return type.__new__(_GenericTypedDictMeta, name, (dict,), ns)
+                    __call__ = dict
             GenericTypedDict = _GenericTypedDictMeta('TypedDict', (dict,), {})
-            GenericTypedDict.__module__ = __name__        
+            GenericTypedDict.__module__ = __name__
 
 
 integer = float
@@ -1778,3 +1786,8 @@ class Moniker(TypedDict, total=False):
     kind: Optional[MonikerKind]
 
 
+if __name__ == '__main__':
+    p = ProgressParams(token='tok', value=1)
+    assert p == {'token': 'tok', 'value': 1}
+    p = ProgressParams({'token':'tok', 'value':1})
+    assert p == {'token': 'tok', 'value': 1}, str(p)

@@ -5,6 +5,7 @@ import sys
 from enum import Enum, IntEnum
 from typing import Union, List, Tuple, Optional, Dict, Any, Generic, TypeVar
 
+sys.path.append('../..')
 
 try:
     from typing import TypedDict, Literal
@@ -25,22 +26,17 @@ except ImportError:
     except ImportError:
         NotRequired = Optional
         try:
-            from ts2python.validation import TypedDict, _TypedDictMeta
-            GenericTypedDict = TypedDict
+            from ts2python.validation import TypedDict, GenericTypedDict
         except ImportError:
             print("Module ts2python not found. Only coarse-grained " 
                   "type-validation of TypedDicts possible")
-            if sys.version_info >= (3, 7, 0):
-                class _GenericTypedDictMeta(type):
-                    def __new__(cls, name, bases, ns, total=True):
-                        return type.__new__(_GenericTypedDictMeta, name, (dict,), ns)
-                    __call__ = dict
+            if sys.version_info >= (3, 7, 0):  GenericMeta = type
             else:
                 from typing import GenericMeta
-                class _GenericTypedDictMeta(GenericMeta):
-                    def __new__(cls, name, bases, ns, total=True):
-                        return type.__new__(_GenericTypedDictMeta, name, (dict,), ns)
-                    __call__ = dict
+            class _GenericTypedDictMeta(GenericMeta):
+                def __new__(cls, name, bases, ns, total=True):
+                    return type.__new__(_GenericTypedDictMeta, name, (dict,), ns)
+                __call__ = dict
             GenericTypedDict = _GenericTypedDictMeta('TypedDict', (dict,), {})
             GenericTypedDict.__module__ = __name__
 

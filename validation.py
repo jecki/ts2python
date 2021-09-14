@@ -203,10 +203,22 @@ if sys.version_info >= (3, 7):
 
         return _TypedDictMeta(typename, (), ns)
 
+    GenericTypedDict = TypedDict
+
 else:  # Python Version 3.6
     TypedDict = _TypedDictMeta('TypedDict', (dict,), {})
     TypedDict.__module__ = __name__
+    class _GenericTypedDictMeta(GenericMeta):
+        def __new__(cls, name, bases, ns, total=True):
+            return type.__new__(_GenericTypedDictMeta, name, (dict,), ns)
+        __call__ = dict
+        def __subclasscheck__(cls, other):
+            if other is type(None):  return False  # hack to support Python 3.6
+            raise TypeError('TypedDict does not support instance and class checks')
+        __instancecheck__ = __subclasscheck__
 
+    GenericTypedDict = _GenericTypedDictMeta('TypedDict', (dict,), {})
+    GenericTypedDict.__module__ = __name__
 
 _TypedDict = type.__new__(_TypedDictMeta, 'TypedDict', (), {})
 TypedDict.__mro_entries__ = lambda bases: (_TypedDict,)

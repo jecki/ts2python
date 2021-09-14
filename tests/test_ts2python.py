@@ -220,12 +220,17 @@ class TestScriptCall:
         assert os.path.exists('testdata.py')
         result = subprocess.run(['python', 'testdata.py'])
         assert result.returncode == 0
-        # result = subprocess.run(['python', cmd, '-d attr.s', 'testdata.ts'])
-        # assert result.returncode == 0
-        # result = subprocess.run(['python', cmd, '-b pydantic.BaseModel', 'testdata.ts'])
-        # assert result.returncode == 0
-        # result = subprocess.run(['python', cmd, 'testdata.ts', '-p 655'])
-        # assert result.returncode == 0
+        with open('testdata.py', 'r', encoding='utf-8') as f:
+            script = f.read()
+        i = script.find('import sys')
+        script = '\n'.join([script[:i + len('import sys') + 1],
+                            'import os',
+                            "sys.path.append(os.path.join('..', '..'))",
+                            script[i:]])
+        with open('testdata.py', 'w', encoding='utf-8') as f:
+            f.write(script)
+        result = subprocess.run(['python', 'testdata.py'])
+        assert result.returncode == 0
 
 
 if __name__ == "__main__":

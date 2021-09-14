@@ -26,14 +26,15 @@ permissions and limitations under the License.
 
 import functools
 import sys
-from typing import Any, Union, Dict, Tuple, Iterable, Callable, get_type_hints
+from typing import Any, Union, Dict, Tuple, Iterable, Callable, \
+    get_type_hints
 try:
     from typing import ForwardRef, _GenericAlias, _SpecialForm
 except ImportError:
     from typing import _ForwardRef, GenericMeta  # Python 3.6 compatibility
     ForwardRef = _ForwardRef
     _GenericAlias = GenericMeta
-    _SpecialForm = GenericMeta
+    _SpecialForm = Any
 from typing_extensions import Generic, ClassVar, Final, Protocol, NoReturn, \
     TypeVar
 try:
@@ -82,7 +83,8 @@ def _type_check(arg, msg, is_argument=True, module=None):
         raise TypeError(f"{arg} is not valid as type argument")
     if arg in (Any, NoReturn):
         return arg
-    if isinstance(arg, _SpecialForm) or arg in (Generic, Protocol):
+    if (sys.version_info >= (3, 7) and isinstance(arg, _SpecialForm)) \
+            or arg in (Generic, Protocol):
         raise TypeError(f"Plain {arg} is not valid as type argument")
     if isinstance(arg, (type, TypeVar, ForwardRef)):
         return arg
@@ -150,7 +152,9 @@ class _TypedDictMeta(type):
 
     def __subclasscheck__(cls, other):
         # Typed dicts are only for static structural subtyping.
-        if other is type(None):  return False  # hack to support Python 3.6
+        if sys.version_info < (3, 7, 0):
+            # if other is type(None):  return False  # hack to support Python 3.6
+            return False
         raise TypeError('TypedDict does not support instance and class checks')
 
     __instancecheck__ = __subclasscheck__
@@ -214,6 +218,7 @@ else:  # Python Version 3.6
         __call__ = dict
         def __subclasscheck__(cls, other):
             if other is type(None):  return False  # hack to support Python 3.6
+            print('BBB:', other, type(other))
             raise TypeError('TypedDict does not support instance and class checks')
         __instancecheck__ = __subclasscheck__
 

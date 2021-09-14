@@ -153,8 +153,7 @@ class _TypedDictMeta(type):
     def __subclasscheck__(cls, other):
         # Typed dicts are only for static structural subtyping.
         if sys.version_info < (3, 7, 0):
-            # if other is type(None):  return False  # hack to support Python 3.6
-            return False
+            return False # hack to support Python 3.6
         raise TypeError('TypedDict does not support instance and class checks')
 
     __instancecheck__ = __subclasscheck__
@@ -214,12 +213,52 @@ else:  # Python Version 3.6
     TypedDict.__module__ = __name__
     class _GenericTypedDictMeta(GenericMeta):
         def __new__(cls, name, bases, ns, total=True):
-            return type.__new__(_GenericTypedDictMeta, name, (dict,), ns)
+            for base in bases:
+                typ_base = type(base)
+                if typ_base is not _TypedDictMeta and typ_base is not _GenericTypedDictMeta \
+                        and get_origin(base) is not Generic:
+                    raise TypeError('cannot inherit from both a TypedDict type '
+                                    'and a non-TypedDict base class')
+            tp_dict = type.__new__(_GenericTypedDictMeta, name, (dict,), ns)
+
+            annotations = {}
+            own_annotations = ns.get('__annotations__', {})
+            # own_annotation_keys = set(own_annotations.keys())
+            msg = "GenericTypedDict('Name', {f0: t0, f1: t1, ...}); each t must be a type"
+            own_annotations = {
+                n: _type_check(tp, msg, module=tp_dict.__module__)
+                for n, tp in own_annotations.items()
+            }
+            required_keys = set()
+            optional_keys = set()
+
+            for base in bases:
+                annotations.update(base.__dict__.get('__annotations__', {}))
+                required_keys.update(base.__dict__.get('__required_keys__', ()))
+                optional_keys.update(base.__dict__.get('__optional_keys__', ()))
+
+            annotations.update(own_annotations)
+
+            total = True
+            for field, field_type in own_annotations.items():
+                if get_origin(field_type) is Union \
+                        and type(None) in field_type.__args__:
+                    optional_keys.add(field)
+                    total = False
+                else:
+                    required_keys.add(field)
+
+            tp_dict.__annotations__ = annotations
+            tp_dict.__required_keys__ = frozenset(required_keys)
+            tp_dict.__optional_keys__ = frozenset(optional_keys)
+            if not hasattr(tp_dict, '__total__'):
+                tp_dict.__total__ = total
+            return tp_dict
+            # return type.__new__(_GenericTypedDictMeta, name, (dict,), ns)
         __call__ = dict
         def __subclasscheck__(cls, other):
-            if other is type(None):  return False  # hack to support Python 3.6
-            print('BBB:', other, type(other))
-            raise TypeError('TypedDict does not support instance and class checks')
+            return False  # hack to support Python 3.6
+            # raise TypeError('TypedDict does not support instance and class checks')
         __instancecheck__ = __subclasscheck__
 
     GenericTypedDict = _GenericTypedDictMeta('TypedDict', (dict,), {})

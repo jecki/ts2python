@@ -26,17 +26,17 @@ permissions and limitations under the License.
 
 import functools
 import sys
-from typing import Any, Union, Dict, Tuple, Iterable, Callable, \
-    get_type_hints
+from typing import Union, List, Tuple, Optional, Dict, Any, \
+    Iterator, Iterable, Callable, get_type_hints
+from typing_extensions import Generic, GenericMeta, \
+    ClassVar, Final, Protocol, NoReturn, TypeVar, Literal
 try:
     from typing import ForwardRef, _GenericAlias, _SpecialForm
 except ImportError:
-    from typing import _ForwardRef, GenericMeta  # Python 3.6 compatibility
+    from typing import _ForwardRef  # Python 3.6 compatibility
     ForwardRef = _ForwardRef
     _GenericAlias = GenericMeta
     _SpecialForm = Any
-from typing_extensions import Generic, ClassVar, Final, Protocol, NoReturn, \
-    TypeVar
 try:
    from typing_extensions import get_origin
 except ImportError:
@@ -102,9 +102,12 @@ def _caller(depth=1, default='__main__'):
 
 def _new_typed_dict(meta, name, bases, ns) -> dict:
     for base in bases:
-        if type(base) is not meta and get_origin(base) is not Generic:
+        if base is not dict and type(base) is not meta \
+                and get_origin(base) is not Generic:
             raise TypeError('cannot inherit from both a TypedDict type '
-                            'and a non-TypedDict base class')
+                            'and a non-TypedDict base class: '
+                            f'{base} does not have type {meta}; '
+                            f'origin: {get_origin(base)}')
     tp_dict = type.__new__(meta, name, (dict,), ns)
 
     annotations = {}
@@ -163,7 +166,7 @@ class _TypedDictMeta(type):
     __instancecheck__ = __subclasscheck__
 
 
-if sys.version_info >= (3, 7):
+if sys.version_info >= (3, 7) and not hasattr(sys, 'pypy_version_info'):
     def TypedDict(typename, fields=None, *, total=True, **kwargs):
         """A simple typed namespace. At runtime it is equivalent to a plain dict.
         TypedDict creates a dictionary type that expects all of its

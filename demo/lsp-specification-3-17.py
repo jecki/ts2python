@@ -22,7 +22,7 @@ try:
     from typing import NotRequired
 except ImportError:
     try:
-        from typing_extensions import NotRequired
+        from typing_extensions import NotRequired, GenericMeta
     except ImportError:
         NotRequired = Optional
         try:
@@ -30,9 +30,6 @@ except ImportError:
         except ImportError:
             print("Module ts2python not found. Only coarse-grained " 
                   "type-validation of TypedDicts possible")
-            if sys.version_info >= (3, 7, 0):  GenericMeta = type
-            else:
-                from typing import GenericMeta
             class _GenericTypedDictMeta(GenericMeta):
                 def __new__(cls, name, bases, ns, total=True):
                     return type.__new__(_GenericTypedDictMeta, name, (dict,), ns)

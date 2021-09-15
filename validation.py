@@ -100,6 +100,48 @@ def _caller(depth=1, default='__main__'):
         return None
 
 
+def _new_typed_dict(meta, name, bases, ns) -> dict:
+    for base in bases:
+        if type(base) is not meta and get_origin(base) is not Generic:
+            raise TypeError('cannot inherit from both a TypedDict type '
+                            'and a non-TypedDict base class')
+    tp_dict = type.__new__(meta, name, (dict,), ns)
+
+    annotations = {}
+    own_annotations = ns.get('__annotations__', {})
+    # own_annotation_keys = set(own_annotations.keys())
+    msg = "TypedDict('Name', {f0: t0, f1: t1, ...}); each t must be a type"
+    own_annotations = {
+        n: _type_check(tp, msg, module=tp_dict.__module__)
+        for n, tp in own_annotations.items()
+    }
+    required_keys = set()
+    optional_keys = set()
+
+    for base in bases:
+        annotations.update(base.__dict__.get('__annotations__', {}))
+        required_keys.update(base.__dict__.get('__required_keys__', ()))
+        optional_keys.update(base.__dict__.get('__optional_keys__', ()))
+
+    annotations.update(own_annotations)
+
+    total = True
+    for field, field_type in own_annotations.items():
+        if get_origin(field_type) is Union \
+                and type(None) in field_type.__args__:
+            optional_keys.add(field)
+            total = False
+        else:
+            required_keys.add(field)
+
+    tp_dict.__annotations__ = annotations
+    tp_dict.__required_keys__ = frozenset(required_keys)
+    tp_dict.__optional_keys__ = frozenset(optional_keys)
+    if not hasattr(tp_dict, '__total__'):
+        tp_dict.__total__ = total
+    return tp_dict
+
+
 class _TypedDictMeta(type):
     def __new__(cls, name, bases, ns, total=True):
         """Create new typed dict class object.
@@ -108,45 +150,7 @@ class _TypedDictMeta(type):
         TypedDict supports all three syntax forms described in its docstring.
         Subclasses and instances of TypedDict return actual dictionaries.
         """
-        for base in bases:
-            if type(base) is not _TypedDictMeta and get_origin(base) is not Generic:
-                raise TypeError('cannot inherit from both a TypedDict type '
-                                'and a non-TypedDict base class')
-        tp_dict = type.__new__(_TypedDictMeta, name, (dict,), ns)
-
-        annotations = {}
-        own_annotations = ns.get('__annotations__', {})
-        # own_annotation_keys = set(own_annotations.keys())
-        msg = "TypedDict('Name', {f0: t0, f1: t1, ...}); each t must be a type"
-        own_annotations = {
-            n: _type_check(tp, msg, module=tp_dict.__module__)
-            for n, tp in own_annotations.items()
-        }
-        required_keys = set()
-        optional_keys = set()
-
-        for base in bases:
-            annotations.update(base.__dict__.get('__annotations__', {}))
-            required_keys.update(base.__dict__.get('__required_keys__', ()))
-            optional_keys.update(base.__dict__.get('__optional_keys__', ()))
-
-        annotations.update(own_annotations)
-
-        total = True
-        for field, field_type in own_annotations.items():
-            if get_origin(field_type) is Union \
-                    and type(None) in field_type.__args__:
-                optional_keys.add(field)
-                total = False
-            else:
-                required_keys.add(field)
-
-        tp_dict.__annotations__ = annotations
-        tp_dict.__required_keys__ = frozenset(required_keys)
-        tp_dict.__optional_keys__ = frozenset(optional_keys)
-        if not hasattr(tp_dict, '__total__'):
-            tp_dict.__total__ = total
-        return tp_dict
+        return _new_typed_dict(_TypedDictMeta, name, bases, ns)
 
     __call__ = dict  # static method
 
@@ -213,52 +217,10 @@ else:  # Python Version 3.6
     TypedDict.__module__ = __name__
     class _GenericTypedDictMeta(GenericMeta):
         def __new__(cls, name, bases, ns, total=True):
-            for base in bases:
-                typ_base = type(base)
-                if typ_base is not _TypedDictMeta and typ_base is not _GenericTypedDictMeta \
-                        and get_origin(base) is not Generic:
-                    raise TypeError('cannot inherit from both a TypedDict type '
-                                    'and a non-TypedDict base class')
-            tp_dict = type.__new__(_GenericTypedDictMeta, name, (dict,), ns)
-
-            annotations = {}
-            own_annotations = ns.get('__annotations__', {})
-            # own_annotation_keys = set(own_annotations.keys())
-            msg = "GenericTypedDict('Name', {f0: t0, f1: t1, ...}); each t must be a type"
-            own_annotations = {
-                n: _type_check(tp, msg, module=tp_dict.__module__)
-                for n, tp in own_annotations.items()
-            }
-            required_keys = set()
-            optional_keys = set()
-
-            for base in bases:
-                annotations.update(base.__dict__.get('__annotations__', {}))
-                required_keys.update(base.__dict__.get('__required_keys__', ()))
-                optional_keys.update(base.__dict__.get('__optional_keys__', ()))
-
-            annotations.update(own_annotations)
-
-            total = True
-            for field, field_type in own_annotations.items():
-                if get_origin(field_type) is Union \
-                        and type(None) in field_type.__args__:
-                    optional_keys.add(field)
-                    total = False
-                else:
-                    required_keys.add(field)
-
-            tp_dict.__annotations__ = annotations
-            tp_dict.__required_keys__ = frozenset(required_keys)
-            tp_dict.__optional_keys__ = frozenset(optional_keys)
-            if not hasattr(tp_dict, '__total__'):
-                tp_dict.__total__ = total
-            return tp_dict
-            # return type.__new__(_GenericTypedDictMeta, name, (dict,), ns)
+            return _new_typed_dict(_GenericTypedDictMeta, name, bases, ns)
         __call__ = dict
         def __subclasscheck__(cls, other):
             return False  # hack to support Python 3.6
-            # raise TypeError('TypedDict does not support instance and class checks')
         __instancecheck__ = __subclasscheck__
 
     GenericTypedDict = _GenericTypedDictMeta('TypedDict', (dict,), {})

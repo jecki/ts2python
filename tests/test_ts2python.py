@@ -101,10 +101,14 @@ export interface Diagnostic {
 
 class TestGenericTypedDictSurrogate:
     def test_generic_typed_dict(self):
-        class _GenericTypedDictMeta(type):
+        if sys.version_info >= (3, 7, 0):
+            GenericMeta = type
+        else:
+            from typing import GenericMeta
+        class _GenericTypedDictMeta(GenericMeta):
             def __new__(cls, name, bases, ns, total=True):
                 return type.__new__(_GenericTypedDictMeta, name, (dict,), ns)
-
+            __call__ = dict
         GenericTypedDict = _GenericTypedDictMeta('TypedDict', (dict,), {})
         GenericTypedDict.__module__ = __name__
         T = TypeVar('T')

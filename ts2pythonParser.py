@@ -252,16 +252,19 @@ except ImportError:
     except ImportError:
         NotRequired = Optional
         try:
-            from ts2python.validation import TypedDict, _TypedDictMeta
-            GenericTypedDict = TypedDict
+            from ts2python.validation import TypedDict, GenericTypedDict
         except ImportError:
             print("Module ts2python not found. Only coarse-grained " 
                   "type-validation of TypedDicts possible")
-            class _GenericTypedDictMeta(type):
+            if sys.version_info >= (3, 7, 0):  GenericMeta = type
+            else:
+                from typing import GenericMeta
+            class _GenericTypedDictMeta(GenericMeta):
                 def __new__(cls, name, bases, ns, total=True):
                     return type.__new__(_GenericTypedDictMeta, name, (dict,), ns)
+                __call__ = dict
             GenericTypedDict = _GenericTypedDictMeta('TypedDict', (dict,), {})
-            GenericTypedDict.__module__ = __name__        
+            GenericTypedDict.__module__ = __name__      
 """
 
 

@@ -1,3 +1,4 @@
+#!/usr/bin/env python
 # stolen from DHParser.testing
 
 import collections
@@ -161,7 +162,8 @@ def run_path(path):
         results = []
         with SingleThreadExecutor() as pool:
             for f in files:
-                results.append(pool.submit(run_file, f))
+                if f.find('test') >= 0 and f[-3:] == '.py':
+                    results.append(pool.submit(run_file, f))
                 # run_file(f)  # for testing!
             concurrent.futures.wait(results)
             for r in results:

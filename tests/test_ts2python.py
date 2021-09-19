@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+ #!/usr/bin/env python
 
 """test_ts2python.py -- test code for ts2python.py."""
 

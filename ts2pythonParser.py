@@ -348,7 +348,8 @@ class ts2pythonCompiler(Compiler):
         else:
             code_blocks = []
         code_blocks.append(python_code)
-        code_blocks.append('\n##### BEGIN OF LSP SPECS\n')
+        if self.tree.tag_name == 'document':
+            code_blocks.append('\n##### END OF LSP SPECS\n')
         cooked = '\n\n'.join(code_blocks)
         return re.sub(r'\n\n+', '\n\n\n', cooked)
 

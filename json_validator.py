@@ -1,6 +1,6 @@
-"""validation.py - contains an alternative implementation of TypedDict
-    that allows to specify individual fields as optional - and
-    validation functions and decorators that put these to use.
+"""json_validator.py - contains an alternative implementation of TypedDict
+       that allows to specify individual fields as optional - and
+       validation functions and decorators that put these to use.
 
 STL's TypeDict merely supports classifying all fields of a TypedDict
 class as either required or optional. This TypedDict implementation
@@ -171,9 +171,14 @@ class _TypedDictMeta(type):
 
 if sys.version_info >= (3, 7) and not hasattr(sys, 'pypy_version_info'):
     def TypedDict(typename, fields=None, *, total=True, **kwargs):
-        """A simple typed namespace. At runtime it is equivalent to a plain dict.
-        TypedDict creates a dictionary type that expects all of its
-        instances to have a certain set of keys, where each key is
+        """An alternative implementation of typing.TypedDict that, instead of
+        relying on the `total`-parameter, allows to treat individual fields
+        as not required by declaring their type as optional. (This implements
+        in fact one of the the alternatives rejected by PEP 655.)
+
+        TypedDict is simple typed namespace. At runtime it is equivalent to a
+        plain dict. TypedDict creates a dictionary type that expects all of
+        its instances to have a certain set of keys, where each key is
         associated with a value of a consistent type. This expectation
         is not checked at runtime but is only enforced by type checkers.
         Usage::

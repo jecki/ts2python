@@ -182,28 +182,35 @@ if sys.version_info >= (3, 7) and not hasattr(sys, 'pypy_version_info'):
         associated with a value of a consistent type. This expectation
         is not checked at runtime but is only enforced by type checkers.
         Usage::
-            class Point2D(TypedDict):
-                x: int
-                y: int
-                label: str
-            a: Point2D = {'x': 1, 'y': 2, 'label': 'good'}  # OK
-            b: Point2D = {'z': 3, 'label': 'bad'}           # Fails type check
-            assert Point2D(x=1, y=2, label='first') == dict(x=1, y=2, label='first')
+
+            >>> class Point2D(TypedDict):
+            ...     x: int
+            ...     y: int
+            ...     label: str
+            >>> a: Point2D = {'x': 1, 'y': 2, 'label': 'good'}  # OK
+            >>> b: Point2D = {'z': 3, 'label': 'bad'}           # Fails type check
+            >>> assert Point2D(x=1, y=2, label='first') == dict(x=1, y=2, label='first')
+
         The type info can be accessed via the Point2D.__annotations__ dict, and
         the Point2D.__required_keys__ and Point2D.__optional_keys__ frozensets.
         TypedDict supports two additional equivalent forms::
-            Point2D = TypedDict('Point2D', x=int, y=int, label=str)
-            Point2D = TypedDict('Point2D', {'x': int, 'y': int, 'label': str})
+
+            >>> Point2D = TypedDict('Point2D', x=int, y=int, label=str)
+            >>> Point2D = TypedDict('Point2D', {'x': int, 'y': int, 'label': str})
+
         By default, all keys must be present in a TypedDict. It is possible
         to override this by specifying totality.
         Usage::
-            class point2D(TypedDict, total=False):
-                x: int
-                y: int
+
+            >>> class Point2D(TypedDict, total=False):
+            ...     x: int
+            ...     y: int
+
         This means that a point2D TypedDict can have any of the keys omitted.A type
         checker is only expected to support a literal False or True as the value of
         the total argument. True is the default, and makes all items defined in the
         class body be required.
+
         The class syntax is only supported in Python 3.6+, while two other
         syntax forms work for Python 2.7 and 3.2+
         """

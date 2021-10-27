@@ -2,7 +2,8 @@
 
 Python-interoperability for Typescript-Interfaces.
 Transpiles TypeScript-Interface-definitions to Python 
-data structure definitions, e.g. TypedDict.
+TypedDicts, plus support for run-time type-checking 
+of JSON-data.
 
 ## License
 

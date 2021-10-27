@@ -129,7 +129,7 @@ class TestValidation:
         exec(code, globals())
 
     def test_type_validation(self):
-        from ts2python.json_validator import validate_type
+        from ts2python.validation import validate_type
         position = Position(line=1, character=2)
         validate_type(position, Position)
         try:
@@ -139,7 +139,7 @@ class TestValidation:
             pass
 
     def test_type_check(self):
-        from ts2python.json_validator import type_check, validate_type
+        from ts2python.validation import type_check, validate_type
         @type_check
         def type_checked_func(select_test: int, request: RequestMessage, position: Position) \
                 -> ResponseMessage:

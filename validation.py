@@ -1,4 +1,4 @@
-"""json_validator.py - contains an alternative implementation of TypedDict
+"""validation.py - contains an alternative implementation of TypedDict
        that allows to specify individual fields as optional - and
        validation functions and decorators that put these to use.
 

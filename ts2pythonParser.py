@@ -252,7 +252,7 @@ except ImportError:
     except ImportError:
         NotRequired = Optional
         try:
-            from ts2python.json_validator import TypedDict, GenericTypedDict
+            from ts2python.validation import TypedDict, GenericTypedDict
         except ImportError:
             print("Module ts2python not found. Only coarse-grained " 
                   "type-validation of TypedDicts possible")

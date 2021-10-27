@@ -117,7 +117,7 @@ class ts2pythonGrammar(Grammar):
     literal = Forward()
     type = Forward()
     types = Forward()
-    source_hash__ = "c62eab8c5ac80d57e9db4eb1402957ae"
+    source_hash__ = "3a03e1733b95985f631b0f5e8429b0be"
     disposable__ = re.compile('INT$|NEG$|FRAC$|DOT$|EXP$|EOF$|_array_ellipsis$|_top_level_assignment$|_top_level_literal$')
     static_analysis_pending__ = []  # type: List[bool]
     parser_initialization__ = ["upon instantiation"]
@@ -252,7 +252,7 @@ except ImportError:
     except ImportError:
         NotRequired = Optional
         try:
-            from ts2python.validation import TypedDict, GenericTypedDict
+            from ts2python.json_validator import TypedDict, GenericTypedDict
         except ImportError:
             print("Module ts2python not found. Only coarse-grained " 
                   "type-validation of TypedDicts possible")

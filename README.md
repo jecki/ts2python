@@ -386,6 +386,6 @@ however, if the `TypedDict`-Shim from the
 
 ## Validation
 
-With TypedDict, any static type checker that already support 
+With TypedDict, any static type checker that already supports 
 TypedDicts can be leveraged to check the classes generated
 by ts2python. However, 

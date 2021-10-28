@@ -8,6 +8,6 @@
     <orderEntry type="sourceFolder" forTests="false" />
   </component>
   <component name="ReSTService">
-    <option name="DOC_DIR" value="$MODULE_DIR$" />
+    <option name="DOC_DIR" value="$MODULE_DIR$/docs" />
   </component>
 </module>

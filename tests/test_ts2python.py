@@ -89,6 +89,58 @@ export interface Diagnostic {
     relatedInformation?: DiagnosticRelatedInformation[];
     data?: unknown;
 }
+
+export namespace SymbolKind {
+	export const File = 1;
+	export const Module = 2;
+	export const Namespace = 3;
+	export const Package = 4;
+	export const Class = 5;
+	export const Method = 6;
+	export const Property = 7;
+	export const Field = 8;
+	export const Constructor = 9;
+	export const Enum = 10;
+	export const Interface = 11;
+	export const Function = 12;
+	export const Variable = 13;
+	export const Constant = 14;
+	export const String = 15;
+	export const Number = 16;
+	export const Boolean = 17;
+	export const Array = 18;
+	export const Object = 19;
+	export const Key = 20;
+	export const Null = 21;
+	export const EnumMember = 22;
+	export const Struct = 23;
+	export const Event = 24;
+	export const Operator = 25;
+	export const TypeParameter = 26;
+}
+
+export namespace SymbolTag {
+	export const Deprecated: 1 = 1;
+}
+
+export type SymbolTag = 1;
+
+export interface DocumentSymbol {
+	name: string;
+	detail?: string;
+	kind: SymbolKind;
+	tags?: SymbolTag[];
+	deprecated?: boolean;
+	range: Range;
+	selectionRange: Range;
+	children?: DocumentSymbol[];
+}
+
+export enum FoldingRangeKind {
+	Comment = 'comment',
+	Imports = 'imports',
+	Region = 'region'
+}
 """
 
 
@@ -195,6 +247,69 @@ class TestValidation:
                 assert False, "Type Error in nested return type not detected"
         except TypeError:
             pass
+
+    def test_int_enum(self):
+        from ts2python.validation import validate_type
+        try:
+            validate_type(5, SymbolKind)
+        except TypeError:
+            assert False, "member of enum not identified"
+        try:
+            validate_type(100000, SymbolKind)
+            assert False, "illegal member of enum did not raise a value error"
+        except ValueError:
+            pass
+
+    def test_str_enum(self):
+        from ts2python.validation import validate_type
+        try:
+            validate_type('region', FoldingRangeKind)
+        except TypeError:
+            assert False, "member of enum not identified"
+        try:
+            validate_type('nothing', FoldingRangeKind)
+            assert False, "illegal member of enum did not raise a value error"
+        except ValueError:
+            pass
+
+    def test_nested_sequence(self):
+        from ts2python.validation import validate_type, validate_uniform_sequence
+        # data-snippet from the Medieval-Latin-Dictionary https://mlw.badw.de
+        documentSymbols = [{
+            "name": "LEMMA",
+            "detail": "*satinus",
+            "kind": 5,
+            "range": {
+                "start": {"line": 0, "character": 0},
+                "end": {"line": 0, "character": 15}},
+            "selectionRange": {
+                "start": {"line": 0, "character": 0},
+                "end": {"line": 0, "character": 15}},
+            "children": [{
+                "name": "GRAMMATIK",
+                "detail": "",
+                "kind": 8,
+                "range": {
+                    "start": {"line": 2, "character": 0},
+                    "end": {"line": 2, "character": 9}},
+                "selectionRange": {
+                    "start": {"line": 2, "character": 0},
+                    "end": {"line": 2, "character": 9}},
+                "children": []}, {
+                "name": "BEDEUTUNG",
+                "detail": "pars tricesima secunda ponderis -- der zweiunddreißigste Teil eines Gewichtes, 'Satin'; de nummo ((* {de re cf.} B. Hilliger, Studien zu mittelalterlichen Maßen und Gewichten. HistVjSchr. 3. 1900.; p. 191sq.)):",
+                "kind": 5,
+                "range": {
+                    "start": {"line": 12, "character": 0},
+                    "end": {"line": 12, "character": 220}},
+                "selectionRange": {
+                    "start": {"line": 12, "character": 0},
+                    "end": {"line": 12, "character": 220}},
+                "children": []}]}]
+        try:
+            validate_uniform_sequence(documentSymbols, DocumentSymbol)
+        except TypeError as e:
+            assert False, "Validation failed inspite of correct data: " + str(e)
 
 
 class TestOptions:

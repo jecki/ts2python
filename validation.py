@@ -24,6 +24,7 @@ permissions and limitations under the License.
 """
 
 
+from enum import Enum, IntEnum
 import functools
 import sys
 from typing import Union, List, Tuple, Optional, Dict, Any, \
@@ -248,7 +249,22 @@ _TypedDict = type.__new__(_TypedDictMeta, 'TypedDict', (), {})
 TypedDict.__mro_entries__ = lambda bases: (_TypedDict,)
 
 # up to this point all functions have been copied and adapted from
-# the typing.py module of the Pyhton-STL
+# the typing.py module of the Python-STL
+
+
+def strdata(data: Any) -> str:
+    datastr = str(data)
+    return datastr[:10] + '...' if len(datastr) > 10 else datastr
+
+
+def validate_enum(val: Any, typ: Enum):
+    # if not any(member.value == val for member in typ.__members__.values()):
+    #     raise ValueError(f"{val} is not contained in enum {typ}")
+    if not hasattr(typ, '__value_set__'):
+        typ.__value_set__ = {member.value for member in typ.__members__.values()}
+    if val not in typ.__value_set__:
+        raise ValueError(f"{val} is not contained in enum {typ}")
+
 
 def validate_type(val: Any, typ):
     """Raises a TypeError if value `val` is not of type `typ`.
@@ -280,7 +296,10 @@ def validate_type(val: Any, typ):
         validate_compound_type(val, typ)
     else:
         if not isinstance(val, typ):
-            raise TypeError(f"{val} is not of type {typ}")
+            if issubclass(typ, Enum):  #  and isinstance(val, (int, str)):
+                validate_enum(val, typ)
+            else:
+                raise TypeError(f"{val} is not of type {typ}")
 
 
 def validate_uniform_sequence(sequence: Iterable, item_type):
@@ -397,7 +416,8 @@ def validate_TypedDict(D: Dict, T: _TypedDictMeta):
             if isinstance(value, Dict):
                 validate_TypedDict(value, field_type)
             else:
-                type_errors.append(f'Field "{field}" is not a {field_type}')
+                type_errors.append(f"Field {field}: '{strdata(D[field])}' is not of {field_type}, "
+                                   f"but of type {type(D[field])}")
         elif get_origin(field_type) is Union:
             value = D[field]
             for union_typ in field_type.__args__:
@@ -417,13 +437,19 @@ def validate_TypedDict(D: Dict, T: _TypedDictMeta):
                 elif isinstance(value, union_typ):
                     break
             else:
-                type_errors.append(f'Field "{field}" is not of {field_type}')
+                # TODO: bugfix?
+                type_errors.append(f"Field {field}: '{strdata(D[field])}' is not of {field_type}, "
+                                   f"but of type {type(D[field])}")
         elif hasattr(field_type, '__args__'):
             validate_compound_type(D[field], field_type)
         elif isinstance(field_type, TypeVar):
             pass  # for now
         elif not isinstance(D[field], field_type):
-            type_errors.append(f'Field "{field}" is not a {field_type}')
+            if issubclass(field_type, Enum):
+                validate_enum(D[field], field_type)
+            else:
+                type_errors.append(f"Field {field}: '{strdata(D[field])}' is not a {field_type}, "
+                                   f"but a {type(D[field])}")
     if type_errors:
         raise TypeError(f"Type error(s) in dictionary of type {T}:\n"
                         + '\n'.join(type_errors))
@@ -455,11 +481,11 @@ def type_check(func: Callable) -> Callable:
     >>> try:
     ...     middle_line(malformed_rng)
     ... except TypeError as e:
-    ...    print(e)
+    ...     print(e)
     Parameter "rng" of function "middle_line" failed the type-check, because:
-    Type error(s) in dictionary of type <class 'json_validator.Range'>:
-    Field "start" is not a <class 'json_validator.Position'>
-    Field "end" is not a <class 'json_validator.Position'>
+    Type error(s) in dictionary of type <class 'validation.Range'>:
+    Field start: '1' is not of <class 'validation.Position'>, but of type <class 'int'>
+    Field end: '8' is not of <class 'validation.Position'>, but of type <class 'int'>
 
     :param func: The function, the parameters and return value of which shall
         be type-checked during runtime.

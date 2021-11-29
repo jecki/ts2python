@@ -180,8 +180,8 @@ class TestValidation:
         code = compile(self.test_code, '<string>', 'exec')
         exec(code, globals())
 
-    def test_type_validation(self):
-        from ts2python.validation import validate_type
+    def test_type_json_validation(self):
+        from ts2python.json_validation import validate_type
         position = Position(line=1, character=2)
         validate_type(position, Position)
         try:
@@ -191,7 +191,7 @@ class TestValidation:
             pass
 
     def test_type_check(self):
-        from ts2python.validation import type_check, validate_type
+        from ts2python.json_validation import type_check, validate_type
         @type_check
         def type_checked_func(select_test: int, request: RequestMessage, position: Position) \
                 -> ResponseMessage:
@@ -249,7 +249,7 @@ class TestValidation:
             pass
 
     def test_int_enum(self):
-        from ts2python.validation import validate_type
+        from ts2python.json_validation import validate_type
         try:
             validate_type(5, SymbolKind)
         except TypeError:
@@ -261,7 +261,7 @@ class TestValidation:
             pass
 
     def test_str_enum(self):
-        from ts2python.validation import validate_type
+        from ts2python.json_validation import validate_type
         try:
             validate_type('region', FoldingRangeKind)
         except TypeError:
@@ -273,7 +273,7 @@ class TestValidation:
             pass
 
     def test_nested_sequence(self):
-        from ts2python.validation import validate_type, validate_uniform_sequence
+        from ts2python.json_validation import validate_type, validate_uniform_sequence
         # data-snippet from the Medieval-Latin-Dictionary https://mlw.badw.de
         documentSymbols = [{
             "name": "LEMMA",

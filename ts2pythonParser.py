@@ -54,7 +54,7 @@ from DHParser import start_logging, suspend_logging, resume_logging, is_filename
     ZeroOrMore, Forward, NegativeLookahead, Required, CombinedParser, mixin_comment, \
     compile_source, grammar_changed, last_value, matching_bracket, PreprocessorFunc, is_empty, \
     remove_if, Node, TransformerCallable, TransformationDict, transformation_factory, traverse, \
-    remove_children_if, move_adjacent, normalize_whitespace, is_anonymous, matches_re, \
+    remove_children_if, normalize_whitespace, is_anonymous, matches_re, \
     reduce_single_child, replace_by_single_child, replace_or_reduce, remove_whitespace, \
     replace_by_children, remove_empty, remove_tokens, flatten, all_of, any_of, \
     merge_adjacent, collapse, collapse_children_if, transform_content, WHITESPACE_PTYPE, \
@@ -71,7 +71,6 @@ from DHParser import start_logging, suspend_logging, resume_logging, is_filename
     has_errors, ERROR, FATAL, set_preset_value, get_preset_value, NEVER_MATCH_PATTERN, \
     gen_find_include_func, preprocess_includes, make_preprocessor, chain_preprocessors, \
     pick_from_context, json_dumps, RootNode, get_config_values
-from DHParser.server import pp_json
 
 
 #######################################################################
@@ -252,7 +251,7 @@ except ImportError:
     except ImportError:
         NotRequired = Optional
         try:
-            from ts2python.validation import TypedDict, GenericTypedDict
+            from ts2python.json_validation import TypedDict, GenericTypedDict
         except ImportError:
             print("Module ts2python not found. Only coarse-grained " 
                   "type-validation of TypedDicts possible")
@@ -905,7 +904,7 @@ if __name__ == "__main__":
 
     workdir = file_names[0] if os.path.isdir(file_names[0]) else os.path.dirname(file_names[0])
     from DHParser.configuration import read_local_config
-    read_local_config(os.path.join(workdir, os.path.splitext(script_name)[0] + '.ini'))
+    read_local_config(os.path.join(workdir, 'ts2python.ini'))
 
     if args.debug or args.compatibility or args.base or args.decorator or args.peps:
         access_presets()

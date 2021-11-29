@@ -19,7 +19,9 @@ pydantic or attr might be supported by ts2python as well.)
    :maxdepth: 2
    :caption: Contents:
 
-
+   BasicUsage.rst
+   Mapping.rst
+   Validation.rst
 
 Indices and tables
 ==================

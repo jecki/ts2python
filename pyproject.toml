@@ -28,6 +28,7 @@ classifiers = [
     'Programming Language :: Python :: 3.7',
     'Programming Language :: Python :: 3.8',
     'Programming Language :: Python :: 3.9',
+    'Programming Language :: Python :: 3.10',
     'Programming Language :: Python :: Implementation :: CPython',
     'Programming Language :: Python :: Implementation :: PyPy',
     'Topic :: Text Processing :: Markup',
@@ -36,23 +37,19 @@ classifiers = [
 ]
 
 packages = [
-    { include = "." },
+    { include = "ts2pythonParser.py" },
+    { include = "json_validation.py" },
+    { include = "ts2python.ini" },
     { include = "demo" },
     { include = "tests_grammar", format="sdist" },
     { include = "tests", format = "sdist" },
+    { include = "docs", format = "sdist" }
 ]
-
-# build = "DHParser/scripts/dhparser_build_cython.py"
-
-# IN THE FUTURE, MAYBE:
-# [tool.poetry.build]
-# script = "DHParser/scripts/dhparser_build_cython.py"
-# generate-setup-file = false
 
 
 [tool.poetry.dependencies]
 python = "^3.6"
-DHParser = { version = "^0.9.8", optional = false }
+DHParser = { version = "^0.9.9", optional = false }
 
 [tool.poetry.scripts]
 ts2python = 'ts2pythonParser:main'

@@ -15,6 +15,14 @@ interfaces/TypedDicts.
 (In the future also other record structures like
 pydantic or attr might be supported by ts2python as well.)
 
+ts2python can be installed with::
+
+    # pip install ts2python
+
+ts2python is licensed under the Apache-2.0 open source license.
+The source code can be cloned from:
+`https://github.com/jecki/ts2python <https://github.com/jecki/ts2python>`_
+
 .. toctree::
    :maxdepth: 2
    :caption: Contents:

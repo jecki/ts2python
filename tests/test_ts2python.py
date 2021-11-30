@@ -1,4 +1,4 @@
- #!/usr/bin/env python
+#!/usr/bin/env python
 
 """test_ts2python.py -- test code for ts2python.py."""
 
@@ -7,11 +7,13 @@ import subprocess
 import sys
 from typing import TypeVar, Generic
 
+scriptdir = os.path.dirname(os.path.abspath(__file__))
+
 try:
-    from ts2python.ts2pythonParser import compile_src
+    from ts2pythonParser import compile_src
 except ImportError:
-    sys.path.append(os.path.abspath(os.path.join('..', '..')))
-    from ts2python.ts2pythonParser import compile_src
+    sys.path.append(os.path.join(scriptdir, '..'))
+    from ts2pythonParser import compile_src
 
 
 TEST_DATA = """
@@ -314,7 +316,7 @@ class TestValidation:
 
 class TestOptions:
     def test_different_settings(self):
-        from ts2python import ts2pythonParser
+        import ts2pythonParser
         from DHParser.configuration import set_config_value
         set_config_value('ts2python.UseNotRequired', True, allow_new_key=True)
         code, _ = ts2pythonParser.compile_src(TEST_DATA)
@@ -333,7 +335,7 @@ class TestScriptCall:
             os.remove('testdata.py')
 
     def test_ts2python_call(self):
-        cmd = os.path.abspath(os.path.join('..', 'ts2pythonParser.py'))
+        cmd = os.path.abspath(os.path.join(scriptdir, '..', 'ts2pythonParser.py'))
         result = subprocess.run(['python', cmd, 'testdata.ts'])
         assert result.returncode == 0
         assert os.path.exists('testdata.py')

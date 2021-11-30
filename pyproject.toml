@@ -38,8 +38,7 @@ classifiers = [
 
 packages = [
     { include = "ts2pythonParser.py" },
-    { include = "json_validation.py" },
-    { include = "ts2python.ini" },
+    { include = "ts2python" },
     { include = "demo" },
     { include = "tests_grammar", format="sdist" },
     { include = "tests", format = "sdist" },

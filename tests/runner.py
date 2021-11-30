@@ -90,8 +90,9 @@ def runner(tests, namespace, profile=False):
         assert all(test.lower().startswith('test') for test in tests)
     else:
         tests = []
-        if sys.argv[0].lower().startswith('test'):
-            tests = [name for name in sys.argv[1:] if name.lower().startswith('test')]
+        if os.path.basename(sys.argv[0]).lower().startswith('test'):
+            tests = [name for name in sys.argv[1:]
+                     if os.path.basename(name.lower()).startswith('test')]
         if not tests:
             tests = [name for name in namespace.keys() if name.lower().startswith('test')]
 
@@ -125,11 +126,15 @@ def runner(tests, namespace, profile=False):
 
 
 def run_file(fname):
+    dirname, fname = os.path.split(fname)
     if fname.lower().startswith('test_') and fname.endswith('.py'):
         print("RUNNING " + fname)
         # print('\nRUNNING UNIT TESTS IN: ' + fname)
+        save = os.getcwd()
+        os.chdir(dirname)
         exec('import ' + fname[:-3])
         runner('', eval(fname[:-3]).__dict__)
+        os.chdir(save)
 
 
 class SingleThreadExecutor(concurrent.futures.Executor):
@@ -163,8 +168,9 @@ def run_path(path):
         with SingleThreadExecutor() as pool:
             for f in files:
                 if f.find('test') >= 0 and f[-3:] == '.py':
-                    results.append(pool.submit(run_file, f))
+                    results.append(pool.submit(run_file, os.path.join(path, f)))
                 # run_file(f)  # for testing!
+            assert results, f"No tests found in directory {os.path.abspath(path)}"
             concurrent.futures.wait(results)
             for r in results:
                 try:

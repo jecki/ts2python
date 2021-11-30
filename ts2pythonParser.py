@@ -235,7 +235,7 @@ try:
     from typing import TypedDict, Literal
 except ImportError:
     try:
-        from typing_extensions import TypedDict, Literal
+        from ts2python.typing_extensions import TypedDict, Literal
     except ImportError:
         print(f'Please install the "typing_extensions" module via the shell '
               f'command "# pip install typing_extensions" before running '
@@ -253,8 +253,8 @@ except ImportError:
         try:
             from ts2python.json_validation import TypedDict, GenericTypedDict
         except ImportError:
-            print("Module ts2python not found. Only coarse-grained " 
-                  "type-validation of TypedDicts possible")
+            print("Module ts2python.json_validation not found. Only " 
+                  "coarse-grained type-validation of TypedDicts possible")
             if sys.version_info >= (3, 7, 0):  GenericMeta = type
             else:
                 from typing import GenericMeta
@@ -904,7 +904,7 @@ if __name__ == "__main__":
 
     workdir = file_names[0] if os.path.isdir(file_names[0]) else os.path.dirname(file_names[0])
     from DHParser.configuration import read_local_config
-    read_local_config(os.path.join(workdir, 'ts2python.ini'))
+    read_local_config(os.path.join(workdir, 'ts2python/ts2pythonParser.ini'))
 
     if args.debug or args.compatibility or args.base or args.decorator or args.peps:
         access_presets()

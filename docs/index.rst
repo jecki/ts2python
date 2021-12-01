@@ -8,20 +8,46 @@
 Welcome to ts2python's documentation!
 =====================================
 
-ts2python is a transpiler that converts TypeScript-interfaces to Python
-records like TypedDict and provides runtime json-validation against those
+ts2python_ is a transpiler that converts `TypeScript interfaces`_ to Python_
+records like TypedDict_ and provides runtime json_-validation against those
 interfaces/TypedDicts. 
 
 (In the future also other record structures like
-pydantic or attr might be supported by ts2python as well.)
+pydantic_ or attr_ might be supported by ts2python as well.)
 
-ts2python can be installed with::
+ts2python_ is licensed under the `Apache-2.0`_ open source license.
+The source code can be cloned freely from:
+`https://github.com/jecki/ts2python <https://github.com/jecki/ts2python/>`_
 
-    # pip install ts2python
+ts2python_ can be installed as usual with Python's package-manager "pip"::
 
-ts2python is licensed under the Apache-2.0 open source license.
-The source code can be cloned from:
-`https://github.com/jecki/ts2python <https://github.com/jecki/ts2python>`_
+    $ pip install ts2python
+
+ts2python requires at least Python_ Version 3.6. The only dependency of
+ts2python is the parser-generator DHParser_. For Python versions below 3.8
+installing the `typing_extensions`_ is highly recommended, though.
+
+Alternatively, you can just download the script `ts2PythonParser.py`_ for converting
+Typescript source code consisting to interface definitions to Pyhton modules from the
+git-repository which runs without installing ts2python as long as DHParser_ has been installed.
+Or, if you just interested in runtime type validation, you can just copy the module
+`json_validation`_ from the git repository, which merely requires the `typing_extensions`_ to
+be present.
+
+
+.. _ts2python:  https://github.com/jecki/ts2python/
+.. _Typescript interfaces: https://www.typescriptlang.org/docs/handbook/2/objects.html
+.. _TypedDict: https://www.python.org/dev/peps/pep-0589/
+.. _json: https://www.json.org/
+.. _Apache-2.0: https://www.apache.org/licenses/LICENSE-2.0
+.. _Python: https://www.python.org/
+.. _DHParser: https://gitlab.lrz.de/badw-it/DHParser
+.. _pydantic: https://pydantic-docs.helpmanual.io/
+.. _attr: https://www.attrs.org/
+.. _ts2PythonParser.py: https://github.com/jecki/ts2python/blob/main/ts2pythonParser.py
+.. _json_validation: https://github.com/jecki/ts2python/blob/main/ts2python/json_validation.py
+.. _typing_extensions: https://github.com/python/typing/blob/master/typing_extensions/README.rst
+
 
 .. toctree::
    :maxdepth: 2

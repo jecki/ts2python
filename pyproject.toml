@@ -48,7 +48,8 @@ packages = [
 
 [tool.poetry.dependencies]
 python = "^3.6"
-DHParser = { version = "^0.9.9", optional = false }
+DHParser = { version = "^0.9", optional = false }
+typing_extensions = { version = "^4.0", optional = true }
 
 [tool.poetry.scripts]
 ts2python = 'ts2pythonParser:main'

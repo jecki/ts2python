@@ -1,5 +1,5 @@
-Mapping of Typescript-Types to Python-Types
-===========================================
+Type Mapping Explained
+======================
 
 The following explains, how ``ts2python`` maps Typescript-types,
 in particular, `Typescript interfaces`_, to Python types, in particular,

@@ -5,10 +5,10 @@ Generating TypeDict-classes from Typescript-Interfaces
 ------------------------------------------------------
 
 TypedDict-classes can be generated from Typescript-Interfaces,
-by running the `ts2python`-command from the command line on
+by running the ``ts2python``-command from the command line on
 the Typescript-Interface definitions::
 
-    # ts2python interfaces.ts
+    $ ts2python interfaces.ts
 
 This generates a .py-file in same directory as the source
 file that contains the TypedDict-classes and can simpy be

@@ -29,8 +29,12 @@ import functools
 import sys
 from typing import Union, List, Tuple, Optional, Dict, Any, \
     Iterator, Iterable, Callable, get_type_hints
-from .typing_extensions import Generic, GenericMeta, \
-    ClassVar, Final, Protocol, NoReturn, TypeVar, Literal
+try:
+    from typing_extensions import Generic, GenericMeta, \
+        ClassVar, Final, Protocol, NoReturn, TypeVar, Literal
+except ImportError:
+    from .typing_extensions import Generic, GenericMeta, \
+        ClassVar, Final, Protocol, NoReturn, TypeVar, Literal
 try:
     from typing import ForwardRef, _GenericAlias, _SpecialForm
 except ImportError:

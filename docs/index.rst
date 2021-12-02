@@ -5,8 +5,8 @@
 
 .. default-domain::py
 
-Welcome to ts2python's documentation!
-=====================================
+ts2python Documentation
+=======================
 
 ts2python_ is a transpiler that converts `TypeScript interfaces`_ to Python_
 records like TypedDict_ and provides runtime json_-validation against those

@@ -52,7 +52,7 @@ except ImportError:
             return Generic
 
 
-__all__ = ['TypedDict', 'validate_type', 'type_check']
+__all__ = ['TypedDict', 'GenericTypedDict', 'validate_type', 'type_check']
 
 
 # The following functions have been copied from the Python

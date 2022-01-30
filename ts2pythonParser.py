@@ -207,7 +207,7 @@ ts2python_AST_transformation_table = {
 def ts2pythonTransformer() -> TransformerCallable:
     """Creates a transformation function that does not share state with other
     threads or processes."""
-    return partial(traverse, processing_table=ts2python_AST_transformation_table.copy())
+    return partial(traverse, transformation_table=ts2python_AST_transformation_table.copy())
 
 
 get_transformer = ThreadLocalSingletonFactory(ts2pythonTransformer, ident=1)
@@ -239,7 +239,22 @@ except ImportError:
     except ImportError:
         print(f'Please install the "typing_extensions" module via the shell '
               f'command "# pip install typing_extensions" before running '
-              f'{__file__} with Python-versions <= 3.7!')        
+              f'{__file__} with Python-versions <= 3.7!')
+try:
+    from ts2python.json_validation import TypedDict, GenericTypedDict
+    # Overwrite typing.TypedDict for Runtime-Validation
+except ImportError:
+    print("Module ts2python.json_validation not found. Only " 
+          "coarse-grained type-validation of TypedDicts possible")     
+    if sys.version_info >= (3, 7, 0):  GenericMeta = type
+    else:
+        from typing import GenericMeta
+    class _GenericTypedDictMeta(GenericMeta):
+        def __new__(cls, name, bases, ns, total=True):
+            return type.__new__(_GenericTypedDictMeta, name, (dict,), ns)
+        __call__ = dict
+    GenericTypedDict = _GenericTypedDictMeta('TypedDict', (dict,), {})
+    GenericTypedDict.__module__ = __name__   
 """
 
 PEP655_IMPORTS = """
@@ -249,21 +264,7 @@ except ImportError:
     try:
         from typing_extensions import NotRequired
     except ImportError:
-        NotRequired = Optional
-        try:
-            from ts2python.json_validation import TypedDict, GenericTypedDict
-        except ImportError:
-            print("Module ts2python.json_validation not found. Only " 
-                  "coarse-grained type-validation of TypedDicts possible")
-            if sys.version_info >= (3, 7, 0):  GenericMeta = type
-            else:
-                from typing import GenericMeta
-            class _GenericTypedDictMeta(GenericMeta):
-                def __new__(cls, name, bases, ns, total=True):
-                    return type.__new__(_GenericTypedDictMeta, name, (dict,), ns)
-                __call__ = dict
-            GenericTypedDict = _GenericTypedDictMeta('TypedDict', (dict,), {})
-            GenericTypedDict.__module__ = __name__      
+        NotRequired = Optional   
 """
 
 

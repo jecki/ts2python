@@ -179,7 +179,7 @@ if sys.version_info >= (3, 7) and not hasattr(sys, 'pypy_version_info'):
         """An alternative implementation of typing.TypedDict that, instead of
         relying on the `total`-parameter, allows to treat individual fields
         as not required by declaring their type as optional. (This implements
-        in fact one of the the alternatives rejected by PEP 655.)
+        in fact one of the alternatives rejected by PEP 655.)
 
         TypedDict is simple typed namespace. At runtime it is equivalent to a
         plain dict. TypedDict creates a dictionary type that expects all of

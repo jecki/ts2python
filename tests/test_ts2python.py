@@ -175,9 +175,18 @@ class TestGenericTypedDictSurrogate:
         assert pp == {'token': 'tok', 'value': 1}
 
 
+PATH_FIX = f'''
+import sys
+fix1 = "{os.path.abspath(os.path.join(scriptdir, '..'))}"
+fix2 = "{os.path.abspath(os.path.join(scriptdir, '..', '..'))}"
+if fix1 not in sys.path:  sys.path.append(fix1)
+if fix2 not in sys.path:  sys.path.append(fix2)
+'''
+
 class TestValidation:
     def setup(self):
         self.test_code, err = compile_src(TEST_DATA)
+        self.test_code = PATH_FIX + self.test_code
         assert not err
         code = compile(self.test_code, '<string>', 'exec')
         exec(code, globals())
@@ -342,12 +351,7 @@ class TestScriptCall:
         result = subprocess.run(['python', 'testdata.py'])
         assert result.returncode == 0
         with open('testdata.py', 'r', encoding='utf-8') as f:
-            script = f.read()
-        i = script.find('import sys')
-        script = '\n'.join([script[:i + len('import sys') + 1],
-                            'import os',
-                            "sys.path.append(os.path.join('..', '..'))",
-                            script[i:]])
+            script = PATH_FIX + f.read()
         with open('testdata.py', 'w', encoding='utf-8') as f:
             f.write(script)
         result = subprocess.run(['python', 'testdata.py'])

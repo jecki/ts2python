@@ -28,7 +28,7 @@ ts2python is the parser-generator DHParser_. For Python versions below 3.8
 installing the `typing_extensions`_ is highly recommended, though.
 
 Alternatively, you can just download the script `ts2PythonParser.py`_ for converting
-Typescript source code consisting to interface definitions to Pyhton modules from the
+Typescript source code consisting to interface definitions to Python modules from the
 git-repository which runs without installing ts2python as long as DHParser_ has been installed.
 Or, if you just interested in runtime type validation, you can just copy the module
 `json_validation`_ from the git repository, which merely requires the `typing_extensions`_ to

@@ -56,12 +56,12 @@ implemented, abusing ``Optional`` for this purpose appears to be
 a pragmatic solution that in connection with setting the parameter
 ``total=False`` plays well-enough with static type-checkers. Unless
 your code using ts2python-transpiled TypedDicts does not assume
-attibutes with ``Optional`` type to be present, there won't be a problem.
+attributes with ``Optional`` type to be present, there won't be a problem.
 (Still, it is possible, to enforce `PEP 655`_ by calling ``ts2python``
 with the parameter ``--p 655``, in which case ``NotRequired`` will be
 used instead of optional. The above Message-interface will then read as::
 
-    class RequestMessage(Message, TypedDict, total=False):
+    class RequestMessage(Message, TypedDict, total=True):
         id: Union[int, str]
         method: str
         params: NoRequired[Union[List, Dict]

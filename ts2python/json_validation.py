@@ -51,8 +51,11 @@ except ImportError:
         except AttributeError:
             return Generic
 
+NotRequired = Optional
 
-__all__ = ['TypedDict', 'GenericTypedDict', 'validate_type', 'type_check']
+
+__all__ = ['TypedDict', 'GenericTypedDict', 'validate_type', 'type_check',
+           'NotRequired', 'Literal']
 
 
 # The following functions have been copied from the Python

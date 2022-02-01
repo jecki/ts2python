@@ -20,11 +20,11 @@ fields.
 Module :py:mod:`ts2python.json_validation` provides functions
 and function annotations to validate (arbitrarily nested) typed dicts.
 In order to use runtime type-checking, :py:mod:`ts2python.json_validation`
-provides a TypedDict-shim as well as a GenericTypedDict-shim that
-should be imported either instead of or after Python's ``typing.TypedDict``
-and ``typing.GenericTypedDict``, but before defining any
-TypedDict classes. Runtime json-Validation can fail with obscure
-error messages, if the TypedDict-classes against which values are
+provides shims for ``TypedDict``, ``GenericTypedDict`` and ``NotRequired`` that
+should be imported instead of Python's ``typing.TypedDict``
+and ``typing.GenericTypedDict``. Runtime json-Validation
+can fail with obscure error messages, if the TypedDict-classes
+against which values are
 checked at runtime do not derive from
 :py:class:`ts2python.json_validation.TypedDict`!
 
@@ -76,6 +76,42 @@ not raise any error if the type is correct::
     ...     print(e)
     Type error(s) in dictionary of type <class '__main__.Position'>:
     Field character: 'bad mistak...' is not a <class 'int'>, but a <class 'str'>
+
+``validate_type`` and the ``type_check``-annoataion will likewise complain about missing
+required fields and superfluous fields::
+
+    >>> from ts2python.json_validation import NotRequired
+    >>> class Car(TypedDict, total=True):
+    ...     brand: str
+    ...     speed: int
+    ...     color: NotRequired[str]
+    >>> @type_check
+    ... def print_car(car: Car):
+    ...     print('brand: ', car['brand'])
+    ...     print('speed: ', car['speed'])
+    ...     if 'color' in car:
+    ...         print('color: ', car['color'])
+    >>> print_car({'brand': 'Mercedes', 'speed': 200})
+    brand:  Mercedes
+    speed:  200
+    >>> print_car({'brand': 'BMW', 'speed': 180, 'color': 'blue'})
+    brand:  BMW
+    speed:  180
+    color:  blue
+    >>> try:
+    ...     print_car({'speed': 200})
+    ... except TypeError as e:
+    ...     print(e)
+    Parameter "car" of function "print_car" failed the type-check, because:
+    Type error(s) in dictionary of type <class '__main__.Car'>:
+    Missing required keys: {'brand'}
+    >>> try:
+    ...     print_car({'brand': 'Mercedes', 'speed': 200, 'PS': 120})
+    ... except TypeError as e:
+    ...     print(e)
+    Parameter "car" of function "print_car" failed the type-check, because:
+    Type error(s) in dictionary of type <class '__main__.Car'>:
+    Unexpected keys: {'PS'}
 
 
 .. _PEP 655: https://www.python.org/dev/peps/pep-0655/

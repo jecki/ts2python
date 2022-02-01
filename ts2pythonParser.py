@@ -232,20 +232,25 @@ from typing import Union, List, Tuple, Optional, Dict, Any, Generic, TypeVar
 
 TYPEDDICT_IMPORTS = """
 try:
-    from typing import TypedDict, Literal
-except ImportError:
-    try:
-        from ts2python.typing_extensions import TypedDict, Literal
-    except ImportError:
-        print(f'Please install the "typing_extensions" module via the shell '
-              f'command "# pip install typing_extensions" before running '
-              f'{__file__} with Python-versions <= 3.7!')
-try:
-    from ts2python.json_validation import TypedDict, GenericTypedDict
+    from ts2python.json_validation import TypedDict, GenericTypedDict, \
+        NotRequired, Literal
     # Overwrite typing.TypedDict for Runtime-Validation
 except ImportError:
-    print("Module ts2python.json_validation not found. Only " 
-          "coarse-grained type-validation of TypedDicts possible")     
+    # print("Module ts2python.json_validation not found. Only " 
+    #       "coarse-grained type-validation of TypedDicts possible")
+    try:
+        from typing import TypedDict, Literal
+    except ImportError:
+        try:
+            from ts2python.typing_extensions import TypedDict, Literal
+        except ImportError:
+            print(f'Please install the "typing_extensions" module via the shell '
+                  f'command "# pip install typing_extensions" before running '
+                  f'{__file__} with Python-versions <= 3.7!')
+    try:
+        from typing_extensions import NotRequired
+    except ImportError:
+        NotRequired = Optional
     if sys.version_info >= (3, 7, 0):  GenericMeta = type
     else:
         from typing import GenericMeta
@@ -258,13 +263,6 @@ except ImportError:
 """
 
 PEP655_IMPORTS = """
-try:
-    from typing import NotRequired
-except ImportError:
-    try:
-        from typing_extensions import NotRequired
-    except ImportError:
-        NotRequired = Optional   
 """
 
 
@@ -367,7 +365,7 @@ class ts2pythonCompiler(Compiler):
         optional_key_list = self.optional_keys.pop()
         decorator = self.class_decorator
         if self.base_class_name == 'TypedDict':
-            total = not bool(optional_key_list)
+            total = not bool(optional_key_list) or self.use_not_required
             if base_classes:
                 if base_classes.find('Generic[') >= 0:
                     td_name = 'GenericTypedDict'

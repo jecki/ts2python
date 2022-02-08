@@ -28,13 +28,13 @@ from enum import Enum, IntEnum
 import functools
 import sys
 from typing import Union, List, Tuple, Optional, Dict, Any, \
-    Iterator, Iterable, Callable, get_type_hints
+    Generic, TypeVar, Iterable, Callable, get_type_hints
 try:
-    from typing_extensions import Generic, GenericMeta, \
-        ClassVar, Final, Protocol, NoReturn, TypeVar, Literal
+    from typing_extensions import GenericMeta, \
+        ClassVar, Final, Protocol, NoReturn, Literal
 except ImportError:
-    from .typing_extensions import Generic, GenericMeta, \
-        ClassVar, Final, Protocol, NoReturn, TypeVar, Literal
+    from .typing_extensions import GenericMeta, \
+        ClassVar, Final, Protocol, NoReturn, Literal
 try:
     from typing import ForwardRef, _GenericAlias, _SpecialForm
 except ImportError:
@@ -55,7 +55,7 @@ NotRequired = Optional
 
 
 __all__ = ['TypedDict', 'GenericTypedDict', 'validate_type', 'type_check',
-           'NotRequired', 'Literal']
+           'validate_uniform_sequence', 'NotRequired', 'Literal']
 
 
 # The following functions have been copied from the Python
@@ -312,6 +312,7 @@ def validate_type(val: Any, typ):
 def validate_uniform_sequence(sequence: Iterable, item_type):
     """Ensures that every item in a given sequence is of the same particular
     type. Example::
+
     >>> validate_uniform_sequence((1, 5, 3), int)
     >>> try:
     ...     validate_uniform_sequence(['a', 'b', 3], str)

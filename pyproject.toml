@@ -40,7 +40,7 @@ packages = [
     { include = "ts2pythonParser.py" },
     { include = "ts2python" },
     { include = "demo" },
-    { include = "tests_grammar", format="sdist" },
+    { include = "tests_grammar", format = "sdist" },
     { include = "tests", format = "sdist" },
     { include = "docs", format = "sdist" }
 ]

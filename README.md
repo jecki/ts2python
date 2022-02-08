@@ -5,7 +5,7 @@ Transpiles TypeScript-Interface-definitions to Python
 TypedDicts, plus support for run-time type-checking 
 of JSON-data.
 
-## License
+## License and Source Code
 
 ts2python is open source software under the [Apache 2.0 License](https://www.apache.org/licenses/LICENSE-2.0)
 
@@ -22,6 +22,8 @@ distributed under the License is distributed on an "AS IS" BASIS,
 WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License.
+
+The complete source-code of ts2python can be downloaded from the [its git-repository](https://github.com/jecki/ts2python).
 
 ## Purpose
 
@@ -65,14 +67,6 @@ However, the Python-code it produces is backwards compatible
 down to Python 3.6, if the 
 [typing extensions](https://pypi.org/project/typing-extensions/) 
 have been installed.
-
-For a demonstration how the TypeScript-Interfaces are transpiled
-to Python-code, run the `demo.sh`-script (or `demo.bat` on Windows)
-in the "demo"-sub-directory or the ts2python-directory. 
-Or, run the `tst_ts2python_gramm.py` in the ts2python-directory
-and look up the grammar-test-reports in the "REPORT"-sub-directory 
-of the "test_grammar"-subdirectory.
-
 
 ## Usage
 
@@ -143,3 +137,37 @@ With the type decorator the last call fails with a TypeError:
     Field end: '8' is not of <class '__main__.Position'>, but of type <class 'int'>
 
 Both the call and the return types can be validated.
+
+
+## Full Documentation
+
+See [ts2python.readthedocs.io](https://ts2python.readthedocs.io) for the comprehensive
+documentation of ts2python
+
+
+## Tests and Demonstration
+
+The [git-repository of ts2python](https://github.com/jecki/ts2python) contains unit-tests 
+as well as [doctests](https://docs.python.org/3/library/doctest.html).
+After cloning ts2python from the git-repository with:
+
+    # git clone https://github.com/jecki/ts2python
+
+the unit tests can be found in the `tests` subdirectory. 
+Both the unit and the doctests can be run by changing to the 
+`tests`-sub-directory and calling the `runner.py`-skript therein. 
+
+    # cd tests
+    # python runner.py
+
+It is also possible to run the tests with [pytest](https://docs.pytest.org/) 
+or [nose](https://nose.readthedocs.io), in case you have
+either of theses testing-frameworks installed.
+
+For a demonstration how the TypeScript-Interfaces are transpiled
+to Python-code, run the `demo.sh`-script (or `demo.bat` on Windows)
+in the "demo"-sub-directory or the ts2python-repository. 
+
+Or, run the `tst_ts2python_grammar.py` in the ts2python-directory
+and look up the grammar-test-reports in the "REPORT"-sub-directory 
+of the "test_grammar"-subdirectory.

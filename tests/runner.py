@@ -128,7 +128,7 @@ def runner(tests, namespace, profile=False):
 def run_file(fname):
     dirname, fname = os.path.split(fname)
     if fname.lower().startswith('test_') and fname.endswith('.py'):
-        print("RUNNING " + fname)
+        print("RUNNING " + fname + " with: " + sys.version)
         # print('\nRUNNING UNIT TESTS IN: ' + fname)
         save = os.getcwd()
         os.chdir(dirname)
@@ -185,6 +185,16 @@ def run_path(path):
     sys.path.pop()
 
 
+def run_doctests():
+    import doctest
+    scriptdir = os.path.dirname(os.path.abspath(__file__))
+    ts2python_path = os.path.abspath(os.path.join(scriptdir, '..', 'ts2python'))
+    sys.path.append(ts2python_path)
+    import json_validation
+    print('Running doctests of ts2python.json_validation')
+    doctest.testmod(json_validation)
+
+
 if __name__ == "__main__":
     path = '.'
     if len(sys.argv) > 1:
@@ -193,3 +203,6 @@ if __name__ == "__main__":
         run_path(path)
     else:
         run_file(path)
+    run_doctests()
+    print()
+

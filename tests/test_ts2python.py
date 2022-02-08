@@ -2,18 +2,34 @@
 
 """test_ts2python.py -- test code for ts2python.py."""
 
+import doctest
 import os
 import subprocess
 import sys
 from typing import TypeVar, Generic
+import unittest
+
 
 scriptdir = os.path.dirname(os.path.abspath(__file__))
 
 try:
+    import ts2pythonParser
     from ts2pythonParser import compile_src
+    from ts2python import json_validation
+    from ts2python.json_validation import validate_type, type_check, \
+        validate_uniform_sequence
 except ImportError:
     sys.path.append(os.path.join(scriptdir, '..'))
+    import ts2pythonParser
     from ts2pythonParser import compile_src
+    from ts2python import json_validation
+    from ts2python.json_validation import validate_type, type_check, \
+        validate_uniform_sequence
+
+#
+# def load_tests(loader, tests, ignore):
+#     tests.addTests(doctest.DocTestSuite(json_validation))
+#     return tests
 
 
 TEST_DATA = """
@@ -192,7 +208,6 @@ class TestValidation:
         exec(code, globals())
 
     def test_type_json_validation(self):
-        from ts2python.json_validation import validate_type
         position = Position(line=1, character=2)
         validate_type(position, Position)
         try:
@@ -202,7 +217,6 @@ class TestValidation:
             pass
 
     def test_type_check(self):
-        from ts2python.json_validation import type_check, validate_type
         @type_check
         def type_checked_func(select_test: int, request: RequestMessage, position: Position) \
                 -> ResponseMessage:
@@ -260,7 +274,6 @@ class TestValidation:
             pass
 
     def test_int_enum(self):
-        from ts2python.json_validation import validate_type
         try:
             validate_type(5, SymbolKind)
         except TypeError:
@@ -272,7 +285,6 @@ class TestValidation:
             pass
 
     def test_str_enum(self):
-        from ts2python.json_validation import validate_type
         try:
             validate_type('region', FoldingRangeKind)
         except TypeError:
@@ -284,7 +296,6 @@ class TestValidation:
             pass
 
     def test_nested_sequence(self):
-        from ts2python.json_validation import validate_type, validate_uniform_sequence
         # data-snippet from the Medieval-Latin-Dictionary https://mlw.badw.de
         documentSymbols = [{
             "name": "LEMMA",
@@ -325,7 +336,6 @@ class TestValidation:
 
 class TestOptions:
     def test_different_settings(self):
-        import ts2pythonParser
         from DHParser.configuration import set_config_value
         set_config_value('ts2python.UseNotRequired', True, allow_new_key=True)
         code, _ = ts2pythonParser.compile_src(TEST_DATA)
@@ -356,6 +366,9 @@ class TestScriptCall:
             f.write(script)
         result = subprocess.run(['python', 'testdata.py'])
         assert result.returncode == 0
+
+
+
 
 
 if __name__ == "__main__":

@@ -1,5 +1,10 @@
 # ts2python
 
+![](https://img.shields.io/pypi/v/ts2python) 
+![](https://img.shields.io/pypi/status/ts2python) 
+![](https://img.shields.io/pypi/pyversions/ts2python) 
+![](https://img.shields.io/pypi/l/ts2python)
+
 Python-interoperability for Typescript-Interfaces.
 Transpiles TypeScript-Interface-definitions to Python 
 TypedDicts, plus support for run-time type-checking 

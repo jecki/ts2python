@@ -77,7 +77,7 @@ not raise any error if the type is correct::
     Type error(s) in dictionary of type <class '__main__.Position'>:
     Field character: 'bad mistak...' is not a <class 'int'>, but a <class 'str'>
 
-``validate_type`` and the ``type_check``-annoataion will likewise complain about missing
+``validate_type`` and the ``type_check``-annotation will likewise complain about missing
 required fields and superfluous fields::
 
     >>> from ts2python.json_validation import NotRequired
@@ -113,5 +113,9 @@ required fields and superfluous fields::
     Type error(s) in dictionary of type <class '__main__.Car'>:
     Unexpected keys: {'PS'}
 
+Type validation works its way up from the root type down to any nested
+object. Type unions, e.g. ``int|str`` are evaluated by trying all
+alternatives on the data until one alternative matches. Enums and
+uniform sequences (e.g. List[str]) are properly taken care of.
 
 .. _PEP 655: https://www.python.org/dev/peps/pep-0655/

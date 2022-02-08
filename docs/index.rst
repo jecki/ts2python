@@ -34,6 +34,26 @@ Or, if you just interested in runtime type validation, you can just copy the mod
 `json_validation`_ from the git repository, which merely requires the `typing_extensions`_ to
 be present.
 
+Generating Python pendants for typescript interfaces is as simple as calling:
+
+   $ ts2python interfaces.ts
+
+and then importing the generated ``interfaces.py`` by:
+
+   from interfaces import *
+
+For every typescript interface in the ``interfaces.ts`` file the generated
+Python module contains a TypedDict-class with the same name that defines
+the same data structure as the typescript interface. Typescript data serialized
+as json can simply be deserialized by Python-code as long as you know the
+type of the root data structure beforehand, e.g.::
+
+    import json
+    request_msg: RequestMessage = json.loads(input_data)
+
+The only requirement is that the root type of the json data is known beforehand.
+Everything else simply falls into place.
+
 
 .. _ts2python:  https://github.com/jecki/ts2python/
 .. _Typescript interfaces: https://www.typescriptlang.org/docs/handbook/2/objects.html

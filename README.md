@@ -79,21 +79,18 @@ This generates a .py-file in same directory as the source
 file that contains the TypedDict-classes and can simpy be 
 imported in Python-Code:
 
-    >>> from interface_definitions import *
+    from interfaces import *
 
-Other data-representation models than TypedDict can be supported
-with the `--base` and `--decorator`-options, e.g.
+Json-data which adheres to a specific structure (no matter
+whether defined on the typescript side via interfaces or
+on the Python-side via TypedDicts) can easily be interchanged
+and deserialized:
 
-    >>> ts2python --base pydantic.BaseModel interfaces.ts
+    import json
+    request_msg: RequestMessage = json.loads(input_data)
 
-or:
-
-    >>> ts2python --decorator attr.s interfaces.ts
-
-*Presently, ts2python does only offer very rudimentary support
-for other models than TypedDict. So, before it can be used, 
-further adjustments to the generated file are necessary when
-using data models other than TypedDict.*
+The root-type (``RootMessage`` in the above example) can
+be arbitrarily complex and deeply nested.
 
 
 ## Validation

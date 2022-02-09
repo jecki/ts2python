@@ -859,7 +859,7 @@ def inspect(test_file_path: str):
     webbrowser.open('file://' + destpath if sys.platform == "darwin" else destpath)
 
 
-if __name__ == "__main__":
+def main():
     # recompile grammar if needed
     script_path = os.path.abspath(__file__)
     script_name = os.path.basename(script_path)
@@ -1005,3 +1005,6 @@ if __name__ == "__main__":
         #     f.write(result)
         #  print(result.serialize(how='default' if args.xml is None else 'xml')
         #        if isinstance(result, Node) else result)
+
+if __name__ == "__main__":
+    main()

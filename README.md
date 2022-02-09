@@ -61,7 +61,7 @@ and the like.
 
 ts2python can be installed from the command line with the command:
 
-    # pip install ts2python
+    $ pip install ts2python
 
 ts2python requires the parsing-expression-grammar-framwork 
 [DHParser](https://gitlab.lrz.de/badw-it/DHParser)
@@ -78,7 +78,7 @@ have been installed.
 In order to generate TypedDict-classes from Typescript-Interfaces,
 run `ts2python` on the Typescript-Interface definitions:
 
-    # ts2python interfaces.ts
+    $ ts2python interfaces.ts
 
 This generates a .py-file in same directory as the source
 file that contains the TypedDict-classes and can simpy be 
@@ -153,14 +153,14 @@ The [git-repository of ts2python](https://github.com/jecki/ts2python) contains u
 as well as [doctests](https://docs.python.org/3/library/doctest.html).
 After cloning ts2python from the git-repository with:
 
-    # git clone https://github.com/jecki/ts2python
+    $ git clone https://github.com/jecki/ts2python
 
 the unit tests can be found in the `tests` subdirectory. 
 Both the unit and the doctests can be run by changing to the 
 `tests`-sub-directory and calling the `runner.py`-skript therein. 
 
-    # cd tests
-    # python runner.py
+    $ cd tests
+    $ python runner.py
 
 It is also possible to run the tests with [pytest](https://docs.pytest.org/) 
 or [nose](https://nose.readthedocs.io), in case you have

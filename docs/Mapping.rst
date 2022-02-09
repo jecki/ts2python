@@ -6,6 +6,7 @@ in particular, `Typescript interfaces`_, to Python types, in particular,
 `TypedDicts`_. The mapping is, so far, rich enough to cover all
 interfaces from the `Language Server Protocol`_.
 
+
 Mapping of Interfaces
 ---------------------
 
@@ -71,7 +72,8 @@ capture missing required attributes in TypedDicts that contain
 both required and optional fields. Runtime-Validation by ts2python
 will still catch such errors (see Validation, below)
 
-Mapping of field types
+
+Mapping of Field Types
 ----------------------
 
 For most field types the mapping is fairly straight forward:
@@ -90,6 +92,10 @@ For most field types the mapping is fairly straight forward:
     object          dict
     ==============  ============
 
+
+Mapping of Literals
+-------------------
+
 For some field types, the Python-counterpart is less obvious.
 Literal types are naturally converted using ``Literal``. For Python-
 Versions below 3.8, the ``typing_extensions``-module must be present to
@@ -100,6 +106,10 @@ provide the ``Literal``-type::
 will be converted to::
 
     ResourceOperationKind = Literal['create', 'rename', 'delete']
+
+
+Mapping of Enumerations
+-----------------------
 
 Enumerations can also more or less directly be transpiled to
 Python-Enums. Thus,::
@@ -116,6 +126,41 @@ becomes::
         Comment = 'comment'
         Imports = 'imports'
         Region = 'region'
+
+There exist some restrictions regarding enums, though. Other than
+Typescript, Python does not really allow strings as keys in enumerations.
+Thus, the Typescript enum::
+
+    export enum MilkyWay {
+        'from the earth',
+        'past the moon',
+        'to the stars'
+    }
+
+will not be converted to a Python Enum. (Rather, ts2python will complain
+about an expected closing quote.) However, in those cases, where the string
+content happens to be a valid identifier, ts2python will consider those
+strings as identifiers. The Typescript enum ``enum MilkyWay { 'earth', 'moon', 'stars' }``
+will be converted to::
+
+    class MilkyWay(IntEnum):
+        earth = enum.auto()
+        moon = enum.auto()
+        stars = enum.auto()
+
+The same Python Enum would be produced by ``enum MilkyWay { earth, moon, stars }`` without
+quotation marks.
+
+.. caution:: Observe, that ts2python converts enums without explicit values to
+   Python IntEnums, and that, furthermore, Python enums start counting with 1 rather than
+   0. (See the documentation of Python's
+   [enum-module](https://docs.python.org/3/library/enum.html#functional-api) for the reasons for this.)
+   If this leads to problems, the Typescript enum-definitions must be disambiguated by
+   adding explicit values before the conversion!
+
+
+Mapping of Index Signatures
+---------------------------
 
 `Index signatures`_ are simply transpiled to dictionaries, dropping
 the identifier of the index signature. Thus,::
@@ -143,6 +188,10 @@ becomes::
             None]
         changeAnnotations: Optional[Dict[str, 'ChangeAnnotation']]
 
+
+Mapping of Tuple Types
+----------------------
+
 Likewise, tuple types are transpiled to tuple-types.
 
 Typescript::
@@ -157,6 +206,10 @@ Python::
     class ParameterInformation(TypedDict, total=False):
         label: Union[str, Tuple[int, int]]
         documentation: Union[str, 'MarkupContent', None]
+
+
+Mapping of Anonymous Interfaces
+-------------------------------
 
 A bit more complicated is the case of anonymous interfaces
 in TypeScript::
@@ -252,6 +305,7 @@ becomes::
         text: str
     TextDocumentContentChangeEvent = Union[
         TextDocumentContentChangeEvent_0, TextDocumentContentChangeEvent_1]
+
 
 Namespaces and Generics
 -----------------------

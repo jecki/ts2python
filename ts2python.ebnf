@@ -15,7 +15,8 @@
 @ ignorecase  = False           # literals and regular expressions are case-sensitive
 @ reduction   = merge_treetops  # anonymous nodes are being reduced where possible
 @ disposable  = INT, NEG, FRAC, DOT, EXP, EOF,
-                _array_ellipsis, _top_level_assignment, _top_level_literal
+                _array_ellipsis, _top_level_assignment, _top_level_literal,
+                _quoted_identifier
 @ drop        = whitespace, strings, EOF,
                 _array_ellipsis, _top_level_assignment, _top_level_literal
 
@@ -75,9 +76,9 @@ namespace   = ["export"] "namespace" §identifier "{"
 #
 #######################################################################
 
-enum        = ["export"] "enum" identifier §"{" item { "," item } "}"
-  item      = identifier ["=" literal]
-
+enum        = ["export"] "enum" identifier §"{" item { "," item } [","] "}"
+  item      = _quoted_identifier ["=" literal]
+_quoted_identifier = identifier | '"' identifier §'"' | "'" identifier §"'"
 
 #######################################################################
 #
@@ -103,7 +104,7 @@ integer    = INT !/[.Ee]/ ~
 number     = INT FRAC EXP ~
 string     = /"[^"\n]*"/~ | /'[^'\n]*'/~
 array      = "[" [ literal { "," literal } ] "]"
-object     = "{" [ association { "," association } ] "}"
+object     = "{" [ association { "," association } ] [","] "}"
   association = name ":" literal
   name        = identifier | '"' identifier '"'
 

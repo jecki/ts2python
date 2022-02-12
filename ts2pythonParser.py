@@ -4,7 +4,7 @@
         TypedDicts <https://www.python.org/dev/peps/pep-0589/>
 
 Copyright 2021  by Eckhart Arnold (arnold@badw.de)
-                Bavarian Academy of Sciences an Humanities (badw.de)
+                Bavarian Academy of Sciences and Humanities (badw.de)
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.

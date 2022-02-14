@@ -16,7 +16,7 @@
 @ reduction   = merge_treetops  # anonymous nodes are being reduced where possible
 @ disposable  = INT, NEG, FRAC, DOT, EXP, EOF,
                 _array_ellipsis, _top_level_assignment, _top_level_literal,
-                _quoted_identifier
+                _quoted_identifier, _root
 @ drop        = whitespace, strings, EOF,
                 _array_ellipsis, _top_level_assignment, _top_level_literal
 
@@ -27,9 +27,12 @@
 #
 #######################################################################
 
+_root       = document EOF
 document    = ~ { interface | type_alias | namespace | enum | const
                 | declaration ";" | _top_level_assignment
-                | _array_ellipsis | _top_level_literal } EOF
+                | _array_ellipsis | _top_level_literal | module }
+module      = "declare" "module" _quoted_identifier "{" document "}"
+
 
 #######################################################################
 #
@@ -43,12 +46,17 @@ interface   = ["export"] "interface" §identifier [type_parameter]
 extends     = "extends" identifier { "," identifier}
 type_alias  = ["export"] "type" §identifier "=" types ";"
 
-declarations_block = "{"  [declaration { [";"] declaration }
-                           [";" map_signature] [";"]] "}"
+declarations_block = "{" [(declaration|function) { [";"] (declaration|function) }
+                          [";" map_signature] [";"]] "}"
+
 declaration = [qualifier] identifier [optional] [":" types]
   qualifier = "readonly"
   optional  = "?"
   index_signature = "[" identifier (":" | "in" "keyof") type "]"
+
+function    = identifier "(" [arg_list] ")" [":" types] ";"
+  arg_list  = argument { "," argument }
+  argument  = identifier [":" types]
 
 types       = type { "|" type }
 type        = array_of | basic_type | type_name | "(" types ")"
@@ -78,7 +86,6 @@ namespace   = ["export"] "namespace" §identifier "{"
 
 enum        = ["export"] "enum" identifier §"{" item { "," item } [","] "}"
   item      = _quoted_identifier ["=" literal]
-_quoted_identifier = identifier | '"' identifier §'"' | "'" identifier §"'"
 
 #######################################################################
 #
@@ -86,7 +93,7 @@ _quoted_identifier = identifier | '"' identifier §'"' | "'" identifier §"'"
 #
 #######################################################################
 
-const       = ["export"] "const" §declaration "=" (literal | identifier) ";"
+const       = ["export"] "const" §declaration ["=" (literal | identifier)] ";"
 _top_level_assignment = assignment
 assignment  = variable "=" (literal | variable) ";"  # no expressions, yet
 
@@ -124,6 +131,7 @@ basic_type   = (`object` | `array` | `string` | `number` | `boolean` | `null`
 #######################################################################
 
 variable   = identifier { `.` identifier }
+_quoted_identifier = identifier | '"' identifier §'"' | "'" identifier §"'"
 identifier = /(?!\d)\w+/~
 
 INT         = [NEG] ( /[1-9][0-9]+/ | /[0-9]/ )

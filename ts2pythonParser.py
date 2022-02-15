@@ -389,7 +389,7 @@ class ts2pythonCompiler(Compiler):
                             force_base_class: str = '') -> str:
         optional_key_list = self.optional_keys.pop()
         decorator = self.class_decorator
-        base_class_name = force_base_class.strip() or self.base_class_name
+        base_class_name = (force_base_class or self.base_class_name).strip()
         if base_class_name == 'TypedDict':
             total = not bool(optional_key_list) or self.use_not_required
             if base_classes:
@@ -444,8 +444,12 @@ class ts2pythonCompiler(Compiler):
                 base_classes += f", Generic[{tp}]"
         except KeyError:
             base_classes = f"Generic[{tp}]" if tp else ''
+        if 'function' in node['declarations_block']:
+            force_base_class = ' '  # do not derive from TypeDict
+        else:
+            force_base_class = ''
         decls = self.compile(node['declarations_block'])
-        interface = self.render_class_header(name, base_classes)
+        interface = self.render_class_header(name, base_classes, force_base_class)
         self.base_classes[name] = base_class_list
         interface += ('    ' + self.render_local_classes().replace('\n', '\n    ')).rstrip(' ')
         self.known_types.add(name)

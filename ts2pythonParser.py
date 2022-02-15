@@ -113,11 +113,12 @@ class ts2pythonGrammar(Grammar):
     declaration = Forward()
     declarations_block = Forward()
     document = Forward()
+    generic_type = Forward()
     index_signature = Forward()
     literal = Forward()
     type = Forward()
     types = Forward()
-    source_hash__ = "75ee665a1df09330205d4ee1505e8cf3"
+    source_hash__ = "04b2a73b1863e735178528979c20da31"
     disposable__ = re.compile('INT$|NEG$|FRAC$|DOT$|EXP$|EOF$|_array_ellipsis$|_top_level_assignment$|_top_level_literal$|_quoted_identifier$|_root$')
     static_analysis_pending__ = []  # type: List[bool]
     parser_initialization__ = ["upon instantiation"]
@@ -144,7 +145,7 @@ class ts2pythonGrammar(Grammar):
     string = Alternative(Series(RegExp('"[^"\\n]*"'), dwsp__), Series(RegExp("'[^'\\n]*'"), dwsp__))
     number = Series(INT, FRAC, EXP, dwsp__)
     integer = Series(INT, NegativeLookahead(RegExp('[.Ee]')), dwsp__)
-    module = Series(Series(Drop(Text("declare")), dwsp__), Series(Drop(Text("module")), dwsp__), _quoted_identifier, Series(Drop(Text("{")), dwsp__), document, Series(Drop(Text("}")), dwsp__))
+    qualifier = Series(Text("readonly"), dwsp__)
     _top_level_literal = Drop(Synonym(literal))
     _array_ellipsis = Drop(Series(literal, Drop(ZeroOrMore(Drop(Series(Series(Drop(Text(",")), dwsp__), literal))))))
     assignment = Series(variable, Series(Drop(Text("=")), dwsp__), Alternative(literal, variable), Series(Drop(Text(";")), dwsp__))
@@ -152,27 +153,28 @@ class ts2pythonGrammar(Grammar):
     const = Series(Option(Series(Drop(Text("export")), dwsp__)), Series(Drop(Text("const")), dwsp__), declaration, Option(Series(Series(Drop(Text("=")), dwsp__), Alternative(literal, identifier))), Series(Drop(Text(";")), dwsp__), mandatory=2)
     item = Series(_quoted_identifier, Option(Series(Series(Drop(Text("=")), dwsp__), literal)))
     enum = Series(Option(Series(Drop(Text("export")), dwsp__)), Series(Drop(Text("enum")), dwsp__), identifier, Series(Drop(Text("{")), dwsp__), item, ZeroOrMore(Series(Series(Drop(Text(",")), dwsp__), item)), Option(Series(Drop(Text(",")), dwsp__)), Series(Drop(Text("}")), dwsp__), mandatory=3)
-    type_parameter = Series(Series(Drop(Text("<")), dwsp__), identifier, Series(Drop(Text(">")), dwsp__))
+    extends = Series(Series(Drop(Text("extends")), dwsp__), identifier, ZeroOrMore(Series(Series(Drop(Text(",")), dwsp__), identifier)))
     map_signature = Series(index_signature, Series(Drop(Text(":")), dwsp__), types)
     mapped_type = Series(Series(Drop(Text("{")), dwsp__), map_signature, Option(Series(Drop(Text(";")), dwsp__)), Series(Drop(Text("}")), dwsp__))
     type_tuple = Series(Series(Drop(Text("[")), dwsp__), type, ZeroOrMore(Series(Series(Drop(Text(",")), dwsp__), type)), Series(Drop(Text("]")), dwsp__))
-    type_name = Synonym(identifier)
-    array_of = Series(Alternative(basic_type, Series(Series(Drop(Text("(")), dwsp__), types, Series(Drop(Text(")")), dwsp__)), type_name), Series(Drop(Text("[]")), dwsp__))
+    type_name = Series(identifier, NegativeLookahead(Text("<")))
+    array_of = Series(Alternative(basic_type, Series(Series(Drop(Text("(")), dwsp__), types, Series(Drop(Text(")")), dwsp__)), generic_type, type_name), Series(Drop(Text("[]")), dwsp__))
+    type_parameters = Series(Series(Drop(Text("<")), dwsp__), Alternative(generic_type, type_name), ZeroOrMore(Series(Series(Drop(Text(",")), dwsp__), Alternative(generic_type, type_name))), Series(Drop(Text(">")), dwsp__))
+    interface = Series(Option(Series(Drop(Text("export")), dwsp__)), Series(Drop(Text("interface")), dwsp__), identifier, Option(type_parameters), Option(extends), declarations_block, mandatory=2)
+    module = Series(Series(Drop(Text("declare")), dwsp__), Series(Drop(Text("module")), dwsp__), _quoted_identifier, Series(Drop(Text("{")), dwsp__), document, Series(Drop(Text("}")), dwsp__))
     type_alias = Series(Option(Series(Drop(Text("export")), dwsp__)), Series(Drop(Text("type")), dwsp__), identifier, Series(Drop(Text("=")), dwsp__), types, Series(Drop(Text(";")), dwsp__), mandatory=2)
-    extends = Series(Series(Drop(Text("extends")), dwsp__), identifier, ZeroOrMore(Series(Series(Drop(Text(",")), dwsp__), identifier)))
-    argument = Series(identifier, Option(Series(Series(Drop(Text(":")), dwsp__), types)))
-    arg_list = Series(argument, ZeroOrMore(Series(Series(Drop(Text(",")), dwsp__), argument)))
-    function = Series(identifier, Series(Drop(Text("(")), dwsp__), Option(arg_list), Series(Drop(Text(")")), dwsp__), Option(Series(Series(Drop(Text(":")), dwsp__), types)), Series(Drop(Text(";")), dwsp__))
-    interface = Series(Option(Series(Drop(Text("export")), dwsp__)), Series(Drop(Text("interface")), dwsp__), identifier, Option(type_parameter), Option(extends), declarations_block, mandatory=2)
     optional = Series(Text("?"), dwsp__)
-    qualifier = Series(Text("readonly"), dwsp__)
+    argument = Series(identifier, Option(optional), Option(Series(Series(Drop(Text(":")), dwsp__), types)))
+    arg_list = Series(argument, ZeroOrMore(Series(Series(Drop(Text(",")), dwsp__), argument)))
     namespace = Series(Option(Series(Drop(Text("export")), dwsp__)), Series(Drop(Text("namespace")), dwsp__), identifier, Series(Drop(Text("{")), dwsp__), ZeroOrMore(Alternative(interface, type_alias, enum, const, Series(declaration, Series(Drop(Text(";")), dwsp__)))), Series(Drop(Text("}")), dwsp__), mandatory=2)
+    function = Series(identifier, Series(Drop(Text("(")), dwsp__), Option(arg_list), Series(Drop(Text(")")), dwsp__), Option(Series(Series(Drop(Text(":")), dwsp__), types)), Series(Drop(Text(";")), dwsp__))
     literal.set(Alternative(integer, number, string, array, object))
-    type.set(Alternative(array_of, basic_type, type_name, Series(Series(Drop(Text("(")), dwsp__), types, Series(Drop(Text(")")), dwsp__)), mapped_type, declarations_block, type_tuple, literal))
+    generic_type.set(Series(identifier, type_parameters))
+    type.set(Alternative(array_of, basic_type, generic_type, type_name, Series(Series(Drop(Text("(")), dwsp__), types, Series(Drop(Text(")")), dwsp__)), mapped_type, declarations_block, type_tuple, literal))
     types.set(Series(type, ZeroOrMore(Series(Series(Drop(Text("|")), dwsp__), type))))
     index_signature.set(Series(Series(Drop(Text("[")), dwsp__), identifier, Alternative(Series(Drop(Text(":")), dwsp__), Series(Series(Drop(Text("in")), dwsp__), Series(Drop(Text("keyof")), dwsp__))), type, Series(Drop(Text("]")), dwsp__)))
-    declaration.set(Series(Option(qualifier), identifier, Option(optional), Option(Series(Series(Drop(Text(":")), dwsp__), types))))
-    declarations_block.set(Series(Series(Drop(Text("{")), dwsp__), Option(Series(Alternative(declaration, function), ZeroOrMore(Series(Option(Series(Drop(Text(";")), dwsp__)), Alternative(declaration, function))), Option(Series(Series(Drop(Text(";")), dwsp__), map_signature)), Option(Series(Drop(Text(";")), dwsp__)))), Series(Drop(Text("}")), dwsp__)))
+    declaration.set(Series(Option(qualifier), identifier, Option(optional), NegativeLookahead(Text("(")), Option(Series(Series(Drop(Text(":")), dwsp__), types))))
+    declarations_block.set(Series(Series(Drop(Text("{")), dwsp__), Option(Series(Alternative(function, declaration), ZeroOrMore(Series(Option(Series(Drop(Text(";")), dwsp__)), Alternative(function, declaration))), Option(Series(Series(Drop(Text(";")), dwsp__), map_signature)), Option(Series(Drop(Text(";")), dwsp__)))), Series(Drop(Text("}")), dwsp__)))
     document.set(Series(dwsp__, ZeroOrMore(Alternative(interface, type_alias, namespace, enum, const, Series(declaration, Series(Drop(Text(";")), dwsp__)), _top_level_assignment, _array_ellipsis, _top_level_literal, module))))
     _root = Series(document, EOF)
     root__ = TreeReduction(_root, CombinedParser.MERGE_TREETOPS)
@@ -283,6 +285,10 @@ def to_varname(typename: str) -> str:
     return typename[0].lower() + (typename[1:-1] if typename[-1:] == '_' else typename[1:])
 
 
+NOT_YET_IMPLEMENTED_WARNING = ErrorCode(310)
+UNSUPPORTED_WARNING = ErrorCode(320)
+
+
 class ts2pythonCompiler(Compiler):
     """Compiler for the abstract-syntax-tree of a ts2python source file.
     """
@@ -365,10 +371,16 @@ class ts2pythonCompiler(Compiler):
         raise ValueError('Malformed syntax-tree!')
 
     def on_document(self, node) -> str:
+        if 'module' in node and len(node.children) > 1:
+            self.new_error(
+                node, 'Transpiling or more than a single ambient module '
+                'is not yet implemented! Only the first ambient module will ',
+                'be transpiled for now.', NOT_YET_IMPLEMENTED_WARNING)
+            return self.compile(node.get('module')['document'])
         return '\n\n'.join(self.compile(child) for child in node.children
                            if child.tag_name != 'declaration')
 
-    def on_module(self, node) -> List[str]:
+    def on_module(self, node) -> str:
         name = self.compile(node['identifier'])
         return self.compile(node['document'])
 
@@ -415,7 +427,7 @@ class ts2pythonCompiler(Compiler):
         self.local_classes.append([])
         self.optional_keys.append([])
         try:
-            tp = self.compile(node['type_parameter'])
+            tp = self.compile(node['type_parameters'])
             preface = f"{tp} = TypeVar('{tp}')\n\n"
         except KeyError:
             tp = ''
@@ -437,8 +449,8 @@ class ts2pythonCompiler(Compiler):
         self.obj_name.pop()
         return preface + interface + '    ' + decls.replace('\n', '\n    ')
 
-    def on_type_parameter(self, node) -> str:
-        return self.compile(node['identifier'])
+    # def on_type_parameter(self, node) -> str:  # OBSOLETE, see on_type_parameters()
+    #     return self.compile(node['identifier'])
 
     def on_extends(self, node) -> str:
         return ', '.join(self.compile(nd) for nd in node.children)
@@ -462,7 +474,7 @@ class ts2pythonCompiler(Compiler):
 
     def on_declarations_block(self, node) -> str:
         declarations = '\n'.join(self.compile(nd) for nd in node
-                                 if nd.tag_name == 'declaration')
+                                 if nd.tag_name in ('declaration', 'function'))
         return declarations or "pass"
 
     def on_declaration(self, node) -> str:
@@ -497,7 +509,7 @@ class ts2pythonCompiler(Compiler):
         # TODO: add transpiler for function definitions here...
         errmsg = f'Transpiling function definitions has not yet been ' \
             f'implemented: {node["identifier"]}() ignored!'
-        self.tree.new_error(node, errmsg, WARNING)
+        self.tree.new_error(node, errmsg, NOT_YET_IMPLEMENTED_WARNING)
         return "# " + errmsg
 
     def on_optional(self, node):
@@ -693,6 +705,18 @@ class ts2pythonCompiler(Compiler):
                               'unknown': 'Any',
                               'any': 'Any'}
         return python_basic_types[node.content]
+
+    def on_generic_type(self, node) -> str:
+        print(node.as_sxpr())
+        base_type = self.compile(node['identifier']).strip("'")
+        name = ''.join([base_type, '[', self.compile(node['type_parameters']), ']'])
+        if name not in self.known_types:
+            name = "'" + name + "'"
+        return name
+
+    def on_type_parameters(self, node) -> str:
+        type_parameters = [self.compile(nd).strip("'") for nd in node.children]
+        return ', '.join(type_parameters)
 
     def on_type_name(self, node) -> str:
         name = self.compile(node['identifier'])

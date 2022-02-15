@@ -40,29 +40,37 @@ module      = "declare" "module" _quoted_identifier "{" document "}"
 #
 #######################################################################
 
-interface   = ["export"] "interface" §identifier [type_parameter]
+interface   = ["export"] "interface" §identifier [type_parameters]
               [extends] declarations_block
-  type_parameter = "<" identifier ">"
 extends     = "extends" identifier { "," identifier}
 type_alias  = ["export"] "type" §identifier "=" types ";"
 
-declarations_block = "{" [(declaration|function) { [";"] (declaration|function) }
+declarations_block = "{" [(function|declaration) { [";"] (function|declaration) }
                           [";" map_signature] [";"]] "}"
 
-declaration = [qualifier] identifier [optional] [":" types]
+declaration = [qualifier] identifier [optional] !`(` [":" types]
   qualifier = "readonly"
   optional  = "?"
   index_signature = "[" identifier (":" | "in" "keyof") type "]"
 
 function    = identifier "(" [arg_list] ")" [":" types] ";"
   arg_list  = argument { "," argument }
-  argument  = identifier [":" types]
+  argument  = identifier [optional] [":" types]  # same as declaration ?
+
+
+#######################################################################
+#
+#:  Types
+#
+#######################################################################
 
 types       = type { "|" type }
-type        = array_of | basic_type | type_name | "(" types ")"
+type        = array_of | basic_type | generic_type | type_name | "(" types ")"
              | mapped_type | declarations_block | type_tuple | literal
-type_name   = identifier
-array_of    = (basic_type | "(" types ")" | type_name) "[]"
+generic_type = identifier type_parameters
+type_parameters = "<" (generic_type | type_name) { "," (generic_type | type_name) } ">"
+type_name   = identifier !`<`
+array_of    = (basic_type | "(" types ")" | generic_type | type_name) "[]"
 type_tuple  = "[" type {"," type} "]"
 mapped_type = "{" map_signature [";"] "}"
 map_signature = index_signature ":" types

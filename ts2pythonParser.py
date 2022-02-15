@@ -384,10 +384,13 @@ class ts2pythonCompiler(Compiler):
         name = self.compile(node['identifier'])
         return self.compile(node['document'])
 
-    def render_class_header(self, name: str, base_classes: str) -> str:
+    def render_class_header(self, name: str,
+                            base_classes: str,
+                            force_base_class: str = '') -> str:
         optional_key_list = self.optional_keys.pop()
         decorator = self.class_decorator
-        if self.base_class_name == 'TypedDict':
+        base_class_name = force_base_class.strip() or self.base_class_name
+        if base_class_name == 'TypedDict':
             total = not bool(optional_key_list) or self.use_not_required
             if base_classes:
                 if base_classes.find('Generic[') >= 0:
@@ -409,9 +412,9 @@ class ts2pythonCompiler(Compiler):
         else:
             if base_classes:
                 return decorator + \
-                       f"class {name}({base_classes}, {self.base_class_name}):\n"
+                       f"class {name}({base_classes}, {base_class_name}):\n"
             else:
-                return decorator + f"class {name}({self.base_class_name}):\n"
+                return decorator + f"class {name}({base_class_name}):\n"
 
     def render_local_classes(self) -> str:
         if self.local_classes[-1]:
@@ -707,7 +710,6 @@ class ts2pythonCompiler(Compiler):
         return python_basic_types[node.content]
 
     def on_generic_type(self, node) -> str:
-        print(node.as_sxpr())
         base_type = self.compile(node['identifier']).strip("'")
         name = ''.join([base_type, '[', self.compile(node['type_parameters']), ']'])
         if name not in self.known_types:

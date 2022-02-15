@@ -40,7 +40,7 @@ module      = "declare" "module" _quoted_identifier "{" document "}"
 #
 #######################################################################
 
-interface   = ["export"] "interface" §identifier [type_parameters]
+interface   = ["export"] ("interface"|"class") §identifier [type_parameters]
               [extends] declarations_block
 extends     = "extends" identifier { "," identifier}
 type_alias  = ["export"] "type" §identifier "=" types ";"
@@ -48,8 +48,8 @@ type_alias  = ["export"] "type" §identifier "=" types ";"
 declarations_block = "{" [(function|declaration) { [";"] (function|declaration) }
                           [";" map_signature] [";"]] "}"
 
-declaration = [qualifier] identifier [optional] !`(` [":" types]
-  qualifier = "readonly"
+declaration = { qualifier } identifier [optional] !`(` [":" types]
+  qualifier = "readonly" | "static"
   optional  = "?"
   index_signature = "[" identifier (":" | "in" "keyof") type "]"
 
@@ -67,14 +67,16 @@ function    = identifier "(" [arg_list] ")" [":" types] ";"
 types       = type { "|" type }
 type        = array_of | basic_type | generic_type | type_name | "(" types ")"
              | mapped_type | declarations_block | type_tuple | literal
+             | func_type
 generic_type = identifier type_parameters
-type_parameters = "<" (generic_type | type_name) { "," (generic_type | type_name) } ">"
+type_parameters = "<" parameter_types { "," parameter_types } ">"
+parameter_types = (generic_type | type_name)  { "|" (generic_type | type_name) }
 type_name   = identifier !`<`
-array_of    = (basic_type | "(" types ")" | generic_type | type_name) "[]"
+array_of    = [ "readonly" ] (basic_type | "(" types ")" | generic_type | type_name) "[]"
 type_tuple  = "[" type {"," type} "]"
 mapped_type = "{" map_signature [";"] "}"
 map_signature = index_signature ":" types
-
+func_type   = "(" [arg_list] ")" "=>" types
 
 #######################################################################
 #

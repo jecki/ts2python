@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "ts2python"
-version = "0.6.1"
+version = "0.6.2"
 description = "Python-Interoperability for Typescript-Interfaces"
 
 license = "Apache-2.0"
@@ -18,7 +18,7 @@ keywords = [
 ]
 
 classifiers = [
-    'Development Status :: 4 - Beta',
+    'Development Status :: 3 - Alpha',
     'Intended Audience :: Developers',
     'Environment :: Console',
     'License :: OSI Approved :: Apache Software License',

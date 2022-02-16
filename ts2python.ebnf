@@ -49,14 +49,14 @@ declarations_block = "{" [(function|declaration) { [";"] (function|declaration) 
                           [";" map_signature] [";"]] "}"
 
 declaration = { qualifier } identifier [optional] !`(` [":" types]
-  qualifier = "readonly" | "static"
   optional  = "?"
   index_signature = "[" identifier (":" | "in" "keyof") type "]"
 
-function    = identifier "(" [arg_list] ")" [":" types] ";"
+function    = { qualifier } identifier "(" [arg_list] ")" [":" types] ";"
   arg_list  = argument { "," argument }
   argument  = identifier [optional] [":" types]  # same as declaration ?
 
+qualifier   = "readonly" | "static"
 
 #######################################################################
 #

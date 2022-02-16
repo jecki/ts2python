@@ -16,7 +16,7 @@
 @ reduction   = merge_treetops  # anonymous nodes are being reduced where possible
 @ disposable  = INT, NEG, FRAC, DOT, EXP, EOF,
                 _array_ellipsis, _top_level_assignment, _top_level_literal,
-                _quoted_identifier, _root
+                _quoted_identifier, _root, _namespace, _parameter_type
 @ drop        = whitespace, strings, EOF,
                 _array_ellipsis, _top_level_assignment, _top_level_literal
 
@@ -28,9 +28,19 @@
 #######################################################################
 
 _root       = document EOF
-document    = ~ { interface | type_alias | namespace | enum | const
-                | declaration ";" | _top_level_assignment
-                | _array_ellipsis | _top_level_literal | module }
+document    = ~ { interface | type_alias | _namespace | enum | const | module
+                | _top_level_assignment | _array_ellipsis | _top_level_literal
+                | ["export"] declaration ";" | ["export"] function ";" }
+
+@interface_resume = /(?=export|$)/
+@type_alias_resume = /(?=export|$)/
+@enum_resume = /(?=export|$)/
+@const_resume = /(?=export|$)/
+@declaration_resume = /(?=export|$)/
+@_top_level_assignment_resume = /(?=export|$)/
+@_top_level_literal_resume = /(?=export|$)/
+@module_resume = /(?=export|$)/
+
 module      = "declare" "module" _quoted_identifier "{" document "}"
 
 
@@ -48,15 +58,19 @@ type_alias  = ["export"] "type" §identifier "=" types ";"
 declarations_block = "{" [(function|declaration) { [";"] (function|declaration) }
                           [";" map_signature] [";"]] "}"
 
-declaration = { qualifier } identifier [optional] !`(` [":" types]
-  qualifier = "readonly" | "static"
+declaration = qualifiers ["let"|"var"] identifier [optional] !`(` [":" types]
   optional  = "?"
   index_signature = "[" identifier (":" | "in" "keyof") type "]"
 
-function    = identifier "(" [arg_list] ")" [":" types] ";"
-  arg_list  = argument { "," argument }
+function    = [static] ["function"] identifier [type_parameters]
+              "(" [arg_list] ")" [":" types]
+  arg_list  = argument { "," argument } ["," arg_tail] | arg_tail
+  arg_tail  = "..." identifier [":" array_of]
   argument  = identifier [optional] [":" types]  # same as declaration ?
 
+qualifiers  = [readonly] ° [static]
+readonly    = "readonly"
+static      = "static"
 
 #######################################################################
 #
@@ -69,8 +83,11 @@ type        = array_of | basic_type | generic_type | type_name | "(" types ")"
              | mapped_type | declarations_block | type_tuple | literal
              | func_type
 generic_type = identifier type_parameters
-type_parameters = "<" parameter_types { "," parameter_types } ">"
-parameter_types = (generic_type | type_name)  { "|" (generic_type | type_name) }
+  type_parameters = "<" parameter_types { "," parameter_types } ">"
+  parameter_types = _parameter_type  { "|" _parameter_type }
+  _parameter_type = array_of | generic_type | type_name [extends_type|unknown]    # actually, only a subset of array_of
+  extends_type = "extends" (basic_type|type_name)
+  unknown = "=" "unknown"
 type_name   = identifier !`<`
 array_of    = [ "readonly" ] (basic_type | "(" types ")" | generic_type | type_name) "[]"
 type_tuple  = "[" type {"," type} "]"
@@ -84,9 +101,16 @@ func_type   = "(" [arg_list] ")" "=>" types
 #
 #######################################################################
 
-namespace   = ["export"] "namespace" §identifier "{"
+_namespace   = virtual_enum | namespace
+
+virtual_enum = ["export"] "namespace" identifier "{"
               { interface | type_alias | enum | const
               | declaration ";" }  "}"
+
+namespace    = ["export"] "namespace" §identifier "{"
+               { interface | type_alias | enum | const
+               | ["export"] declaration ";"
+               | ["export"] function ";" }  "}"
 
 #######################################################################
 #
@@ -132,7 +156,7 @@ object     = "{" [ association { "," association } ] [","] "}"
 #######################################################################
 
 basic_type   = (`object` | `array` | `string` | `number` | `boolean` | `null`
-               | `integer` | `uinteger` | `decimal` | `unknown` | `any` ) ~
+               | `integer` | `uinteger` | `decimal` | `unknown` | `any` | `void`) ~
 
 #######################################################################
 #

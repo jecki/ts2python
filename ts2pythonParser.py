@@ -114,13 +114,14 @@ class ts2pythonGrammar(Grammar):
     declaration = Forward()
     declarations_block = Forward()
     document = Forward()
+    function = Forward()
     generic_type = Forward()
     index_signature = Forward()
     literal = Forward()
     type = Forward()
     types = Forward()
-    source_hash__ = "d618c5abff8d2bf0be262d125bc0fd43"
-    disposable__ = re.compile('INT$|NEG$|FRAC$|DOT$|EXP$|EOF$|_array_ellipsis$|_top_level_assignment$|_top_level_literal$|_quoted_identifier$|_root$')
+    source_hash__ = "36d78ff23bf57ab1606df6f4993a4770"
+    disposable__ = re.compile('INT$|NEG$|FRAC$|DOT$|EXP$|EOF$|_array_ellipsis$|_top_level_assignment$|_top_level_literal$|_quoted_identifier$|_root$|_namespace$|_parameter_type$')
     static_analysis_pending__ = []  # type: List[bool]
     parser_initialization__ = ["upon instantiation"]
     COMMENT__ = r'(?:\/\/.*)|(?:\/\*(?:.|\n)*?\*\/)'
@@ -138,7 +139,7 @@ class ts2pythonGrammar(Grammar):
     identifier = Series(RegExp('(?!\\d)\\w+'), dwsp__)
     _quoted_identifier = Alternative(identifier, Series(Series(Drop(Text('"')), dwsp__), identifier, Series(Drop(Text('"')), dwsp__), mandatory=2), Series(Series(Drop(Text("\'")), dwsp__), identifier, Series(Drop(Text("\'")), dwsp__), mandatory=2))
     variable = Series(identifier, ZeroOrMore(Series(Text("."), identifier)))
-    basic_type = Series(Alternative(Text("object"), Text("array"), Text("string"), Text("number"), Text("boolean"), Text("null"), Text("integer"), Text("uinteger"), Text("decimal"), Text("unknown"), Text("any")), dwsp__)
+    basic_type = Series(Alternative(Text("object"), Text("array"), Text("string"), Text("number"), Text("boolean"), Text("null"), Text("integer"), Text("uinteger"), Text("decimal"), Text("unknown"), Text("any"), Text("void")), dwsp__)
     name = Alternative(identifier, Series(Series(Drop(Text('"')), dwsp__), identifier, Series(Drop(Text('"')), dwsp__)))
     association = Series(name, Series(Drop(Text(":")), dwsp__), literal)
     object = Series(Series(Drop(Text("{")), dwsp__), Option(Series(association, ZeroOrMore(Series(Series(Drop(Text(",")), dwsp__), association)))), Option(Series(Drop(Text(",")), dwsp__)), Series(Drop(Text("}")), dwsp__))
@@ -146,7 +147,7 @@ class ts2pythonGrammar(Grammar):
     string = Alternative(Series(RegExp('"[^"\\n]*"'), dwsp__), Series(RegExp("'[^'\\n]*'"), dwsp__))
     number = Series(INT, FRAC, EXP, dwsp__)
     integer = Series(INT, NegativeLookahead(RegExp('[.Ee]')), dwsp__)
-    optional = Series(Text("?"), dwsp__)
+    type_alias = Series(Option(Series(Drop(Text("export")), dwsp__)), Series(Drop(Text("type")), dwsp__), identifier, Series(Drop(Text("=")), dwsp__), types, Series(Drop(Text(";")), dwsp__), mandatory=2)
     _top_level_literal = Drop(Synonym(literal))
     _array_ellipsis = Drop(Series(literal, Drop(ZeroOrMore(Drop(Series(Series(Drop(Text(",")), dwsp__), literal))))))
     assignment = Series(variable, Series(Drop(Text("=")), dwsp__), Alternative(literal, variable), Series(Drop(Text(";")), dwsp__))
@@ -154,32 +155,48 @@ class ts2pythonGrammar(Grammar):
     const = Series(Option(Series(Drop(Text("export")), dwsp__)), Series(Drop(Text("const")), dwsp__), declaration, Option(Series(Series(Drop(Text("=")), dwsp__), Alternative(literal, identifier))), Series(Drop(Text(";")), dwsp__), mandatory=2)
     item = Series(_quoted_identifier, Option(Series(Series(Drop(Text("=")), dwsp__), literal)))
     enum = Series(Option(Series(Drop(Text("export")), dwsp__)), Series(Drop(Text("enum")), dwsp__), identifier, Series(Drop(Text("{")), dwsp__), item, ZeroOrMore(Series(Series(Drop(Text(",")), dwsp__), item)), Option(Series(Drop(Text(",")), dwsp__)), Series(Drop(Text("}")), dwsp__), mandatory=3)
+    unknown = Series(Series(Drop(Text("=")), dwsp__), Series(Drop(Text("unknown")), dwsp__))
     extends = Series(Series(Drop(Text("extends")), dwsp__), identifier, ZeroOrMore(Series(Series(Drop(Text(",")), dwsp__), identifier)))
+    type_name = Series(identifier, NegativeLookahead(Text("<")))
     func_type = Series(Series(Drop(Text("(")), dwsp__), Option(arg_list), Series(Drop(Text(")")), dwsp__), Series(Drop(Text("=>")), dwsp__), types)
     map_signature = Series(index_signature, Series(Drop(Text(":")), dwsp__), types)
     mapped_type = Series(Series(Drop(Text("{")), dwsp__), map_signature, Option(Series(Drop(Text(";")), dwsp__)), Series(Drop(Text("}")), dwsp__))
     type_tuple = Series(Series(Drop(Text("[")), dwsp__), type, ZeroOrMore(Series(Series(Drop(Text(",")), dwsp__), type)), Series(Drop(Text("]")), dwsp__))
-    type_name = Series(identifier, NegativeLookahead(Text("<")))
+    extends_type = Series(Series(Drop(Text("extends")), dwsp__), Alternative(basic_type, type_name))
     array_of = Series(Option(Series(Drop(Text("readonly")), dwsp__)), Alternative(basic_type, Series(Series(Drop(Text("(")), dwsp__), types, Series(Drop(Text(")")), dwsp__)), generic_type, type_name), Series(Drop(Text("[]")), dwsp__))
-    parameter_types = Series(Alternative(generic_type, type_name), ZeroOrMore(Series(Series(Drop(Text("|")), dwsp__), Alternative(generic_type, type_name))))
+    _parameter_type = Alternative(array_of, generic_type, Series(type_name, Option(Alternative(extends_type, unknown))))
+    parameter_types = Series(_parameter_type, ZeroOrMore(Series(Series(Drop(Text("|")), dwsp__), _parameter_type)))
     type_parameters = Series(Series(Drop(Text("<")), dwsp__), parameter_types, ZeroOrMore(Series(Series(Drop(Text(",")), dwsp__), parameter_types)), Series(Drop(Text(">")), dwsp__))
-    qualifier = Alternative(Series(Drop(Text("readonly")), dwsp__), Series(Drop(Text("static")), dwsp__))
     interface = Series(Option(Series(Drop(Text("export")), dwsp__)), Alternative(Series(Drop(Text("interface")), dwsp__), Series(Drop(Text("class")), dwsp__)), identifier, Option(type_parameters), Option(extends), declarations_block, mandatory=2)
-    module = Series(Series(Drop(Text("declare")), dwsp__), Series(Drop(Text("module")), dwsp__), _quoted_identifier, Series(Drop(Text("{")), dwsp__), document, Series(Drop(Text("}")), dwsp__))
+    namespace = Series(Option(Series(Drop(Text("export")), dwsp__)), Series(Drop(Text("namespace")), dwsp__), identifier, Series(Drop(Text("{")), dwsp__), ZeroOrMore(Alternative(interface, type_alias, enum, const, Series(Option(Series(Drop(Text("export")), dwsp__)), declaration, Series(Drop(Text(";")), dwsp__)), Series(Option(Series(Drop(Text("export")), dwsp__)), function, Series(Drop(Text(";")), dwsp__)))), Series(Drop(Text("}")), dwsp__), mandatory=2)
+    virtual_enum = Series(Option(Series(Drop(Text("export")), dwsp__)), Series(Drop(Text("namespace")), dwsp__), identifier, Series(Drop(Text("{")), dwsp__), ZeroOrMore(Alternative(interface, type_alias, enum, const, Series(declaration, Series(Drop(Text(";")), dwsp__)))), Series(Drop(Text("}")), dwsp__))
+    optional = Series(Text("?"), dwsp__)
+    _namespace = Alternative(virtual_enum, namespace)
+    static = Series(Text("static"), dwsp__)
+    readonly = Series(Text("readonly"), dwsp__)
+    qualifiers = Interleave(readonly, static, repetitions=[(0, 1), (0, 1)])
     argument = Series(identifier, Option(optional), Option(Series(Series(Drop(Text(":")), dwsp__), types)))
-    type_alias = Series(Option(Series(Drop(Text("export")), dwsp__)), Series(Drop(Text("type")), dwsp__), identifier, Series(Drop(Text("=")), dwsp__), types, Series(Drop(Text(";")), dwsp__), mandatory=2)
-    function = Series(identifier, Series(Drop(Text("(")), dwsp__), Option(arg_list), Series(Drop(Text(")")), dwsp__), Option(Series(Series(Drop(Text(":")), dwsp__), types)), Series(Drop(Text(";")), dwsp__))
-    namespace = Series(Option(Series(Drop(Text("export")), dwsp__)), Series(Drop(Text("namespace")), dwsp__), identifier, Series(Drop(Text("{")), dwsp__), ZeroOrMore(Alternative(interface, type_alias, enum, const, Series(declaration, Series(Drop(Text(";")), dwsp__)))), Series(Drop(Text("}")), dwsp__), mandatory=2)
+    arg_tail = Series(Series(Drop(Text("...")), dwsp__), identifier, Option(Series(Series(Drop(Text(":")), dwsp__), array_of)))
+    module = Series(Series(Drop(Text("declare")), dwsp__), Series(Drop(Text("module")), dwsp__), _quoted_identifier, Series(Drop(Text("{")), dwsp__), document, Series(Drop(Text("}")), dwsp__))
     literal.set(Alternative(integer, number, string, array, object))
     generic_type.set(Series(identifier, type_parameters))
     type.set(Alternative(array_of, basic_type, generic_type, type_name, Series(Series(Drop(Text("(")), dwsp__), types, Series(Drop(Text(")")), dwsp__)), mapped_type, declarations_block, type_tuple, literal, func_type))
     types.set(Series(type, ZeroOrMore(Series(Series(Drop(Text("|")), dwsp__), type))))
-    arg_list.set(Series(argument, ZeroOrMore(Series(Series(Drop(Text(",")), dwsp__), argument))))
+    arg_list.set(Alternative(Series(argument, ZeroOrMore(Series(Series(Drop(Text(",")), dwsp__), argument)), Option(Series(Series(Drop(Text(",")), dwsp__), arg_tail))), arg_tail))
+    function.set(Series(Option(static), Option(Series(Drop(Text("function")), dwsp__)), identifier, Option(type_parameters), Series(Drop(Text("(")), dwsp__), Option(arg_list), Series(Drop(Text(")")), dwsp__), Option(Series(Series(Drop(Text(":")), dwsp__), types))))
     index_signature.set(Series(Series(Drop(Text("[")), dwsp__), identifier, Alternative(Series(Drop(Text(":")), dwsp__), Series(Series(Drop(Text("in")), dwsp__), Series(Drop(Text("keyof")), dwsp__))), type, Series(Drop(Text("]")), dwsp__)))
-    declaration.set(Series(ZeroOrMore(qualifier), identifier, Option(optional), NegativeLookahead(Text("(")), Option(Series(Series(Drop(Text(":")), dwsp__), types))))
+    declaration.set(Series(qualifiers, Option(Alternative(Series(Drop(Text("let")), dwsp__), Series(Drop(Text("var")), dwsp__))), identifier, Option(optional), NegativeLookahead(Text("(")), Option(Series(Series(Drop(Text(":")), dwsp__), types))))
     declarations_block.set(Series(Series(Drop(Text("{")), dwsp__), Option(Series(Alternative(function, declaration), ZeroOrMore(Series(Option(Series(Drop(Text(";")), dwsp__)), Alternative(function, declaration))), Option(Series(Series(Drop(Text(";")), dwsp__), map_signature)), Option(Series(Drop(Text(";")), dwsp__)))), Series(Drop(Text("}")), dwsp__)))
-    document.set(Series(dwsp__, ZeroOrMore(Alternative(interface, type_alias, namespace, enum, const, Series(declaration, Series(Drop(Text(";")), dwsp__)), _top_level_assignment, _array_ellipsis, _top_level_literal, module))))
+    document.set(Series(dwsp__, ZeroOrMore(Alternative(interface, type_alias, _namespace, enum, const, module, _top_level_assignment, _array_ellipsis, _top_level_literal, Series(Option(Series(Drop(Text("export")), dwsp__)), declaration, Series(Drop(Text(";")), dwsp__)), Series(Option(Series(Drop(Text("export")), dwsp__)), function, Series(Drop(Text(";")), dwsp__))))))
     _root = Series(document, EOF)
+    resume_rules__ = {'interface': [re.compile(r'(?=export|$)')],
+                      'type_alias': [re.compile(r'(?=export|$)')],
+                      'enum': [re.compile(r'(?=export|$)')],
+                      'const': [re.compile(r'(?=export|$)')],
+                      'declaration': [re.compile(r'(?=export|$)')],
+                      '_top_level_assignment': [re.compile(r'(?=export|$)')],
+                      '_top_level_literal': [re.compile(r'(?=export|$)')],
+                      'module': [re.compile(r'(?=export|$)')]}
     root__ = TreeReduction(_root, CombinedParser.MERGE_TREETOPS)
     
 
@@ -370,8 +387,11 @@ class ts2pythonCompiler(Compiler):
     def on_EMPTY__(self, node) -> str:
         return ''
 
-    def on_ZOMBIE__(self, node):
-        raise ValueError('Malformed syntax-tree!')
+    def on_ZOMBIE__(self, node) -> str:
+        self.tree.new_error(node,
+            "Malformed syntax-tree! Possibly caused by a parsing error.")
+        return ""
+        # raise ValueError('Malformed syntax-tree!')
 
     def on_document(self, node) -> str:
         if 'module' in node and len(node.children) > 1:
@@ -525,11 +545,23 @@ class ts2pythonCompiler(Compiler):
     def on_arg_list(self, node) -> str:
         return ', '.join(self.compile(nd) for nd in node.children)
 
+    def on_arg_tail(self, node):
+        argname = self.compile(node["identifier"])
+        if 'array_of' in node:
+            type = self.compile(node['array_of'])[5:-1]
+            return f'*{argname}: {type}'
+        else:
+            return '*' + argname
+
     def on_argument(self, node) -> str:
-        types = self.compile(node['types'])
-        if 'optional' in node:
-            types = f'Optional[{types}] = None'
-        return f'{self.compile(node["identifier"])}: {types}'
+        argname = self.compile(node["identifier"])
+        if 'types' in node:
+            types = self.compile(node['types'])
+            if 'optional' in node:
+                types = f'Optional[{types}] = None'
+            return f'{argname}: {types}'
+        else:
+            return f'{argname} = None' if 'optional' in node else argname
 
     def on_optional(self, node):
         assert False, "This method should never have been called!"
@@ -622,7 +654,8 @@ class ts2pythonCompiler(Compiler):
     def on_func_type(self, node) -> str:
         if 'arg_list' in node:
             arg_list = self.compile(node["arg_list"])
-            if arg_list.find('= None') >= 0:
+            if arg_list.find('= None') >= 0 or arg_list.find('*') >= 0:
+                # See https://docs.python.org/3/library/typing.html#typing.Callable
                 args = '...'
             else:
                 args = f'[{arg_list}]'
@@ -631,7 +664,7 @@ class ts2pythonCompiler(Compiler):
         types = self.compile(node["types"])
         return f'Callable[{args}, {types}]'
 
-    def on_namespace(self, node) -> str:
+    def on_virtual_enum(self, node) -> str:
         name = self.compile(node['identifier'])
         if name in self.known_types:  return ''
         self.known_types.add(name)
@@ -653,6 +686,12 @@ class ts2pythonCompiler(Compiler):
         namespace.insert(0, header)
         self.strip_type_from_const = save
         return '\n    '.join(namespace)
+
+    def on_namespace(self, node) -> str:
+        errmsg = "Transpilation of namespaces that contain more than just " \
+                 "constant definitions has not yet been implemented."
+        self.tree.new_error(node, errmsg, NOT_YET_IMPLEMENTED_WARNING)
+        return "# " + errmsg
 
     def on_enum(self, node) -> str:
         if self.use_enums:
@@ -734,22 +773,22 @@ class ts2pythonCompiler(Compiler):
                               'boolean': 'bool',
                               'null': 'None',
                               'unknown': 'Any',
-                              'any': 'Any'}
+                              'any': 'Any',
+                              'void': 'None'}
         return python_basic_types[node.content]
 
     def on_generic_type(self, node) -> str:
-        base_type = self.compile(node['identifier']).strip("'")
+        base_type = self.compile(node['identifier'])
         name = ''.join([base_type, '[', self.compile(node['type_parameters']), ']'])
-        if name not in self.known_types:
-            name = "'" + name + "'"
         return name
 
     def on_type_parameters(self, node) -> str:
-        type_parameters = [self.compile(nd).strip("'") for nd in node.children]
+        type_parameters = [self.compile(nd) for nd in node.children]
         return ', '.join(type_parameters)
 
     def on_parameter_types(self, node) -> str:
-        types = [self.compile(nd).strip("'") for nd in node.children]
+        types = [self.compile(nd) for nd in node.children
+                 if nd.tag_name not in ('unknown', 'extends_type')]  # TODO: implement extends and, maybe also, unknown
         if self.use_type_union or len(types) <= 1:
             return '| '.join(types)
         else:
@@ -768,7 +807,7 @@ class ts2pythonCompiler(Compiler):
             name = "'" + name + "'"
         return 'List[' + name + ']'
 
-    def on_qualifier(self, node):
+    def on_qualifiers(self, node):
         assert False, "Qualifiers should be ignored and this method should never be called!"
 
     def on_variable(self, node) -> str:
@@ -832,7 +871,7 @@ def process_file(source: str, result_filename: str = '') -> str:
             with open(source_filename, 'r', encoding='utf-8') as f:
                 source = f.read()
         m = re.search('source_hash__ *= *"([a-z0-9]*)"', result)
-        if m.groups()[-1] == md5(source):
+        if m and m.groups()[-1] == md5(source):
             return ''  # no re-compilation necessary, because source hasn't changed
     result, errors = compile_src(source)
     if not has_errors(errors, FATAL):

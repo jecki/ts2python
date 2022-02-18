@@ -16,7 +16,8 @@
 @ reduction   = merge_treetops  # anonymous nodes are being reduced where possible
 @ disposable  = INT, NEG, FRAC, DOT, EXP, EOF,
                 _array_ellipsis, _top_level_assignment, _top_level_literal,
-                _quoted_identifier, _root, _namespace, _parameter_type
+                _quoted_identifier, _root, _namespace, _parameter_type,
+                _array_types
 @ drop        = whitespace, strings, EOF,
                 _array_ellipsis, _top_level_assignment, _top_level_literal
 
@@ -59,11 +60,12 @@ declarations_block = "{" [(function|declaration) { [";"] (function|declaration) 
                           [";" map_signature] [";"]] "}"
 
 declaration = qualifiers ["let"|"var"] identifier [optional] !`(` [":" types]
-  optional  = "?"
   index_signature = "[" identifier (":" | "in" "keyof") type "]"
 
-function    = [static] ["function"] identifier [type_parameters]
-              "(" [arg_list] ")" [":" types]
+# @function_resume = /(?=;)/
+
+function    = [static] ["function"] identifier [optional] [type_parameters]
+              "(" §[arg_list] ")" [":" types]
   arg_list  = argument { "," argument } ["," arg_tail] | arg_tail
   arg_tail  = "..." identifier [":" array_of]
   argument  = identifier [optional] [":" types]  # same as declaration ?
@@ -72,6 +74,8 @@ qualifiers  = [readonly] ° [static]
 readonly    = "readonly"
 static      = "static"
 
+optional    = "?"
+
 #######################################################################
 #
 #:  Types
@@ -79,21 +83,26 @@ static      = "static"
 #######################################################################
 
 types       = type { "|" type }
-type        = array_of | basic_type | generic_type | type_name | "(" types ")"
-             | mapped_type | declarations_block | type_tuple | literal
-             | func_type
+type        = array_of | intersection | basic_type | generic_type | type_name
+             | "(" types ")" | mapped_type | declarations_block | type_tuple
+             | literal | func_type
 generic_type = identifier type_parameters
-  type_parameters = "<" parameter_types { "," parameter_types } ">"
+  type_parameters = "<" §parameter_types { "," parameter_types } ">"
   parameter_types = _parameter_type  { "|" _parameter_type }
   _parameter_type = array_of | generic_type | type_name [extends_type|unknown]    # actually, only a subset of array_of
+                  | declarations_block
   extends_type = "extends" (basic_type|type_name)
   unknown = "=" "unknown"
 type_name   = identifier !`<`
-array_of    = [ "readonly" ] (basic_type | "(" types ")" | generic_type | type_name) "[]"
+array_of    = [ "readonly" ] _array_types "[]"
+  _array_types = basic_type | generic_type | type_name | "(" types ")"
+               | type_tuple | declarations_block
 type_tuple  = "[" type {"," type} "]"
 mapped_type = "{" map_signature [";"] "}"
 map_signature = index_signature ":" types
 func_type   = "(" [arg_list] ")" "=>" types
+
+intersection = (type_name | declarations_block) "&" (type_name | declarations_block)
 
 #######################################################################
 #
@@ -140,9 +149,10 @@ assignment  = variable "=" (literal | variable) ";"  # no expressions, yet
 _array_ellipsis = literal { "," literal }
 
 _top_level_literal = literal
-literal    = integer | number | string | array | object
+literal    = integer | number | boolean | string | array | object
 integer    = INT !/[.Ee]/ ~
 number     = INT FRAC EXP ~
+boolean    = (`true` | `false`) ~
 string     = /"[^"\n]*"/~ | /'[^'\n]*'/~
 array      = "[" [ literal { "," literal } ] "]"
 object     = "{" [ association { "," association } ] [","] "}"
@@ -166,7 +176,7 @@ basic_type   = (`object` | `array` | `string` | `number` | `boolean` | `null`
 
 variable   = identifier { `.` identifier }
 _quoted_identifier = identifier | '"' identifier §'"' | "'" identifier §"'"
-identifier = /(?!\d)\w+/~
+identifier = !(`true`|`false`) /(?!\d)\w+/~
 
 INT         = [NEG] ( /[1-9][0-9]+/ | /[0-9]/ )
 NEG         = `-`

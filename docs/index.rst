@@ -54,6 +54,18 @@ type of the root data structure beforehand, e.g.::
 The only requirement is that the root type of the json data is known beforehand.
 Everything else simply falls into place.
 
+Current Limitations
+-------------------
+
+Presently, ts2python is mostly limited to Typescript-Interfaces that do not
+contain any methods. The language server-protocol-definitions can be transpiled
+successfully.
+
+However, as of now, most Typescript-header files, i.e. the
+files ending with ".d.ts" cannot be transpiled, because support for
+function headers, classes and interfaces with methods, ambient modules
+and namespaces is still incomplete. This will be added in the future.
+
 
 .. _ts2python:  https://github.com/jecki/ts2python/
 .. _Typescript interfaces: https://www.typescriptlang.org/docs/handbook/2/objects.html

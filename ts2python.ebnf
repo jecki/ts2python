@@ -16,7 +16,8 @@
 @ reduction   = merge_treetops  # anonymous nodes are being reduced where possible
 @ disposable  = INT, NEG, FRAC, DOT, EXP, EOF,
                 _array_ellipsis, _top_level_assignment, _top_level_literal,
-                _quoted_identifier, _root
+                _quoted_identifier, _root, _namespace, _parameter_type,
+                _array_types, _part
 @ drop        = whitespace, strings, EOF,
                 _array_ellipsis, _top_level_assignment, _top_level_literal
 
@@ -28,9 +29,19 @@
 #######################################################################
 
 _root       = document EOF
-document    = ~ { interface | type_alias | namespace | enum | const
-                | declaration ";" | _top_level_assignment
-                | _array_ellipsis | _top_level_literal | module }
+document    = ~ { interface | type_alias | _namespace | enum | const | module
+                | _top_level_assignment | _array_ellipsis | _top_level_literal
+                | ["export"] declaration ";" | ["export"] function ";" }
+
+@interface_resume = /(?=export|$)/
+@type_alias_resume = /(?=export|$)/
+@enum_resume = /(?=export|$)/
+@const_resume = /(?=export|$)/
+@declaration_resume = /(?=export|$)/
+@_top_level_assignment_resume = /(?=export|$)/
+@_top_level_literal_resume = /(?=export|$)/
+@module_resume = /(?=export|$)/
+
 module      = "declare" "module" _quoted_identifier "{" document "}"
 
 
@@ -42,21 +53,27 @@ module      = "declare" "module" _quoted_identifier "{" document "}"
 
 interface   = ["export"] ("interface"|"class") §identifier [type_parameters]
               [extends] declarations_block
-extends     = "extends" identifier { "," identifier}
-type_alias  = ["export"] "type" §identifier "=" types ";"
+extends     = "extends" (generic_type|type_name) { "," (generic_type|type_name)}
 
 declarations_block = "{" [(function|declaration) { [";"] (function|declaration) }
                           [";" map_signature] [";"]] "}"
 
-declaration = { qualifier } identifier [optional] !`(` [":" types]
-  optional  = "?"
-  index_signature = "[" identifier (":" | "in" "keyof") type "]"
+declaration = qualifiers ["let"|"var"] identifier [optional] !`(` [":" types]
 
-function    = { qualifier } identifier "(" [arg_list] ")" [":" types] ";"
-  arg_list  = argument { "," argument }
+
+# @function_resume = /(?=;)/
+
+function    = [[static] ["function"] identifier [optional] [type_parameters]]
+              "(" §[arg_list] ")" [":" types]
+  arg_list  = argument { "," argument } ["," arg_tail] | arg_tail
+  arg_tail  = "..." identifier [":" array_of]
   argument  = identifier [optional] [":" types]  # same as declaration ?
 
-qualifier   = "readonly" | "static"
+qualifiers  = [readonly] ° [static]
+readonly    = "readonly"
+static      = "static"
+
+optional    = "?"
 
 #######################################################################
 #
@@ -64,18 +81,29 @@ qualifier   = "readonly" | "static"
 #
 #######################################################################
 
-types       = type { "|" type }
-type        = array_of | basic_type | generic_type | type_name | "(" types ")"
-             | mapped_type | declarations_block | type_tuple | literal
-             | func_type
-generic_type = identifier type_parameters
-type_parameters = "<" parameter_types { "," parameter_types } ">"
-parameter_types = (generic_type | type_name)  { "|" (generic_type | type_name) }
-type_name   = identifier !`<`
-array_of    = [ "readonly" ] (basic_type | "(" types ")" | generic_type | type_name) "[]"
-type_tuple  = "[" type {"," type} "]"
+type_alias  = ["export"] "type" §identifier [type_parameters] "=" types ";"
+
+types       = (intersection | type) { "|" (intersection | type) }
+intersection = type { "&" §type }+
+type        = array_of | basic_type | generic_type | type_name
+             | "(" types ")" | mapped_type | declarations_block | type_tuple
+             | literal | func_type
+generic_type = type_name type_parameters
+  type_parameters = "<" §parameter_types { "," parameter_types } ">"
+  parameter_types = _parameter_type  { "|" _parameter_type }
+  _parameter_type = array_of | generic_type     # actually, only a subset of array_of
+                  | type_name [extends_type] [equals_type]
+                  | declarations_block | type_tuple
+  extends_type = "extends" (basic_type|type_name)
+  equals_type  = "=" (basic_type|type_name)
+type_name   = identifier
+array_of    = [ "readonly" ] _array_types "[]"
+  _array_types = basic_type | generic_type | type_name | "(" types ")"
+               | type_tuple | declarations_block
+type_tuple  = "[" types {"," types} "]"
 mapped_type = "{" map_signature [";"] "}"
 map_signature = index_signature ":" types
+  index_signature = [readonly] "[" identifier (":" | "in" "keyof") type "]"
 func_type   = "(" [arg_list] ")" "=>" types
 
 #######################################################################
@@ -84,9 +112,16 @@ func_type   = "(" [arg_list] ")" "=>" types
 #
 #######################################################################
 
-namespace   = ["export"] "namespace" §identifier "{"
+_namespace   = virtual_enum | namespace
+
+virtual_enum = ["export"] "namespace" identifier "{"
               { interface | type_alias | enum | const
               | declaration ";" }  "}"
+
+namespace    = ["export"] "namespace" §identifier "{"
+               { interface | type_alias | enum | const
+               | ["export"] declaration ";"
+               | ["export"] function ";" }  "}"
 
 #######################################################################
 #
@@ -116,9 +151,10 @@ assignment  = variable "=" (literal | variable) ";"  # no expressions, yet
 _array_ellipsis = literal { "," literal }
 
 _top_level_literal = literal
-literal    = integer | number | string | array | object
+literal    = integer | number | boolean | string | array | object
 integer    = INT !/[.Ee]/ ~
 number     = INT FRAC EXP ~
+boolean    = (`true` | `false`) ~
 string     = /"[^"\n]*"/~ | /'[^'\n]*'/~
 array      = "[" [ literal { "," literal } ] "]"
 object     = "{" [ association { "," association } ] [","] "}"
@@ -132,7 +168,7 @@ object     = "{" [ association { "," association } ] [","] "}"
 #######################################################################
 
 basic_type   = (`object` | `array` | `string` | `number` | `boolean` | `null`
-               | `integer` | `uinteger` | `decimal` | `unknown` | `any` ) ~
+               | `integer` | `uinteger` | `decimal` | `unknown` | `any` | `void`) ~
 
 #######################################################################
 #
@@ -142,7 +178,8 @@ basic_type   = (`object` | `array` | `string` | `number` | `boolean` | `null`
 
 variable   = identifier { `.` identifier }
 _quoted_identifier = identifier | '"' identifier §'"' | "'" identifier §"'"
-identifier = /(?!\d)\w+/~
+identifier = !(`true`|`false`) _part { `.` _part } ~
+  _part    = /(?!\d)\w+/
 
 INT         = [NEG] ( /[1-9][0-9]+/ | /[0-9]/ )
 NEG         = `-`

@@ -30,18 +30,15 @@ import keyword
 from functools import partial
 import os
 import sys
-from typing import Tuple, List, Union, Any, Callable, Set, Dict
+from typing import Tuple, List, Union, Any, Callable, Set, Dict, Sequence
 
 
 try:
     scriptpath = os.path.dirname(__file__)
 except NameError:
     scriptpath = ''
-dhparser_parentdir = os.path.abspath(os.path.join(scriptpath, '..', 'DHParser'))
 if scriptpath not in sys.path:
     sys.path.append(scriptpath)
-if dhparser_parentdir not in sys.path:
-    sys.path.append(dhparser_parentdir)
 
 try:
     import regex as re
@@ -114,13 +111,13 @@ class ts2pythonGrammar(Grammar):
     declaration = Forward()
     declarations_block = Forward()
     document = Forward()
+    function = Forward()
     generic_type = Forward()
-    index_signature = Forward()
     literal = Forward()
     type = Forward()
     types = Forward()
-    source_hash__ = "02f0fd84df38e3bacc4745214fc74842"
-    disposable__ = re.compile('INT$|NEG$|FRAC$|DOT$|EXP$|EOF$|_array_ellipsis$|_top_level_assignment$|_top_level_literal$|_quoted_identifier$|_root$')
+    source_hash__ = "0fd548371e2e9354c387d8ab9fea866b"
+    disposable__ = re.compile('INT$|NEG$|FRAC$|DOT$|EXP$|EOF$|_array_ellipsis$|_top_level_assignment$|_top_level_literal$|_quoted_identifier$|_root$|_namespace$|_parameter_type$|_array_types$|_part$')
     static_analysis_pending__ = []  # type: List[bool]
     parser_initialization__ = ["upon instantiation"]
     COMMENT__ = r'(?:\/\/.*)|(?:\/\*(?:.|\n)*?\*\/)'
@@ -135,18 +132,20 @@ class ts2pythonGrammar(Grammar):
     FRAC = Option(Series(DOT, RegExp('[0-9]+')))
     NEG = Text("-")
     INT = Series(Option(NEG), Alternative(RegExp('[1-9][0-9]+'), RegExp('[0-9]')))
-    identifier = Series(RegExp('(?!\\d)\\w+'), dwsp__)
+    _part = RegExp('(?!\\d)\\w+')
+    identifier = Series(NegativeLookahead(Alternative(Text("true"), Text("false"))), _part, ZeroOrMore(Series(Text("."), _part)), dwsp__)
     _quoted_identifier = Alternative(identifier, Series(Series(Drop(Text('"')), dwsp__), identifier, Series(Drop(Text('"')), dwsp__), mandatory=2), Series(Series(Drop(Text("\'")), dwsp__), identifier, Series(Drop(Text("\'")), dwsp__), mandatory=2))
     variable = Series(identifier, ZeroOrMore(Series(Text("."), identifier)))
-    basic_type = Series(Alternative(Text("object"), Text("array"), Text("string"), Text("number"), Text("boolean"), Text("null"), Text("integer"), Text("uinteger"), Text("decimal"), Text("unknown"), Text("any")), dwsp__)
+    basic_type = Series(Alternative(Text("object"), Text("array"), Text("string"), Text("number"), Text("boolean"), Text("null"), Text("integer"), Text("uinteger"), Text("decimal"), Text("unknown"), Text("any"), Text("void")), dwsp__)
     name = Alternative(identifier, Series(Series(Drop(Text('"')), dwsp__), identifier, Series(Drop(Text('"')), dwsp__)))
     association = Series(name, Series(Drop(Text(":")), dwsp__), literal)
     object = Series(Series(Drop(Text("{")), dwsp__), Option(Series(association, ZeroOrMore(Series(Series(Drop(Text(",")), dwsp__), association)))), Option(Series(Drop(Text(",")), dwsp__)), Series(Drop(Text("}")), dwsp__))
     array = Series(Series(Drop(Text("[")), dwsp__), Option(Series(literal, ZeroOrMore(Series(Series(Drop(Text(",")), dwsp__), literal)))), Series(Drop(Text("]")), dwsp__))
     string = Alternative(Series(RegExp('"[^"\\n]*"'), dwsp__), Series(RegExp("'[^'\\n]*'"), dwsp__))
+    boolean = Series(Alternative(Text("true"), Text("false")), dwsp__)
     number = Series(INT, FRAC, EXP, dwsp__)
     integer = Series(INT, NegativeLookahead(RegExp('[.Ee]')), dwsp__)
-    extends = Series(Series(Drop(Text("extends")), dwsp__), identifier, ZeroOrMore(Series(Series(Drop(Text(",")), dwsp__), identifier)))
+    type_tuple = Series(Series(Drop(Text("[")), dwsp__), types, ZeroOrMore(Series(Series(Drop(Text(",")), dwsp__), types)), Series(Drop(Text("]")), dwsp__))
     _top_level_literal = Drop(Synonym(literal))
     _array_ellipsis = Drop(Series(literal, Drop(ZeroOrMore(Drop(Series(Series(Drop(Text(",")), dwsp__), literal))))))
     assignment = Series(variable, Series(Drop(Text("=")), dwsp__), Alternative(literal, variable), Series(Drop(Text(";")), dwsp__))
@@ -154,32 +153,50 @@ class ts2pythonGrammar(Grammar):
     const = Series(Option(Series(Drop(Text("export")), dwsp__)), Series(Drop(Text("const")), dwsp__), declaration, Option(Series(Series(Drop(Text("=")), dwsp__), Alternative(literal, identifier))), Series(Drop(Text(";")), dwsp__), mandatory=2)
     item = Series(_quoted_identifier, Option(Series(Series(Drop(Text("=")), dwsp__), literal)))
     enum = Series(Option(Series(Drop(Text("export")), dwsp__)), Series(Drop(Text("enum")), dwsp__), identifier, Series(Drop(Text("{")), dwsp__), item, ZeroOrMore(Series(Series(Drop(Text(",")), dwsp__), item)), Option(Series(Drop(Text(",")), dwsp__)), Series(Drop(Text("}")), dwsp__), mandatory=3)
-    type_alias = Series(Option(Series(Drop(Text("export")), dwsp__)), Series(Drop(Text("type")), dwsp__), identifier, Series(Drop(Text("=")), dwsp__), types, Series(Drop(Text(";")), dwsp__), mandatory=2)
+    type_name = Synonym(identifier)
+    equals_type = Series(Series(Drop(Text("=")), dwsp__), Alternative(basic_type, type_name))
+    extends_type = Series(Series(Drop(Text("extends")), dwsp__), Alternative(basic_type, type_name))
     func_type = Series(Series(Drop(Text("(")), dwsp__), Option(arg_list), Series(Drop(Text(")")), dwsp__), Series(Drop(Text("=>")), dwsp__), types)
+    readonly = Series(Text("readonly"), dwsp__)
+    index_signature = Series(Option(readonly), Series(Drop(Text("[")), dwsp__), identifier, Alternative(Series(Drop(Text(":")), dwsp__), Series(Series(Drop(Text("in")), dwsp__), Series(Drop(Text("keyof")), dwsp__))), type, Series(Drop(Text("]")), dwsp__))
     map_signature = Series(index_signature, Series(Drop(Text(":")), dwsp__), types)
-    mapped_type = Series(Series(Drop(Text("{")), dwsp__), map_signature, Option(Series(Drop(Text(";")), dwsp__)), Series(Drop(Text("}")), dwsp__))
-    type_tuple = Series(Series(Drop(Text("[")), dwsp__), type, ZeroOrMore(Series(Series(Drop(Text(",")), dwsp__), type)), Series(Drop(Text("]")), dwsp__))
-    type_name = Series(identifier, NegativeLookahead(Text("<")))
-    array_of = Series(Option(Series(Drop(Text("readonly")), dwsp__)), Alternative(basic_type, Series(Series(Drop(Text("(")), dwsp__), types, Series(Drop(Text(")")), dwsp__)), generic_type, type_name), Series(Drop(Text("[]")), dwsp__))
-    parameter_types = Series(Alternative(generic_type, type_name), ZeroOrMore(Series(Series(Drop(Text("|")), dwsp__), Alternative(generic_type, type_name))))
-    type_parameters = Series(Series(Drop(Text("<")), dwsp__), parameter_types, ZeroOrMore(Series(Series(Drop(Text(",")), dwsp__), parameter_types)), Series(Drop(Text(">")), dwsp__))
-    optional = Series(Text("?"), dwsp__)
+    _array_types = Alternative(basic_type, generic_type, type_name, Series(Series(Drop(Text("(")), dwsp__), types, Series(Drop(Text(")")), dwsp__)), type_tuple, declarations_block)
+    extends = Series(Series(Drop(Text("extends")), dwsp__), Alternative(generic_type, type_name), ZeroOrMore(Series(Series(Drop(Text(",")), dwsp__), Alternative(generic_type, type_name))))
+    array_of = Series(Option(Series(Drop(Text("readonly")), dwsp__)), _array_types, Series(Drop(Text("[]")), dwsp__))
+    arg_tail = Series(Series(Drop(Text("...")), dwsp__), identifier, Option(Series(Series(Drop(Text(":")), dwsp__), array_of)))
+    _parameter_type = Alternative(array_of, generic_type, Series(type_name, Option(extends_type), Option(equals_type)), declarations_block, type_tuple)
+    parameter_types = Series(_parameter_type, ZeroOrMore(Series(Series(Drop(Text("|")), dwsp__), _parameter_type)))
+    type_parameters = Series(Series(Drop(Text("<")), dwsp__), parameter_types, ZeroOrMore(Series(Series(Drop(Text(",")), dwsp__), parameter_types)), Series(Drop(Text(">")), dwsp__), mandatory=1)
     interface = Series(Option(Series(Drop(Text("export")), dwsp__)), Alternative(Series(Drop(Text("interface")), dwsp__), Series(Drop(Text("class")), dwsp__)), identifier, Option(type_parameters), Option(extends), declarations_block, mandatory=2)
+    type_alias = Series(Option(Series(Drop(Text("export")), dwsp__)), Series(Drop(Text("type")), dwsp__), identifier, Option(type_parameters), Series(Drop(Text("=")), dwsp__), types, Series(Drop(Text(";")), dwsp__), mandatory=2)
     module = Series(Series(Drop(Text("declare")), dwsp__), Series(Drop(Text("module")), dwsp__), _quoted_identifier, Series(Drop(Text("{")), dwsp__), document, Series(Drop(Text("}")), dwsp__))
-    qualifier = Alternative(Series(Drop(Text("readonly")), dwsp__), Series(Drop(Text("static")), dwsp__))
+    namespace = Series(Option(Series(Drop(Text("export")), dwsp__)), Series(Drop(Text("namespace")), dwsp__), identifier, Series(Drop(Text("{")), dwsp__), ZeroOrMore(Alternative(interface, type_alias, enum, const, Series(Option(Series(Drop(Text("export")), dwsp__)), declaration, Series(Drop(Text(";")), dwsp__)), Series(Option(Series(Drop(Text("export")), dwsp__)), function, Series(Drop(Text(";")), dwsp__)))), Series(Drop(Text("}")), dwsp__), mandatory=2)
+    intersection = Series(type, OneOrMore(Series(Series(Drop(Text("&")), dwsp__), type, mandatory=1)))
+    virtual_enum = Series(Option(Series(Drop(Text("export")), dwsp__)), Series(Drop(Text("namespace")), dwsp__), identifier, Series(Drop(Text("{")), dwsp__), ZeroOrMore(Alternative(interface, type_alias, enum, const, Series(declaration, Series(Drop(Text(";")), dwsp__)))), Series(Drop(Text("}")), dwsp__))
+    _namespace = Alternative(virtual_enum, namespace)
+    optional = Series(Text("?"), dwsp__)
+    static = Series(Text("static"), dwsp__)
+    mapped_type = Series(Series(Drop(Text("{")), dwsp__), map_signature, Option(Series(Drop(Text(";")), dwsp__)), Series(Drop(Text("}")), dwsp__))
+    qualifiers = Interleave(readonly, static, repetitions=[(0, 1), (0, 1)])
     argument = Series(identifier, Option(optional), Option(Series(Series(Drop(Text(":")), dwsp__), types)))
-    namespace = Series(Option(Series(Drop(Text("export")), dwsp__)), Series(Drop(Text("namespace")), dwsp__), identifier, Series(Drop(Text("{")), dwsp__), ZeroOrMore(Alternative(interface, type_alias, enum, const, Series(declaration, Series(Drop(Text(";")), dwsp__)))), Series(Drop(Text("}")), dwsp__), mandatory=2)
-    function = Series(ZeroOrMore(qualifier), identifier, Series(Drop(Text("(")), dwsp__), Option(arg_list), Series(Drop(Text(")")), dwsp__), Option(Series(Series(Drop(Text(":")), dwsp__), types)), Series(Drop(Text(";")), dwsp__))
-    literal.set(Alternative(integer, number, string, array, object))
-    generic_type.set(Series(identifier, type_parameters))
+    literal.set(Alternative(integer, number, boolean, string, array, object))
+    generic_type.set(Series(type_name, type_parameters))
     type.set(Alternative(array_of, basic_type, generic_type, type_name, Series(Series(Drop(Text("(")), dwsp__), types, Series(Drop(Text(")")), dwsp__)), mapped_type, declarations_block, type_tuple, literal, func_type))
-    types.set(Series(type, ZeroOrMore(Series(Series(Drop(Text("|")), dwsp__), type))))
-    arg_list.set(Series(argument, ZeroOrMore(Series(Series(Drop(Text(",")), dwsp__), argument))))
-    index_signature.set(Series(Series(Drop(Text("[")), dwsp__), identifier, Alternative(Series(Drop(Text(":")), dwsp__), Series(Series(Drop(Text("in")), dwsp__), Series(Drop(Text("keyof")), dwsp__))), type, Series(Drop(Text("]")), dwsp__)))
-    declaration.set(Series(ZeroOrMore(qualifier), identifier, Option(optional), NegativeLookahead(Text("(")), Option(Series(Series(Drop(Text(":")), dwsp__), types))))
+    types.set(Series(Alternative(intersection, type), ZeroOrMore(Series(Series(Drop(Text("|")), dwsp__), Alternative(intersection, type)))))
+    arg_list.set(Alternative(Series(argument, ZeroOrMore(Series(Series(Drop(Text(",")), dwsp__), argument)), Option(Series(Series(Drop(Text(",")), dwsp__), arg_tail))), arg_tail))
+    function.set(Series(Option(Series(Option(static), Option(Series(Drop(Text("function")), dwsp__)), identifier, Option(optional), Option(type_parameters))), Series(Drop(Text("(")), dwsp__), Option(arg_list), Series(Drop(Text(")")), dwsp__), Option(Series(Series(Drop(Text(":")), dwsp__), types)), mandatory=2))
+    declaration.set(Series(qualifiers, Option(Alternative(Series(Drop(Text("let")), dwsp__), Series(Drop(Text("var")), dwsp__))), identifier, Option(optional), NegativeLookahead(Text("(")), Option(Series(Series(Drop(Text(":")), dwsp__), types))))
     declarations_block.set(Series(Series(Drop(Text("{")), dwsp__), Option(Series(Alternative(function, declaration), ZeroOrMore(Series(Option(Series(Drop(Text(";")), dwsp__)), Alternative(function, declaration))), Option(Series(Series(Drop(Text(";")), dwsp__), map_signature)), Option(Series(Drop(Text(";")), dwsp__)))), Series(Drop(Text("}")), dwsp__)))
-    document.set(Series(dwsp__, ZeroOrMore(Alternative(interface, type_alias, namespace, enum, const, Series(declaration, Series(Drop(Text(";")), dwsp__)), _top_level_assignment, _array_ellipsis, _top_level_literal, module))))
+    document.set(Series(dwsp__, ZeroOrMore(Alternative(interface, type_alias, _namespace, enum, const, module, _top_level_assignment, _array_ellipsis, _top_level_literal, Series(Option(Series(Drop(Text("export")), dwsp__)), declaration, Series(Drop(Text(";")), dwsp__)), Series(Option(Series(Drop(Text("export")), dwsp__)), function, Series(Drop(Text(";")), dwsp__))))))
     _root = Series(document, EOF)
+    resume_rules__ = {'interface': [re.compile(r'(?=export|$)')],
+                      'type_alias': [re.compile(r'(?=export|$)')],
+                      'enum': [re.compile(r'(?=export|$)')],
+                      'const': [re.compile(r'(?=export|$)')],
+                      'declaration': [re.compile(r'(?=export|$)')],
+                      '_top_level_assignment': [re.compile(r'(?=export|$)')],
+                      '_top_level_literal': [re.compile(r'(?=export|$)')],
+                      'module': [re.compile(r'(?=export|$)')]}
     root__ = TreeReduction(_root, CombinedParser.MERGE_TREETOPS)
     
 
@@ -244,8 +261,7 @@ from typing import Union, List, Tuple, Optional, Dict, Any, Generic, TypeVar
 
 TYPEDDICT_IMPORTS = """
 try:
-    from ts2python.json_validation import TypedDict, GenericTypedDict, \
-        NotRequired, Literal
+    from ts2python.json_validation import TypedDict, GenericTypedDict, NotRequired, Literal
     # Overwrite typing.TypedDict for Runtime-Validation
 except ImportError:
     # print("Module ts2python.json_validation not found. Only " 
@@ -317,7 +333,7 @@ class ts2pythonCompiler(Compiler):
         self.use_not_required = get_config_value('ts2python.UseNotRequired', False)
 
         self.overloaded_type_names: Set[str] = set()
-        self.known_types: Set[str] = set()
+        self.known_types: List[Set[str]] = [set()]
         self.local_classes: List[List[str]] = [[]]
         self.base_classes: Dict[str, List[str]] = {}
         # self.default_values: Dict = {}
@@ -336,6 +352,12 @@ class ts2pythonCompiler(Compiler):
 
     def is_toplevel(self) -> bool:
         return self.obj_name == ['TOPLEVEL_']
+
+    def is_known_type(self, typename: str) -> bool:
+        for type_set in self.known_types:
+            if typename in type_set:
+                return True
+        return False
 
     def qualified_obj_name(self, pos: int=0, varname: bool=False) -> str:
         obj_name = self.obj_name[1:] if len(self.obj_name) > 1 else self.obj_name
@@ -370,16 +392,19 @@ class ts2pythonCompiler(Compiler):
     def on_EMPTY__(self, node) -> str:
         return ''
 
-    def on_ZOMBIE__(self, node):
-        raise ValueError('Malformed syntax-tree!')
+    def on_ZOMBIE__(self, node) -> str:
+        self.tree.new_error(node,
+            "Malformed syntax-tree! Possibly caused by a parsing error.")
+        return ""
+        # raise ValueError('Malformed syntax-tree!')
 
     def on_document(self, node) -> str:
-        if 'module' in node and len(node.children) > 1:
-            self.new_error(
-                node, 'Transpiling or more than a single ambient module '
-                'is not yet implemented! Only the first ambient module will ',
+        if 'module' in node and isinstance(node['module'], Sequence) > 1:
+            self.tree.new_error(
+                node, 'Transpiling more than a single ambient module '
+                'is not yet implemented! Only the first ambient module will '
                 'be transpiled for now.', NOT_YET_IMPLEMENTED_WARNING)
-            return self.compile(node.get('module')['document'])
+            return self.compile(node['module'][0]['document'])
         return '\n\n'.join(self.compile(child) for child in node.children
                            if child.tag_name != 'declaration')
 
@@ -435,9 +460,11 @@ class ts2pythonCompiler(Compiler):
         try:
             tp = self.compile(node['type_parameters'])
             preface = f"{tp} = TypeVar('{tp}')\n\n"
+            self.known_types[-1].add(tp)
         except KeyError:
             tp = ''
             preface = ''
+        self.known_types.append(set())
         base_class_list = []
         try:
             base_classes = self.compile(node['extends'])
@@ -455,7 +482,8 @@ class ts2pythonCompiler(Compiler):
         interface = self.render_class_header(name, base_classes, force_base_class)
         self.base_classes[name] = base_class_list
         interface += ('    ' + self.render_local_classes().replace('\n', '\n    ')).rstrip(' ')
-        self.known_types.add(name)
+        self.known_types.pop()
+        self.known_types[-1].add(name)
         self.obj_name.pop()
         return preface + interface + '    ' + decls.replace('\n', '\n    ')
 
@@ -471,7 +499,7 @@ class ts2pythonCompiler(Compiler):
             self.basic_type_aliases.add(alias)
         self.obj_name.append(alias)
         if alias not in self.overloaded_type_names:
-            self.known_types.add(alias)
+            self.known_types[-1].add(alias)
             self.local_classes.append([])
             self.optional_keys.append([])
             types = self.compile(node['types'])
@@ -490,7 +518,8 @@ class ts2pythonCompiler(Compiler):
     def on_declaration(self, node) -> str:
         identifier = self.compile(node['identifier'])
         self.obj_name.append(to_typename(identifier))
-        T = self.compile(node['types']) if 'types' in node else 'Any'
+        T = self.compile_type_expression(node, node['types']) \
+            if 'types' in node else 'Any'
         typename = self.obj_name.pop()
         if T[0:5] == 'class':
             self.local_classes[-1].append(T)
@@ -517,19 +546,35 @@ class ts2pythonCompiler(Compiler):
 
     def on_function(self, node) -> str:
         # TODO: add transpiler for function definitions here...
+        if 'identifier' in node:
+            name = node["identifier"]
+        else:  # anonymous function
+            name = "anonyous"
         errmsg = f'Transpiling function definitions has not yet been ' \
-            f'implemented: {node["identifier"]}() ignored!'
+            f'implemented: {name}() ignored!'
         self.tree.new_error(node, errmsg, NOT_YET_IMPLEMENTED_WARNING)
-        return "# " + errmsg
+        return "pass  # " + errmsg
 
     def on_arg_list(self, node) -> str:
         return ', '.join(self.compile(nd) for nd in node.children)
 
+    def on_arg_tail(self, node):
+        argname = self.compile(node["identifier"])
+        if 'array_of' in node:
+            type = self.compile(node['array_of'])[5:-1]
+            return f'*{argname}: {type}'
+        else:
+            return '*' + argname
+
     def on_argument(self, node) -> str:
-        types = self.compile(node['types'])
-        if 'optional' in node:
-            types = f'Optional[{types}] = None'
-        return f'{self.compile(node["identifier"])}: {types}'
+        argname = self.compile(node["identifier"])
+        if 'types' in node:
+            types = self.compile(node['types'])
+            if 'optional' in node:
+                types = f'Optional[{types}] = None'
+            return f'{argname}: {types}'
+        else:
+            return f'{argname} = None' if 'optional' in node else argname
 
     def on_optional(self, node):
         assert False, "This method should never have been called!"
@@ -590,7 +635,7 @@ class ts2pythonCompiler(Compiler):
         elif typ.tag_name == 'literal':
             literal_typ = typ[0].tag_name
             if self.use_literal_type:
-                return self.compile(typ)
+                return f"Literal[{self.compile(typ)}]"
             elif literal_typ == 'array':
                 return 'List'
             elif literal_typ == 'object':
@@ -622,7 +667,8 @@ class ts2pythonCompiler(Compiler):
     def on_func_type(self, node) -> str:
         if 'arg_list' in node:
             arg_list = self.compile(node["arg_list"])
-            if arg_list.find('= None') >= 0:
+            if arg_list.find('= None') >= 0 or arg_list.find('*') >= 0:
+                # See https://docs.python.org/3/library/typing.html#typing.Callable
                 args = '...'
             else:
                 args = f'[{arg_list}]'
@@ -631,10 +677,19 @@ class ts2pythonCompiler(Compiler):
         types = self.compile(node["types"])
         return f'Callable[{args}, {types}]'
 
-    def on_namespace(self, node) -> str:
+    def on_intersection(self, node) -> str:
+        # ignore intersection
+        self.tree.new_error(node, 'Type intersections are not yet implemented',
+                            NOT_YET_IMPLEMENTED_WARNING)
+        return "Any"
+
+    def on_virtual_enum(self, node) -> str:
         name = self.compile(node['identifier'])
-        if name in self.known_types:  return ''
-        self.known_types.add(name)
+        if self.is_known_type(name):
+            # self.tree.new_error(node,
+            #     f'Name {name} has already been definied earlier!', WARNING)
+            return ''
+        self.known_types[-1].add(name)
         save = self.strip_type_from_const
         if all(child.tag_name == 'const' for child in node.children[1:]):
             if all(nd['literal'][0].tag_name == 'integer'
@@ -654,6 +709,12 @@ class ts2pythonCompiler(Compiler):
         self.strip_type_from_const = save
         return '\n    '.join(namespace)
 
+    def on_namespace(self, node) -> str:
+        errmsg = "Transpilation of namespaces that contain more than just " \
+                 "constant definitions has not yet been implemented."
+        self.tree.new_error(node, errmsg, NOT_YET_IMPLEMENTED_WARNING)
+        return "# " + errmsg
+
     def on_enum(self, node) -> str:
         if self.use_enums:
             if all(nd['literal'][0].tag_name == 'integer' for
@@ -664,7 +725,7 @@ class ts2pythonCompiler(Compiler):
         else:
             base_class = ''
         name = self.compile(node['identifier'])
-        self.known_types.add(name)
+        self.known_types[-1].add(name)
         enum = ['class ' + name + base_class + ':']
         for item in node.select_children('item'):
             enum.append(self.compile(item))
@@ -704,6 +765,9 @@ class ts2pythonCompiler(Compiler):
     def on_number(self, node) -> str:
         return node.content
 
+    def on_boolean(self, node) -> str:
+        return {'true': 'True', 'false': 'False'}[node.content]
+
     def on_string(self, node) -> str:
         return node.content
 
@@ -734,41 +798,58 @@ class ts2pythonCompiler(Compiler):
                               'boolean': 'bool',
                               'null': 'None',
                               'unknown': 'Any',
-                              'any': 'Any'}
+                              'any': 'Any',
+                              'void': 'None'}
         return python_basic_types[node.content]
 
     def on_generic_type(self, node) -> str:
-        base_type = self.compile(node['identifier']).strip("'")
+        base_type = self.compile(node['type_name']['identifier'])
         name = ''.join([base_type, '[', self.compile(node['type_parameters']), ']'])
-        if name not in self.known_types:
-            name = "'" + name + "'"
         return name
 
     def on_type_parameters(self, node) -> str:
-        type_parameters = [self.compile(nd).strip("'") for nd in node.children]
+        type_parameters = [self.compile(nd) for nd in node.children]
         return ', '.join(type_parameters)
 
     def on_parameter_types(self, node) -> str:
-        types = [self.compile(nd).strip("'") for nd in node.children]
+        types = [self.compile(nd) for nd in node.children
+                 if nd.tag_name not in ('extends_type', 'equals_type')]  # TODO: implement extends and, maybe also, unknown
         if self.use_type_union or len(types) <= 1:
             return '| '.join(types)
         else:
             return ''.join(['Union[', ', '.join(types), ']'])
 
+    def on_extends_type(self, node) -> str:
+        # TODO: generate TypeVar with restrictions
+        self.tree.new_error(node, "restrictied generics not yet implemented",
+                            NOT_YET_IMPLEMENTED_WARNING)
+        return ""
+
+    def on_equals_type(self, node) -> str:
+        # TODO: generate TypeVar with restrictions
+        self.tree.new_error(node, "restrictied generics not yet implemented",
+                            NOT_YET_IMPLEMENTED_WARNING)
+        return ""
+
     def on_type_name(self, node) -> str:
         name = self.compile(node['identifier'])
-        if name not in self.known_types:
-            name = "'" + name + "'"
         return name
+
+    def compile_type_expression(self, node, type_node):
+        unknown_types = set(tn.content for tn in node.select('type_name')
+                            if not self.is_known_type(tn.content))
+        type_expression = self.compile(type_node)
+        for typ in unknown_types:
+            rx = re.compile(r"(?:(?<=[^\w'])|^)" + typ + r"(?:(?=[^\w'])|$)")
+            type_expression = rx.sub(f"'{typ}'", type_expression)
+        return type_expression
 
     def on_array_of(self, node) -> str:
         assert len(node.children) == 1
-        name = self.compile(node[0])
-        if node[0].tag_name == 'identifier' and name not in self.known_types:
-            name = "'" + name + "'"
-        return 'List[' + name + ']'
+        element_type = self.compile_type_expression(node, node[0])
+        return 'List[' + element_type + ']'
 
-    def on_qualifier(self, node):
+    def on_qualifiers(self, node):
         assert False, "Qualifiers should be ignored and this method should never be called!"
 
     def on_variable(self, node) -> str:
@@ -832,7 +913,7 @@ def process_file(source: str, result_filename: str = '') -> str:
             with open(source_filename, 'r', encoding='utf-8') as f:
                 source = f.read()
         m = re.search('source_hash__ *= *"([a-z0-9]*)"', result)
-        if m.groups()[-1] == md5(source):
+        if m and m.groups()[-1] == md5(source):
             return ''  # no re-compilation necessary, because source hasn't changed
     result, errors = compile_src(source)
     if not has_errors(errors, FATAL):

@@ -11,11 +11,8 @@ DEBUG = True
 TEST_DIRNAME = 'tests_grammar'
 
 scriptpath = os.path.abspath(os.path.dirname(__file__))
-dhparserdir = os.path.abspath(os.path.join(scriptpath, '..', 'DHParser'))
 if scriptpath not in sys.path:
     sys.path.append(scriptpath)
-if dhparserdir not in sys.path:
-    sys.path.append(dhparserdir)
 
 try:
     from DHParser.configuration import access_presets, set_preset_value, \

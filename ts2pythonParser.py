@@ -521,7 +521,8 @@ class ts2pythonCompiler(Compiler):
         T = self.compile_type_expression(node, node['types']) \
             if 'types' in node else 'Any'
         typename = self.obj_name.pop()
-        if T[0:5] == 'class':
+        classes_in_type_expression = T[0:5] == 'class'
+        if classes_in_type_expression:
             self.local_classes[-1].append(T)
             T = typename  # substitute typename for type
         if 'optional' in node:
@@ -537,7 +538,7 @@ class ts2pythonCompiler(Compiler):
                         T += '|None'
                 else:
                     T = f"Optional[{T}]"
-        if self.is_toplevel() and T[0:5] == 'class':
+        if self.is_toplevel() and classes_in_type_expression:
             preface = self.render_local_classes()
             self.local_classes.append([])
             self.optional_keys.append([])
@@ -549,7 +550,7 @@ class ts2pythonCompiler(Compiler):
         if 'identifier' in node:
             name = node["identifier"]
         else:  # anonymous function
-            name = "anonyous"
+            name = "anonymous"
         errmsg = f'Transpiling function definitions has not yet been ' \
             f'implemented: {name}() ignored!'
         self.tree.new_error(node, errmsg, NOT_YET_IMPLEMENTED_WARNING)

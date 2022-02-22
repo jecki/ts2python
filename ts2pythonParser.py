@@ -116,8 +116,8 @@ class ts2pythonGrammar(Grammar):
     literal = Forward()
     type = Forward()
     types = Forward()
-    source_hash__ = "0fd548371e2e9354c387d8ab9fea866b"
-    disposable__ = re.compile('INT$|NEG$|FRAC$|DOT$|EXP$|EOF$|_array_ellipsis$|_top_level_assignment$|_top_level_literal$|_quoted_identifier$|_root$|_namespace$|_parameter_type$|_array_types$|_part$')
+    source_hash__ = "9a0f8d4d9ca0147ecdff8fa50bfdcb6d"
+    disposable__ = re.compile('INT$|NEG$|FRAC$|DOT$|EXP$|EOF$|_array_ellipsis$|_top_level_assignment$|_top_level_literal$|_quoted_identifier$|_root$|_namespace$|_array_types$|_part$')
     static_analysis_pending__ = []  # type: List[bool]
     parser_initialization__ = ["upon instantiation"]
     COMMENT__ = r'(?:\/\/.*)|(?:\/\*(?:.|\n)*?\*\/)'
@@ -164,8 +164,8 @@ class ts2pythonGrammar(Grammar):
     extends = Series(Series(Drop(Text("extends")), dwsp__), Alternative(generic_type, type_name), ZeroOrMore(Series(Series(Drop(Text(",")), dwsp__), Alternative(generic_type, type_name))))
     array_of = Series(Option(Series(Drop(Text("readonly")), dwsp__)), _array_types, Series(Drop(Text("[]")), dwsp__))
     arg_tail = Series(Series(Drop(Text("...")), dwsp__), identifier, Option(Series(Series(Drop(Text(":")), dwsp__), array_of)))
-    _parameter_type = Alternative(array_of, generic_type, Series(type_name, Option(extends_type), Option(equals_type)), declarations_block, type_tuple)
-    parameter_types = Series(_parameter_type, ZeroOrMore(Series(Series(Drop(Text("|")), dwsp__), _parameter_type)))
+    parameter_type = Alternative(array_of, generic_type, Series(type_name, Option(extends_type), Option(equals_type)), declarations_block, type_tuple)
+    parameter_types = Series(parameter_type, ZeroOrMore(Series(Series(Drop(Text("|")), dwsp__), parameter_type)))
     type_parameters = Series(Series(Drop(Text("<")), dwsp__), parameter_types, ZeroOrMore(Series(Series(Drop(Text(",")), dwsp__), parameter_types)), Series(Drop(Text(">")), dwsp__), mandatory=1)
     interface = Series(Option(Series(Drop(Text("export")), dwsp__)), Alternative(Series(Drop(Text("interface")), dwsp__), Series(Drop(Text("class")), dwsp__)), identifier, Option(type_parameters), Option(extends), declarations_block, mandatory=2)
     type_alias = Series(Option(Series(Drop(Text("export")), dwsp__)), Series(Drop(Text("type")), dwsp__), identifier, Option(type_parameters), Series(Drop(Text("=")), dwsp__), types, Series(Drop(Text(";")), dwsp__), mandatory=2)
@@ -295,7 +295,7 @@ PEP655_IMPORTS = """
 
 
 def to_typename(varname: str) -> str:
-    assert varname[-1:] != '_' or keyword.iskeyword(varname[:-1]), varname  # and varname[0].islower()
+    # assert varname[-1:] != '_' or keyword.iskeyword(varname[:-1]), varname  # and varname[0].islower()
     return varname[0].upper() + varname[1:] + '_'
 
 
@@ -359,11 +359,11 @@ class ts2pythonCompiler(Compiler):
                 return True
         return False
 
-    def qualified_obj_name(self, pos: int=0, varname: bool=False) -> str:
-        obj_name = self.obj_name[1:] if len(self.obj_name) > 1 else self.obj_name
-        if pos < 0:  obj_name = obj_name[:pos]
-        if varname:  obj_name = obj_name[:-1] + [to_varname(obj_name[-1])]
-        return '.'.join(obj_name)
+    # def qualified_obj_name(self, pos: int=0, varname: bool=False) -> str:
+    #     obj_name = self.obj_name[1:] if len(self.obj_name) > 1 else self.obj_name
+    #     if pos < 0:  obj_name = obj_name[:pos]
+    #     if varname:  obj_name = obj_name[:-1] + [to_varname(obj_name[-1])]
+    #     return '.'.join(obj_name)
 
     def prepare(self, root: Node) -> None:
         type_aliases = {nd['identifier'].content for nd in root.select_children('type_alias')}
@@ -521,8 +521,7 @@ class ts2pythonCompiler(Compiler):
         T = self.compile_type_expression(node, node['types']) \
             if 'types' in node else 'Any'
         typename = self.obj_name.pop()
-        classes_in_type_expression = T[0:5] == 'class'
-        if classes_in_type_expression:
+        if T[0:5] == 'class':
             self.local_classes[-1].append(T)
             T = typename  # substitute typename for type
         if 'optional' in node:
@@ -538,11 +537,11 @@ class ts2pythonCompiler(Compiler):
                         T += '|None'
                 else:
                     T = f"Optional[{T}]"
-        if self.is_toplevel() and classes_in_type_expression:
+        if self.is_toplevel() and bool(self.local_classes[-1]):
             preface = self.render_local_classes()
             self.local_classes.append([])
             self.optional_keys.append([])
-            return preface + f"{identifier}:{to_typename(identifier)}"
+            return preface + f"{identifier}: {T}"
         return f"{identifier}: {T}"
 
     def on_function(self, node) -> str:
@@ -584,43 +583,40 @@ class ts2pythonCompiler(Compiler):
         return self.compile(node['type'])
 
     def on_types(self, node) -> str:
-        if len(node.children) == 1:
-            return self.compile(node[0])
+        union = []
+        i = 0
+        for nd in node.children:
+            obj_name_stub = self.obj_name[-1]
+            n = obj_name_stub.rfind('_')
+            ending = obj_name_stub[n + 1:]
+            if n >= 0 and (not ending or ending.isdecimal()):
+                obj_name_stub = obj_name_stub[:n]
+            self.obj_name[-1] = obj_name_stub + '_' + str(i)
+            typ = self.compile(nd)
+            if typ not in union:
+                union.append(typ)
+                i += 1
+            self.obj_name[-1] = obj_name_stub
+        for i in range(len(union)):
+            typ = union[i]
+            if typ[0:5] == 'class':
+                cname = re.match(r"class\s*(\w+)[\w(){},' =]*\s*:", typ).group(1)
+                self.local_classes[-1].append(typ)
+                union[i] = cname
+        if self.is_toplevel():
+            preface = self.render_local_classes()
+            self.local_classes.append([])
+            self.optional_keys.append([])
         else:
-            assert len(node.children) > 1
-            union = []
-            i = 0
-            for nd in node.children:
-                obj_name_stub = self.obj_name[-1]
-                delim = '' if self.obj_name[-1][-1:] == '_' else '_'
-                self.obj_name[-1] = self.obj_name[-1] + delim + str(i)
-                typ = self.compile(nd)
-                if typ not in union:
-                    union.append(typ)
-                    i += 1
-                self.obj_name[-1] = obj_name_stub
-            for i in range(len(union)):
-                typ = union[i]
-                if typ[0:5] == 'class':
-                    cname = re.match(r"class\s*(\w+)[\w(){},' =]*\s*:", typ).group(1)
-                    self.local_classes[-1].append(typ)
-                    union[i] = cname
-            if self.is_toplevel():
-                preface = self.render_local_classes()
-                self.local_classes.append([])
-                self.optional_keys.append([])
-            else:
-                preface = ''
-            if self.use_literal_type and \
-                    any(nd[0].tag_name == 'literal' for nd in node.children):
-                assert all(nd[0].tag_name == 'literal' for nd in node.children)
-                return f"Literal[{', '.join(union)}]"
-            elif self.use_type_union:
-                return preface + '|'.join(union)
-            else:
-                if len(union) == 1:
-                    return preface + union[0]
-                return preface + f"Union[{', '.join(union)}]"
+            preface = ''
+        if self.use_literal_type and \
+                any(nd[0].tag_name == 'literal' for nd in node.children):
+            assert all(nd[0].tag_name == 'literal' for nd in node.children)
+            return f"Literal[{', '.join(union)}]"
+        elif self.use_type_union or len(union) <= 1:
+            return preface + '|'.join(union)
+        else:
+            return preface + f"Union[{', '.join(union)}]"
 
     def on_type(self, node) -> str:
         assert len(node.children) == 1
@@ -630,8 +626,8 @@ class ts2pythonCompiler(Compiler):
             self.optional_keys.append([])
             decls = self.compile(typ)
             return ''.join([self.render_class_header(self.obj_name[-1], '') + "    ",
-                             self.render_local_classes().replace('\n', '\n    '),
-                             decls.replace('\n', '\n    ')])   # maybe add one '\n'?
+                            self.render_local_classes().replace('\n', '\n    '),
+                            decls.replace('\n', '\n    ')])   # maybe add one '\n'?
             # return 'Dict'
         elif typ.tag_name == 'literal':
             literal_typ = typ[0].tag_name
@@ -813,12 +809,12 @@ class ts2pythonCompiler(Compiler):
         return ', '.join(type_parameters)
 
     def on_parameter_types(self, node) -> str:
-        types = [self.compile(nd) for nd in node.children
-                 if nd.tag_name not in ('extends_type', 'equals_type')]  # TODO: implement extends and, maybe also, unknown
-        if self.use_type_union or len(types) <= 1:
-            return '| '.join(types)
-        else:
-            return ''.join(['Union[', ', '.join(types), ']'])
+        return self.on_types(node)
+
+    def on_parameter_type(self, node) -> str:
+        if len(node.children) > 1:
+            node.result = (node[0],)  # ignore extends_type and equals_type for now
+        return self.on_type(node)
 
     def on_extends_type(self, node) -> str:
         # TODO: generate TypeVar with restrictions

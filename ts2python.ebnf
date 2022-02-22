@@ -16,8 +16,7 @@
 @ reduction   = merge_treetops  # anonymous nodes are being reduced where possible
 @ disposable  = INT, NEG, FRAC, DOT, EXP, EOF,
                 _array_ellipsis, _top_level_assignment, _top_level_literal,
-                _quoted_identifier, _root, _namespace, _parameter_type,
-                _array_types, _part
+                _quoted_identifier, _root, _namespace, _array_types, _part
 @ drop        = whitespace, strings, EOF,
                 _array_ellipsis, _top_level_assignment, _top_level_literal
 
@@ -90,8 +89,8 @@ type        = array_of | basic_type | generic_type | type_name
              | literal | func_type
 generic_type = type_name type_parameters
   type_parameters = "<" §parameter_types { "," parameter_types } ">"
-  parameter_types = _parameter_type  { "|" _parameter_type }
-  _parameter_type = array_of | generic_type     # actually, only a subset of array_of
+  parameter_types = parameter_type  { "|" parameter_type }
+  parameter_type  = array_of | generic_type     # actually, only a subset of array_of
                   | type_name [extends_type] [equals_type]
                   | declarations_block | type_tuple
   extends_type = "extends" (basic_type|type_name)

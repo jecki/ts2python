@@ -27,7 +27,7 @@ permissions and limitations under the License.
 
 import datetime
 import keyword
-from functools import partial
+from functools import partial, lru_cache
 import os
 import sys
 from typing import Tuple, List, Union, Any, Callable, Set, Dict, Sequence
@@ -267,18 +267,18 @@ GENERAL_IMPORTS = """
 import sys
 from enum import Enum, IntEnum
 if sys.version_info >= (3, 9, 0):
-    from typing import Union, Optional, Any, Generic, TypeVar
+    from typing import Union, Optional, Any, Generic, TypeVar, Callable
     List = list
     Tuple = tuple
     Dict = dict
     from collections.abc import Coroutine
 else:
-    from typing import Union, List, Tuple, Optional, Dict, Any, Generic, TypeVar, Coroutine
+    from typing import Union, List, Tuple, Optional, Dict, Any, Generic, TypeVar, Callable, Coroutine
 """
 
 TYPEDDICT_IMPORTS = """
 try:
-    from ts2python.json_validation import TypedDict, GenericTypedDict, NotRequired, Literal, Callable
+    from ts2python.json_validation import TypedDict, GenericTypedDict, NotRequired, Literal
     # Overwrite typing.TypedDict for Runtime-Validation
 except ImportError:
     # print("Module ts2python.json_validation not found. Only " 
@@ -324,6 +324,26 @@ def to_varname(typename: str) -> str:
 NOT_YET_IMPLEMENTED_WARNING = ErrorCode(310)
 UNSUPPORTED_WARNING = ErrorCode(320)
 
+TYPE_NAME_SUBSTITUTION = {
+    'object': 'Dict',
+    'array': 'List',
+    'string': 'str',
+    'number': 'float',
+    'decimal': 'float',
+    'integer': 'int',
+    'uinteger': 'int',
+    'boolean': 'bool',
+    'null': 'None',
+    'unknown': 'Any',
+    'any': 'Any',
+    'void': 'None',
+
+    'Thenable': 'Coroutine',
+    'Array': 'List',
+    'ReadOnlyArray': 'List',
+    'Uint32Array': 'List[int]',
+    'Error': 'Exception'}
+
 
 class ts2pythonCompiler(Compiler):
     """Compiler for the abstract-syntax-tree of a ts2python source file.
@@ -350,9 +370,12 @@ class ts2pythonCompiler(Compiler):
         self.use_not_required = get_config_value('ts2python.UseNotRequired', False)
 
         self.overloaded_type_names: Set[str] = set()
-        self.known_types: List[Set[str]] = [set()]
+        self.known_types: List[Set[str]] = [
+            {'Union', 'List', 'Tuple', 'Optional', 'Dict', 'Any',
+             'Generic', 'Coroutine', 'list'}]
         self.local_classes: List[List[str]] = [[]]
         self.base_classes: Dict[str, List[str]] = {}
+        self.typed_dicts: Set[str] = {'TypedDict'}  # names of classes that are TypedDicts
         # self.default_values: Dict = {}
         # self.referred_objects: Dict = {}
         self.basic_type_aliases: Set[str] = set()
@@ -457,10 +480,16 @@ class ts2pythonCompiler(Compiler):
                            f"class {name}(TypedDict, total={total}):\n"
         else:
             if base_classes:
-                return decorator + \
-                       f"class {name}({base_classes}, {base_class_name}):\n"
+                if base_class_name:
+                    return decorator + \
+                        f"class {name}({base_classes}, {base_class_name}):\n"
+                else:
+                    return decorator + f"class {name}({base_classes}):\n"
             else:
-                return decorator + f"class {name}({base_class_name}):\n"
+                if base_class_name:
+                    return decorator + f"class {name}({base_class_name}):\n"
+                else:
+                    return decorator + f"class {name}:\n"
 
     def render_local_classes(self) -> str:
         if self.local_classes[-1]:
@@ -477,6 +506,7 @@ class ts2pythonCompiler(Compiler):
         self.optional_keys.append([])
         try:
             tp = self.compile(node['type_parameters'])
+            tp = tp.strip("'")
             preface = f"{tp} = TypeVar('{tp}')\n\n"
             self.known_types[-1].add(tp)
         except KeyError:
@@ -485,17 +515,19 @@ class ts2pythonCompiler(Compiler):
         self.known_types.append(set())
         base_class_list = []
         try:
+            base_class_list = self.bases(node['extends'])
             base_classes = self.compile(node['extends'])
-            for bc in node['extends'].children:
-                base_class_list.append(bc.content)
             if tp:
                 base_classes += f", Generic[{tp}]"
         except KeyError:
             base_classes = f"Generic[{tp}]" if tp else ''
-        if 'function' in node['declarations_block']:
+        if any(bc not in self.typed_dicts for bc in base_class_list):
+            force_base_class = ' '
+        elif 'function' in node['declarations_block']:
             force_base_class = ' '  # do not derive from TypeDict
         else:
             force_base_class = ''
+            self.typed_dicts.add(name)
         decls = self.compile(node['declarations_block'])
         interface = self.render_class_header(name, base_classes, force_base_class)
         self.base_classes[name] = base_class_list
@@ -508,12 +540,19 @@ class ts2pythonCompiler(Compiler):
     # def on_type_parameter(self, node) -> str:  # OBSOLETE, see on_type_parameters()
     #     return self.compile(node['identifier'])
 
+    @lru_cache(maxsize=4)
+    def bases(self, node) -> List[str]:
+        assert node.tag_name == 'extends'
+        bases = [self.compile(nd) for nd in node.children]
+        return [TYPE_NAME_SUBSTITUTION.get(bc, bc) for bc in bases]
+
     def on_extends(self, node) -> str:
-        return ', '.join(self.compile(nd) for nd in node.children)
+        return ', '.join(self.bases(node))
 
     def on_type_alias(self, node) -> str:
         alias = self.compile(node['identifier'])
-        if all(typ[0].tag_name in ('basic_type', 'literal') for typ in node.select('type')):
+        if all(typ[0].tag_name in ('basic_type', 'literal')
+               for typ in node.select('type')):
             self.basic_type_aliases.add(alias)
         self.obj_name.append(alias)
         if alias not in self.overloaded_type_names:
@@ -593,7 +632,8 @@ class ts2pythonCompiler(Compiler):
     def on_argument(self, node) -> str:
         argname = self.compile(node["identifier"])
         if 'types' in node:
-            types = self.compile(node['types'])
+            # types = self.compile(node['types'])
+            types = self.compile_type_expression(node, node['types'])
             if 'optional' in node:
                 types = f'Optional[{types}] = None'
             return f'{argname}: {types}'
@@ -616,7 +656,7 @@ class ts2pythonCompiler(Compiler):
             if n >= 0 and (not ending or ending.isdecimal()):
                 obj_name_stub = obj_name_stub[:n]
             self.obj_name[-1] = obj_name_stub + '_' + str(i)
-            typ = self.compile(nd)
+            typ = self.compile_type_expression(node, nd)
             if typ not in union:
                 union.append(typ)
                 i += 1
@@ -809,19 +849,7 @@ class ts2pythonCompiler(Compiler):
         return node.content
 
     def on_basic_type(self, node) -> str:
-        python_basic_types = {'object': 'Dict',
-                              'array': 'List',
-                              'string': 'str',
-                              'number': 'float',
-                              'decimal': 'float',
-                              'integer': 'int',
-                              'uinteger': 'int',
-                              'boolean': 'bool',
-                              'null': 'None',
-                              'unknown': 'Any',
-                              'any': 'Any',
-                              'void': 'None'}
-        return python_basic_types[node.content]
+        return TYPE_NAME_SUBSTITUTION[node.content]
 
     def on_generic_type(self, node) -> str:
         base_type = self.compile(node['type_name'])
@@ -857,7 +885,7 @@ class ts2pythonCompiler(Compiler):
 
     def on_type_name(self, node) -> str:
         name = self.compile(node['identifier'])
-        return {'Thenable': 'Coroutine'}.get(name, name)
+        return TYPE_NAME_SUBSTITUTION.get(name, name)
 
     def compile_type_expression(self, node, type_node):
         unknown_types = set(tn.content for tn in node.select('type_name')
@@ -865,7 +893,11 @@ class ts2pythonCompiler(Compiler):
         type_expression = self.compile(type_node)
         for typ in unknown_types:
             rx = re.compile(r"(?:(?<=[^\w'])|^)" + typ + r"(?:(?=[^\w'])|$)")
-            type_expression = rx.sub(f"'{typ}'", type_expression)
+            segments = type_expression.split("'")
+            for i in range(0, len(segments), 2):
+                segments[i] = rx.sub(f"'{typ}'", segments[i])
+            type_expression = "'".join(segments)
+            # type_expression = rx.sub(f"'{typ}'", type_expression)
         if type_expression[0:1] == "'":
             type_expression = ''.join(["'", type_expression.replace("'", ""), "'"])
         return type_expression

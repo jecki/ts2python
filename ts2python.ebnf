@@ -16,7 +16,7 @@
 @ reduction   = merge_treetops  # anonymous nodes are being reduced where possible
 @ disposable  = INT, NEG, FRAC, DOT, EXP, EOF,
                 _array_ellipsis, _top_level_assignment, _top_level_literal,
-                _quoted_identifier, _root, _namespace, _array_types, _part
+                _quoted_identifier, _root, _namespace, _part
 @ drop        = whitespace, strings, EOF,
                 _array_ellipsis, _top_level_assignment, _top_level_literal
 
@@ -87,22 +87,28 @@ intersection = type { "&" §type }+
 type        = array_of | basic_type | generic_type | type_name
              | "(" types ")" | mapped_type | declarations_block | type_tuple
              | literal | func_type
+
 generic_type = type_name type_parameters
   type_parameters = "<" §parameter_types { "," parameter_types } ">"
   parameter_types = parameter_type  { "|" parameter_type }
-  parameter_type  = array_of | generic_type     # actually, only a subset of array_of
+  parameter_type  = array_of | basic_type | generic_type     # actually, only a subset of array_of
                   | type_name [extends_type] [equals_type]
                   | declarations_block | type_tuple
   extends_type = "extends" (basic_type|type_name)
   equals_type  = "=" (basic_type|type_name)
+
+array_of    = [ "readonly" ] array_types "[]"
+  array_types = array_type
+  array_type = basic_type | generic_type | type_name | "(" types ")"
+              | type_tuple | declarations_block
+
 type_name   = identifier
-array_of    = [ "readonly" ] _array_types "[]"
-  _array_types = basic_type | generic_type | type_name | "(" types ")"
-               | type_tuple | declarations_block
 type_tuple  = "[" types {"," types} "]"
+
 mapped_type = "{" map_signature [";"] "}"
 map_signature = index_signature ":" types
   index_signature = [readonly] "[" identifier (":" | "in" "keyof") type "]"
+
 func_type   = "(" [arg_list] ")" "=>" types
 
 #######################################################################

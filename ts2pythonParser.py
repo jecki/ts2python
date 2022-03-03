@@ -116,7 +116,7 @@ class ts2pythonGrammar(Grammar):
     literal = Forward()
     type = Forward()
     types = Forward()
-    source_hash__ = "5061a74986008ae5d178672b0f013632"
+    source_hash__ = "e927d30fdd37fb910fbe23aaab9c02da"
     disposable__ = re.compile('INT$|NEG$|FRAC$|DOT$|EXP$|EOF$|_array_ellipsis$|_top_level_assignment$|_top_level_literal$|_quoted_identifier$|_root$|_namespace$|_part$')
     static_analysis_pending__ = []  # type: List[bool]
     parser_initialization__ = ["upon instantiation"]
@@ -304,7 +304,7 @@ except ImportError:
             return type.__new__(_GenericTypedDictMeta, name, (dict,), ns)
         __call__ = dict
     GenericTypedDict = _GenericTypedDictMeta('TypedDict', (dict,), {})
-    GenericTypedDict.__module__ = __name__   
+    GenericTypedDict.__module__ = __name__
 """
 
 PEP655_IMPORTS = """
@@ -334,15 +334,17 @@ TYPE_NAME_SUBSTITUTION = {
     'uinteger': 'int',
     'boolean': 'bool',
     'null': 'None',
+    'undefined': 'None',
     'unknown': 'Any',
     'any': 'Any',
     'void': 'None',
 
     'Thenable': 'Coroutine',
     'Array': 'List',
-    'ReadOnlyArray': 'List',
+    'ReadonlyArray': 'List',
     'Uint32Array': 'List[int]',
-    'Error': 'Exception'}
+    'Error': 'Exception',
+    'RegExp': 'str' }
 
 
 class ts2pythonCompiler(Compiler):
@@ -380,8 +382,10 @@ class ts2pythonCompiler(Compiler):
         # self.referred_objects: Dict = {}
         self.basic_type_aliases: Set[str] = set()
         self.obj_name: List[str] = ['TOPLEVEL_']
+        self.scope_type: List[str] = ['']
         self.optional_keys: List[List[str]] = [[]]
         self.strip_type_from_const = False
+        self.constructor_name = '__init__'  # should be '__post__init__' for dataclasses
 
 
     def compile(self, node) -> str:
@@ -499,19 +503,25 @@ class ts2pythonCompiler(Compiler):
             self.local_classes.pop()
             return ''
 
-    def on_interface(self, node) -> str:
-        name = self.compile(node['identifier'])
-        self.obj_name.append(name)
-        self.local_classes.append([])
-        self.optional_keys.append([])
+    def process_type_parameters(self, node: Node) -> Tuple[str, str]:
         try:
             tp = self.compile(node['type_parameters'])
             tp = tp.strip("'")
-            preface = f"{tp} = TypeVar('{tp}')\n\n"
+            preface = f"{tp} = TypeVar('{tp}')\n"
             self.known_types[-1].add(tp)
         except KeyError:
             tp = ''
             preface = ''
+        return tp, preface
+
+    def on_interface(self, node) -> str:
+        name = self.compile(node['identifier'])
+        self.obj_name.append(name)
+        self.scope_type.append('interface')
+        self.local_classes.append([])
+        self.optional_keys.append([])
+        tp, preface = self.process_type_parameters(node)
+        preface += '\n'
         self.known_types.append(set())
         base_class_list = []
         try:
@@ -534,6 +544,7 @@ class ts2pythonCompiler(Compiler):
         interface += ('    ' + self.render_local_classes().replace('\n', '\n    ')).rstrip(' ')
         self.known_types.pop()
         self.known_types[-1].add(name)
+        self.scope_type.pop()
         self.obj_name.pop()
         return preface + interface + '    ' + decls.replace('\n', '\n    ')
 
@@ -604,13 +615,24 @@ class ts2pythonCompiler(Compiler):
     def on_function(self, node) -> str:
         # TODO: add transpiler for function definitions here...
         if 'identifier' in node:
-            name = node["identifier"]
+            name = self.compile(node["identifier"])
+            if keyword.iskeyword(name):  name += '_'
+            if name == 'constructor':
+                name = self.constructor_name  # __init__ or __post__init__
         else:  # anonymous function
-            name = "anonymous"
-        errmsg = f'Transpiling function definitions has not yet been ' \
-            f'implemented: {name}() ignored!'
-        self.tree.new_error(node, errmsg, NOT_YET_IMPLEMENTED_WARNING)
-        return "pass  # " + errmsg
+            name = "__call__"
+        tp, preface = self.process_type_parameters(node)
+        try:
+            arguments = self.compile(node['arg_list'])
+            if self.scope_type[-1] == 'interface':
+                arguments = 'self, ' + arguments
+        except KeyError:
+            arguments = 'self' if self.scope_type[-1] == 'interface' else ''
+        try:
+            return_type = self.compile(node['types'])
+        except KeyError:
+            return_type = 'Any'
+        return f"{preface}\ndef {name}({arguments}) -> {return_type}:\n    pass"
 
     def on_arg_list(self, node) -> str:
         breadcrumb = '/'.join(nd.tag_name for nd in self.context)
@@ -633,7 +655,9 @@ class ts2pythonCompiler(Compiler):
         argname = self.compile(node["identifier"])
         if 'types' in node:
             # types = self.compile(node['types'])
+            self.obj_name.append(to_typename(argname))
             types = self.compile_type_expression(node, node['types'])
+            self.obj_name.pop()
             if 'optional' in node:
                 types = f'Optional[{types}] = None'
             return f'{argname}: {types}'

@@ -384,6 +384,7 @@ class ts2pythonCompiler(Compiler):
         self.obj_name: List[str] = ['TOPLEVEL_']
         self.scope_type: List[str] = ['']
         self.optional_keys: List[List[str]] = [[]]
+        self.func_name: str = ''  # name of the current functions header or ''
         self.strip_type_from_const = False
         self.constructor_name = '__init__'  # should be '__post__init__' for dataclasses
 
@@ -496,12 +497,9 @@ class ts2pythonCompiler(Compiler):
                     return decorator + f"class {name}:\n"
 
     def render_local_classes(self) -> str:
-        if self.local_classes[-1]:
-            classes = self.local_classes.pop()
-            return '\n'.join(lc for lc in classes) + '\n'
-        else:
-            self.local_classes.pop()
-            return ''
+        self.func_name = ''
+        classes = self.local_classes.pop()
+        return '\n'.join(lc for lc in classes) + '\n' if classes else ''
 
     def process_type_parameters(self, node: Node) -> Tuple[str, str]:
         try:
@@ -613,10 +611,14 @@ class ts2pythonCompiler(Compiler):
         return f"{identifier}: {T}"
 
     def on_function(self, node) -> str:
-        # TODO: add transpiler for function definitions here...
         if 'identifier' in node:
             name = self.compile(node["identifier"])
-            if keyword.iskeyword(name):  name += '_'
+            # Now, a totally make-shift solution for overloaded function names
+            if self.func_name.startswith(name) \
+                    and (self.func_name == name
+                         or self.func_name[len(name):].isdecimal()):
+                name += str(int(self.func_name[len(name):] or '0') + 1)
+            self.func_name = name
             if name == 'constructor':
                 name = self.constructor_name  # __init__ or __post__init__
         else:  # anonymous function
@@ -679,7 +681,8 @@ class ts2pythonCompiler(Compiler):
             ending = obj_name_stub[n + 1:]
             if n >= 0 and (not ending or ending.isdecimal()):
                 obj_name_stub = obj_name_stub[:n]
-            self.obj_name[-1] = obj_name_stub + '_' + str(i)
+            fname = self.func_name[:1].upper() + self.func_name[1:]
+            self.obj_name[-1] = fname + obj_name_stub + '_' + str(i)
             typ = self.compile_type_expression(node, nd)
             if typ not in union:
                 union.append(typ)

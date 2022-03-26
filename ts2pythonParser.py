@@ -433,7 +433,8 @@ class ts2pythonCompiler(Compiler):
         if self.tree.tag_name == 'document':
             code_blocks.append('\n##### END OF LSP SPECS\n')
         cooked = '\n\n'.join(code_blocks)
-        return re.sub(r'\n\n+', '\n\n\n', cooked)
+        cooked = re.sub(' +(?=\n)', '', cooked)
+        return re.sub(r'\n\n\n+', '\n\n\n', cooked)
 
     def on_EMPTY__(self, node) -> str:
         return ''
@@ -798,10 +799,20 @@ class ts2pythonCompiler(Compiler):
         return '\n    '.join(namespace)
 
     def on_namespace(self, node) -> str:
-        errmsg = "Transpilation of namespaces that contain more than just " \
-                 "constant definitions has not yet been implemented."
-        self.tree.new_error(node, errmsg, NOT_YET_IMPLEMENTED_WARNING)
-        return "# " + errmsg
+        # errmsg = "Transpilation of namespaces that contain more than just " \
+        #          "constant definitions has not yet been implemented."
+        # self.tree.new_error(node, errmsg, NOT_YET_IMPLEMENTED_WARNING)
+        # return "# " + errmsg
+        name = self.compile(node['identifier'])
+        declarations = [f'class {name}:']
+        assert len(node.children) >= 2
+        declaration = self.compile(node[1])
+        declaration = declaration.lstrip('\n')
+        declarations.extend(declaration.split('\n'))
+        for nd in node[2:]:
+            declaration = self.compile(nd)
+            declarations.extend(declaration.split('\n'))
+        return '\n    '.join(declarations)
 
     def on_enum(self, node) -> str:
         if self.use_enums:

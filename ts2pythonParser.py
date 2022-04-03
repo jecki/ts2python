@@ -67,7 +67,7 @@ from DHParser import start_logging, suspend_logging, resume_logging, is_filename
     has_attr, has_parent, ThreadLocalSingletonFactory, Error, canonical_error_strings, \
     has_errors, WARNING, ERROR, FATAL, set_preset_value, get_preset_value, NEVER_MATCH_PATTERN, \
     gen_find_include_func, preprocess_includes, make_preprocessor, chain_preprocessors, \
-    pick_from_context, json_dumps, RootNode, get_config_values, md5, StringView
+    pick_from_context, json_dumps, RootNode, get_config_values, md5, StringView, as_list
 
 
 #######################################################################
@@ -513,6 +513,22 @@ class ts2pythonCompiler(Compiler):
             preface = ''
         return tp, preface
 
+    def mark_overloaded_functions(self, declarations_block: Node,
+                                  is_interface: bool):
+        first_use: Dict[str, Node] = dict()
+        try:
+            for func_decl in as_list(declarations_block['function']):
+                name = func_decl['identifier'].content
+                if name in first_use:
+                    first_use[name].attr['decorator'] = \
+                        '@singledispatchmethod' if is_interface \
+                        else '@singledispatch'
+                    func_decl.attr['decorator'] = f'@{name}.register'
+                else:
+                    first_use[name] = func_decl
+        except KeyError:
+            pass  # no functions in declarations block
+
     def on_interface(self, node) -> str:
         name = self.compile(node['identifier'])
         self.obj_name.append(name)
@@ -614,11 +630,6 @@ class ts2pythonCompiler(Compiler):
     def on_function(self, node) -> str:
         if 'identifier' in node:
             name = self.compile(node["identifier"])
-            # Now, a totally make-shift solution for overloaded function names
-            if self.func_name.startswith(name) \
-                    and (self.func_name == name
-                         or self.func_name[len(name):].isdecimal()):
-                name += str(int(self.func_name[len(name):] or '0') + 1)
             self.func_name = name
             if name == 'constructor':
                 name = self.constructor_name  # __init__ or __post__init__

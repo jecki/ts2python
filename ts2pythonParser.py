@@ -266,6 +266,7 @@ def source_hash(source_text: str) -> str:
 GENERAL_IMPORTS = """
 import sys
 from enum import Enum, IntEnum
+from functools import singledispatch, singledispatchmethod
 if sys.version_info >= (3, 9, 0):
     from typing import Union, Optional, Any, Generic, TypeVar, Callable
     List = list
@@ -386,7 +387,6 @@ class ts2pythonCompiler(Compiler):
         self.optional_keys: List[List[str]] = [[]]
         self.func_name: str = ''  # name of the current functions header or ''
         self.strip_type_from_const = False
-        self.constructor_name = '__init__'  # should be '__post__init__' for dataclasses
 
 
     def compile(self, node) -> str:
@@ -452,6 +452,7 @@ class ts2pythonCompiler(Compiler):
                 'is not yet implemented! Only the first ambient module will '
                 'be transpiled for now.', NOT_YET_IMPLEMENTED_WARNING)
             return self.compile(node['module'][0]['document'])
+        self.mark_overloaded_functions(node)
         return '\n\n'.join(self.compile(child) for child in node.children
                            if child.tag_name != 'declaration')
 
@@ -513,22 +514,6 @@ class ts2pythonCompiler(Compiler):
             preface = ''
         return tp, preface
 
-    def mark_overloaded_functions(self, declarations_block: Node,
-                                  is_interface: bool):
-        first_use: Dict[str, Node] = dict()
-        try:
-            for func_decl in as_list(declarations_block['function']):
-                name = func_decl['identifier'].content
-                if name in first_use:
-                    first_use[name].attr['decorator'] = \
-                        '@singledispatchmethod' if is_interface \
-                        else '@singledispatch'
-                    func_decl.attr['decorator'] = f'@{name}.register'
-                else:
-                    first_use[name] = func_decl
-        except KeyError:
-            pass  # no functions in declarations block
-
     def on_interface(self, node) -> str:
         name = self.compile(node['identifier'])
         self.obj_name.append(name)
@@ -537,6 +522,7 @@ class ts2pythonCompiler(Compiler):
         self.optional_keys.append([])
         tp, preface = self.process_type_parameters(node)
         preface += '\n'
+        preface += node.get_attr('preface', '')
         self.known_types.append(set())
         base_class_list = []
         try:
@@ -593,7 +579,26 @@ class ts2pythonCompiler(Compiler):
         self.obj_name.pop()
         return code
 
+    def mark_overloaded_functions(self, scope: Node):
+        is_interface = self.scope_type[-1] == 'interface'
+        first_use: Dict[str, Node] = dict()
+        try:
+            for func_decl in as_list(scope['function']):
+                name = func_decl['identifier'].content
+                if keyword.iskeyword(name):
+                    name += '_'
+                if name in first_use:
+                    first_use[name].attr['decorator'] = \
+                        '@singledispatchmethod' if is_interface \
+                        else '@singledispatch'
+                    func_decl.attr['decorator'] = f'@{name}.register'
+                else:
+                    first_use[name] = func_decl
+        except KeyError:
+            pass  # no functions in declarations block
+
     def on_declarations_block(self, node) -> str:
+        self.mark_overloaded_functions(node)
         declarations = '\n'.join(self.compile(nd) for nd in node
                                  if nd.tag_name in ('declaration', 'function'))
         return declarations or "pass"
@@ -628,11 +633,13 @@ class ts2pythonCompiler(Compiler):
         return f"{identifier}: {T}"
 
     def on_function(self, node) -> str:
+        is_constructor = False
         if 'identifier' in node:
             name = self.compile(node["identifier"])
             self.func_name = name
-            if name == 'constructor':
-                name = self.constructor_name  # __init__ or __post__init__
+            if name == 'constructor' and self.scope_type[-1] == 'interface':
+                name = self.obj_name[-1] + 'Constructor'
+                is_constructor = True
         else:  # anonymous function
             name = "__call__"
         tp, preface = self.process_type_parameters(node)
@@ -646,7 +653,19 @@ class ts2pythonCompiler(Compiler):
             return_type = self.compile(node['types'])
         except KeyError:
             return_type = 'Any'
-        return f"{preface}\ndef {name}({arguments}) -> {return_type}:\n    pass"
+        decorator = node.get_attr('decorator', '')
+        if decorator:
+            if decorator.endswith('.register'):  name = '_'
+            decorator += '\n'
+        pyfunc = f"{preface}\n{decorator}def {name}({arguments}) -> {return_type}:\n    pass"
+        if is_constructor:
+            interface = pick_from_context(self.context, 'interface', reverse=True)
+            assert interface
+            interface.attr['preface'] = ''.join([
+                interface.get_attr('preface', ''), pyfunc, '\n'])
+            return ''
+        else:
+            return pyfunc
 
     def on_arg_list(self, node) -> str:
         breadcrumb = '/'.join(nd.tag_name for nd in self.context)

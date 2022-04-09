@@ -324,6 +324,7 @@ def validate_uniform_sequence(sequence: Iterable, item_type):
     :param item_type: The expected type of all items the iterable `sequence` yields.
 
     """
+    # assert not isinstance(item_type, str), f'Unresolved type name or forward reference for {item_type}!'
     if isinstance(item_type, _TypedDictMeta):
         for val in sequence:
             if not isinstance(val, Dict):

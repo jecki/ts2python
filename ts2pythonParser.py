@@ -268,10 +268,8 @@ import sys
 from enum import Enum, IntEnum
 from functools import singledispatch, singledispatchmethod
 if sys.version_info >= (3, 9, 0):
-    from typing import Union, Optional, Any, Generic, TypeVar, Callable
-    List = list
-    Tuple = tuple
-    Dict = dict
+    from typing import Union, Optional, Any, Generic, TypeVar, Callable, List, Tuple, Dict
+    # do not use list, tuple, dict, because contained types won't be forward ref'd
     from collections.abc import Coroutine
 else:
     from typing import Union, List, Tuple, Optional, Dict, Any, Generic, TypeVar, Callable, Coroutine
@@ -806,7 +804,7 @@ class ts2pythonCompiler(Compiler):
         name = self.compile(node['identifier'])
         if self.is_known_type(name):
             # self.tree.new_error(node,
-            #     f'Name {name} has already been definied earlier!', WARNING)
+            #     f'Name {name} has already been defined earlier!', WARNING)
             return ''
         self.known_types[-1].add(name)
         save = self.strip_type_from_const

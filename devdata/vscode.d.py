@@ -5,13 +5,13 @@ import sys
 from enum import Enum, IntEnum
 from functools import singledispatch, singledispatchmethod
 if sys.version_info >= (3, 9, 0):
-    from typing import Union, Optional, Any, Generic, TypeVar, Callable
+    from typing import Union, Optional, Any, Generic, TypeVar, Callable, ForwardRef
     List = list
     Tuple = tuple
     Dict = dict
     from collections.abc import Coroutine
 else:
-    from typing import Union, List, Tuple, Optional, Dict, Any, Generic, TypeVar, Callable, Coroutine
+    from typing import Union, List, Tuple, Optional, Dict, Any, Generic, TypeVar, Callable, Coroutine, ForwardRef
 
 
 try:
@@ -88,7 +88,7 @@ class TextDocument:
         pass
 
     @lineAt.register
-    def _(self, position: 'Position') -> TextLine:
+    def _(self, position: ForwardRef('Position')) -> TextLine:
         pass
 
     def offsetAt(self, position: 'Position') -> float:

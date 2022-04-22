@@ -1,4 +1,4 @@
-"""typeddict_shim.py - A versiob of typed-dict that supports
+"""typeddict_shim.py - A version of typed-dict that supports
    Required / NotRequired -fields across all version of Python
    from 3.6 onward.
 
@@ -15,7 +15,7 @@ practice.". Once Python 3.11 contains support for "NotRequired"
 this TypedDict shim will fall back the standard solution for
 all versions of Python from 3.11 onward.
 
-Copyright 2021  by Eckhart Arnold (arnold@badw.de)
+Copyright 2022  by Eckhart Arnold (arnold@badw.de)
                 Bavarian Academy of Sciences an Humanities (badw.de)
 
 Licensed under the Apache License, Version 2.0 (the "License");

@@ -88,7 +88,7 @@ class TextDocument:
         pass
 
     @lineAt.register
-    def _(self, position: ForwardRef('Position')) -> TextLine:
+    def _(self, position: 'Position') -> TextLine:
         pass
 
     def offsetAt(self, position: 'Position') -> float:

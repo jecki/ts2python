@@ -277,7 +277,7 @@ else:
 
 TYPEDDICT_IMPORTS = """
 try:
-    from ts2python.json_validation import TypedDict, GenericTypedDict, NotRequired, Literal
+    from ts2python.typeddict_shim import TypedDict, GenericTypedDict, NotRequired, Literal
     # Overwrite typing.TypedDict for Runtime-Validation
 except ImportError:
     # print("Module ts2python.json_validation not found. Only " 

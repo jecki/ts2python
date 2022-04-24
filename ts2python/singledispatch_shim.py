@@ -33,7 +33,7 @@ try:
 except ImportError:
     try:
         from typing_extensions import GenericAlias
-    except ImportError
+    except ImportError:
         from .typing_extensions import GenericAlias
 
 

@@ -79,6 +79,7 @@ def singledispatch(func):
         except KeyError:
             try:
                 impl = registry[cls]
+                # TODO: case: cls has a name that has been registered as string
             except KeyError:
                 impl = _find_impl(cls, registry)
             dispatch_cache[cls] = impl
@@ -114,12 +115,16 @@ def singledispatch(func):
 
             # only import typing if annotation parsing is necessary
             from typing import get_type_hints
-            argname, cls = next(iter(get_type_hints(func).items()))
-            if not _is_valid_dispatch_type(cls):
-                raise TypeError(
-                    f"Invalid annotation for {argname!r}. "
-                    f"{cls!r} is not a class."
-                )
+            try:
+                argname, cls = next(iter(get_type_hints(func).items()))
+                if not _is_valid_dispatch_type(cls):
+                    raise TypeError(
+                        f"Invalid annotation for {argname!r}. "
+                        f"{cls!r} is not a class."
+                    )
+            except NameError:
+                cls = next(iter(ann.values()))
+
 
         registry[cls] = func
         if cache_token is None and hasattr(cls, '__abstractmethods__'):

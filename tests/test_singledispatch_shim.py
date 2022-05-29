@@ -34,6 +34,19 @@ class TestSingleDispatchShim:
             pass
 
 
+class TestForwardReference:
+    def test_forward_reference(self):
+        @singledispatch
+        def func(param):
+            pass
+        @func.register
+        def _(param: 'C'):
+            pass
+        class C:
+            pass
+
+
+
 if __name__ == "__main__":
     from runner import runner
     runner("", globals())

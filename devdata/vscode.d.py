@@ -84,7 +84,11 @@ class TextDocument:
     lineCount: float
 
     @singledispatchmethod
-    def lineAt(self, line: float) -> 'Position':
+    def lineAt(self, line) -> 'Position':
+        raise TypeError(f"'line' must be of type float or Position, not {type(line)}")
+
+    @lineAt.register
+    def _(self, line: float) -> 'Position':
         pass
 
     @lineAt.register

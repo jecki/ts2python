@@ -116,7 +116,9 @@ def singledispatch(func):
             # only import typing if annotation parsing is necessary
             from typing import get_type_hints
             try:
+                print('>>>', func, type(func))
                 argname, cls = next(iter(get_type_hints(func).items()))
+                print('###', argname, cls)
                 if not _is_valid_dispatch_type(cls):
                     raise TypeError(
                         f"Invalid annotation for {argname!r}. "
@@ -124,6 +126,7 @@ def singledispatch(func):
                     )
             except NameError:
                 cls = next(iter(ann.values()))
+                print('***', cls, type(cls))
 
 
         registry[cls] = func

@@ -38,13 +38,12 @@ class TestForwardReference:
     def test_forward_reference(self):
         @singledispatch
         def func(param):
-            pass
+            return ''
         @func.register
         def _(param: 'C'):
-            pass
+            return 'C'
         class C:
             pass
-
 
 
 if __name__ == "__main__":

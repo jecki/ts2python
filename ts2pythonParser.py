@@ -51,7 +51,7 @@ from DHParser import start_logging, suspend_logging, resume_logging, is_filename
     ZeroOrMore, Forward, NegativeLookahead, Required, CombinedParser, mixin_comment, \
     compile_source, grammar_changed, last_value, matching_bracket, PreprocessorFunc, is_empty, \
     remove_if, Node, TransformerCallable, TransformationDict, transformation_factory, traverse, \
-    remove_children_if, normalize_whitespace, is_anonymous, matches_re, \
+    remove_children_if, normalize_whitespace, is_anonymous, \
     reduce_single_child, replace_by_single_child, replace_or_reduce, remove_whitespace, \
     replace_by_children, remove_empty, remove_tokens, flatten, all_of, any_of, \
     merge_adjacent, collapse, collapse_children_if, transform_result, WHITESPACE_PTYPE, \
@@ -116,7 +116,7 @@ class ts2pythonGrammar(Grammar):
     literal = Forward()
     type = Forward()
     types = Forward()
-    source_hash__ = "b2e9d07beff8f14b32a4fbf53afb1a6b"
+    source_hash__ = "879927fefefe22372300408c16c43e73"
     disposable__ = re.compile('INT$|NEG$|FRAC$|DOT$|EXP$|EOF$|_array_ellipsis$|_top_level_assignment$|_top_level_literal$|_quoted_identifier$|_root$|_namespace$|_part$')
     static_analysis_pending__ = []  # type: List[bool]
     parser_initialization__ = ["upon instantiation"]
@@ -217,7 +217,7 @@ def get_grammar() -> ts2pythonGrammar:
     return grammar
     
 def parse_ts2python(document, start_parser = "root_parser__", *, complete_match=True):
-    return get_grammar()(document, start_parser, complete_match)
+    return get_grammar()(document, start_parser, complete_match=complete_match)
 
 
 #######################################################################

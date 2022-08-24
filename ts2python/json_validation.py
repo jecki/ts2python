@@ -45,9 +45,11 @@ except ImportError:
 #             return typ.__origin__
 #         except AttributeError:
 #             return Generic
+try:
+    from typeddict_shim import TypedDict, GenericTypedDict, _TypedDictMeta, get_origin
+except (ImportError, ModuleNotFoundError):
+    from .typeddict_shim import TypedDict, GenericTypedDict, _TypedDictMeta, get_origin
 
-
-from .typeddict_shim import TypedDict, GenericTypedDict, _TypedDictMeta, get_origin
 
 
 __all__ = ['validate_type', 'type_check', 'validate_uniform_sequence']

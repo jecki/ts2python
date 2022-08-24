@@ -56,13 +56,14 @@ except ImportError:
             return typ.__origin__
         except AttributeError:
             return Generic
-
+try:
+    from typing import NotRequired
+except ImportError:
+    NotRequired = Optional
+        
 
 __all__ = ['NotRequired', 'TypedDict', 'GenericTypedDict', '_TypedDictMeta',
            'GenericMeta', 'get_origin', 'Literal']
-
-
-NotRequired = Optional
 
 
 # The following functions have been copied from the Python
@@ -184,7 +185,12 @@ class _TypedDictMeta(type):
     __instancecheck__ = __subclasscheck__
 
 
-if sys.version_info >= (3, 7) and not hasattr(sys, 'pypy_version_info'):
+_is_pypy = hasattr(sys, 'pypy_version_info')
+    
+if sys.version_info >= (3,11) and not _is_pypy:
+    from typing import TypedDict
+    GenericTypedDict = TypedDict
+elif sys.version_info >= (3, 7) and not _is_pypy:
     def TypedDict(typename, fields=None, *, total=True, **kwargs):
         """An alternative implementation of typing.TypedDict that, instead of
         relying on the `total`-parameter, allows to treat individual fields

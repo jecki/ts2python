@@ -2,15 +2,17 @@
 
 """test_ts2python.py -- test code for ts2python.py."""
 
-import doctest
+import sys
+
+
 import os
 import subprocess
 import sys
 from typing import TypeVar, Generic
-import unittest
 
 
 scriptdir = os.path.dirname(os.path.abspath(__file__))
+scriptdir_parent = os.path.abspath(os.path.join(scriptdir, '..'))
 
 try:
     import ts2pythonParser
@@ -19,7 +21,8 @@ try:
     from ts2python.json_validation import validate_type, type_check, \
         validate_uniform_sequence
 except ImportError:
-    sys.path.append(os.path.join(scriptdir, '..'))
+    if scriptdir_parent not in sys.path:
+        sys.path.append(scriptdir_parent)
     import ts2pythonParser
     from ts2pythonParser import compile_src
     from ts2python import json_validation
@@ -354,6 +357,8 @@ class TestScriptCall:
             os.remove('testdata.py')
 
     def test_ts2python_call(self):
+        pythonpath = os.environ.get('PYTHONPATH', '') + os.pathsep + scriptdir_parent
+        os.environ['PYTHONPATH'] = pythonpath
         cmd = os.path.abspath(os.path.join(scriptdir, '..', 'ts2pythonParser.py'))
         result = subprocess.run(['python', cmd, 'testdata.ts'])
         assert result.returncode == 0

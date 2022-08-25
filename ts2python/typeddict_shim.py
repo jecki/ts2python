@@ -190,6 +190,7 @@ _is_pypy = hasattr(sys, 'pypy_version_info')
 if sys.version_info >= (3,11) and not _is_pypy:
     from typing import TypedDict
     GenericTypedDict = TypedDict
+
 elif sys.version_info >= (3, 7) and not _is_pypy:
     def TypedDict(typename, fields=None, *, total=True, **kwargs):
         """An alternative implementation of typing.TypedDict that, instead of

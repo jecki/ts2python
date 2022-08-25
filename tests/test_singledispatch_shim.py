@@ -3,6 +3,7 @@
 """test_singledispatch_shim.py -- test code for ts2python's singledispatch"""
 
 
+from typing import List, Union
 from ts2python.singledispatch_shim import singledispatch, singledispatchmethod
 
 
@@ -38,12 +39,23 @@ class TestForwardReference:
     def test_forward_reference(self):
         @singledispatch
         def func(param):
-            return ''
+            pass
         @func.register
         def _(param: 'C'):
-            return 'C'
+            pass
         class C:
             pass
+
+
+class TestGenericAlias:
+    def test_generic_alias(self):
+        @singledispatch
+        def func(param):
+            pass
+        @func.register(list)
+        def _(param:List['int']):
+            pass
+
 
 
 if __name__ == "__main__":

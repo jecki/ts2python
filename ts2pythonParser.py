@@ -67,7 +67,7 @@ from DHParser import start_logging, suspend_logging, resume_logging, is_filename
     has_attr, has_parent, ThreadLocalSingletonFactory, Error, canonical_error_strings, \
     has_errors, WARNING, ERROR, FATAL, set_preset_value, get_preset_value, NEVER_MATCH_PATTERN, \
     gen_find_include_func, preprocess_includes, make_preprocessor, chain_preprocessors, \
-    pick_from_trail, json_dumps, RootNode, get_config_values, md5, StringView, as_list
+    pick_from_path, json_dumps, RootNode, get_config_values, md5, StringView, as_list
 
 
 #######################################################################
@@ -116,7 +116,7 @@ class ts2pythonGrammar(Grammar):
     literal = Forward()
     type = Forward()
     types = Forward()
-    source_hash__ = "7ce97d61c1503f3b28d591869630ffd9"
+    source_hash__ = "612411372ac70000f9c7a9387706099a"
     disposable__ = re.compile('INT$|NEG$|FRAC$|DOT$|EXP$|EOF$|_array_ellipsis$|_top_level_assignment$|_top_level_literal$|_quoted_identifier$|_root$|_namespace$|_part$')
     static_analysis_pending__ = []  # type: List[bool]
     parser_initialization__ = ["upon instantiation"]
@@ -674,7 +674,7 @@ class ts2pythonCompiler(Compiler):
             decorator += '\n'
         pyfunc = f"{preface}\n{decorator}def {name}({arguments}) -> {return_type}:\n    pass"
         if is_constructor:
-            interface = pick_from_trail(self.trail, 'interface', reverse=True)
+            interface = pick_from_path(self.path, 'interface', reverse=True)
             assert interface
             interface.attr['preface'] = ''.join([
                 interface.get_attr('preface', ''), pyfunc, '\n'])
@@ -683,7 +683,7 @@ class ts2pythonCompiler(Compiler):
             return pyfunc
 
     def on_arg_list(self, node) -> str:
-        breadcrumb = '/'.join(nd.name for nd in self.trail)
+        breadcrumb = '/'.join(nd.name for nd in self.path)
         if breadcrumb.rfind('func_type') > breadcrumb.rfind('function'):
             arg_list = [self.compile(nd) for nd in node.children]
             if any(arg[0:1] == '*' for arg in arg_list):

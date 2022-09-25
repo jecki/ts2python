@@ -7,7 +7,7 @@ https://github.com/microsoft/language-server-protocol/tree/gh-pages/_specificati
 
 LSP_SPEC_SOURCE = \
     "https://raw.githubusercontent.com/microsoft/language-server-protocol/" \
-    "gh-pages/_specifications/specification-current.md"
+    "gh-pages/_specifications/specification-3-16.md"
 
 
 def extract(specs, dest):

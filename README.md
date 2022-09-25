@@ -57,16 +57,34 @@ Python, e.g.
 [pydantic](https://pydantic-docs.helpmanual.io/)-Classes
 and the like.
 
+ts2python aims to support translation of TypeScript-Interfaces on two
+different tiers:
+
+1. *Tier 1: Transpilation of passive data-structures*, that is, 
+   Typescript-definition-files that contain only data definitions 
+   and no function definitions and, in particular,
+   only "passive" Typescript-Interface that define data-structures 
+   but do not contain any methods.
+
+2. *Tier 2: Tanspilation of active data-structures, function- 
+   and method-definitions*, i.e. Translation of (almost) any
+   Typescript-definition-file.
+
 ## Status
 
-Presently, ts2python is mostly limited to Typescript-Interfaces that do not
-contain any methods. The language server-protocol-definitions can be transpiled
-successfully. 
+Presently, Tier 1 support, i.e. transpilation of passive data 
+structures works quite well. So, for example, all Interfaces
+from the
+[language server protocol](https://microsoft.github.io/language-server-protocol/specifications/specification-current/) 
+can be transpiled to Python Typed-Dicts. 
 
-However, as of now, most Typescript-header files, i.e. the 
-files ending with ".d.ts" cannot be transpiled, because support for 
-function headers, classes and interfaces with methods, ambient modules 
-and namespaces is still incomplete. This will be added in the future.
+Tier 2 support is still very much work in progress. I am 
+using "vscode.d.ts"-definition file as test case. Some things work,
+but there are still some unsupported constructs and the Python
+code emmited for features that go beyond Tier 1 may not even
+be valid Python all the time! Please, keep that in mind.
+
+The documentation presently only covers Tier 1 support. 
 
 
 ## Installation

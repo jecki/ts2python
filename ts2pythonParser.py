@@ -276,14 +276,6 @@ else:
 
 TYPEDDICT_IMPORTS = """
 try:
-    from ts2python.singledispatch_shim import singledispatch, singledispatchmethod
-except ImportError:
-    print("Module ts2python.singledispatch_shim not found. singledispatch will fail "
-          "when type annotation contain the string name of type instead of the type "
-          "itself.")
-    from functools import singledispatch, singledispatchmethod
-
-try:
     from ts2python.typeddict_shim import TypedDict, GenericTypedDict, NotRequired, Literal
     # Overwrite typing.TypedDict for Runtime-Validation
 except ImportError:
@@ -313,14 +305,19 @@ except ImportError:
     GenericTypedDict.__module__ = __name__
 """
 
-FUNCTOOLS_IMPORTS = """
+FUNCTOOLS_IMPORTS = """   
 try:
     from ts2python.singledispatch_shim import singledispatch, singledispatchmethod
 except ImportError:
     print("ts2python.singledispatch_shim not found! @singledispatch-annotation"          
           " imported from functools may cause NameErrors on forward-referenced"
           " types.")
-    from functools import singledispatch, singledispatchmethod
+    try:
+        from functools import singledispatch, singledispatchmethod
+    except ImportError:
+        print(f"functools.singledispatchmethod does not exist in Python Version "
+              f"{sys.version}. This module may therefore fail to run if "
+              f"singledispatchmethod is needed, anywhere!")     
 """
 
 PEP655_IMPORTS = """

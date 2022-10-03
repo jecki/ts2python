@@ -116,7 +116,7 @@ class ts2pythonGrammar(Grammar):
     literal = Forward()
     type = Forward()
     types = Forward()
-    source_hash__ = "612411372ac70000f9c7a9387706099a"
+    source_hash__ = "1df05a5e0419bbeccb6a6dc0d26a756f"
     disposable__ = re.compile('INT$|NEG$|FRAC$|DOT$|EXP$|EOF$|_array_ellipsis$|_top_level_assignment$|_top_level_literal$|_quoted_identifier$|_root$|_namespace$|_part$')
     static_analysis_pending__ = []  # type: List[bool]
     parser_initialization__ = ["upon instantiation"]
@@ -201,7 +201,7 @@ class ts2pythonGrammar(Grammar):
     root__ = TreeReduction(_root, CombinedParser.MERGE_TREETOPS)
     
 
-_raw_grammar = ThreadLocalSingletonFactory(ts2pythonGrammar, ident=1)
+_raw_grammar = ThreadLocalSingletonFactory(ts2pythonGrammar)
 
 def get_grammar() -> ts2pythonGrammar:
     grammar = _raw_grammar()

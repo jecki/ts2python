@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "ts2python"
-version = "0.6.2"
+version = "0.6.5"
 description = "Python-Interoperability for Typescript-Interfaces"
 
 license = "Apache-2.0"
@@ -24,7 +24,6 @@ classifiers = [
     'License :: OSI Approved :: Apache Software License',
     'Operating System :: OS Independent',
     'Programming Language :: Python :: 3',
-    'Programming Language :: Python :: 3.6',
     'Programming Language :: Python :: 3.7',
     'Programming Language :: Python :: 3.8',
     'Programming Language :: Python :: 3.9',
@@ -47,8 +46,8 @@ packages = [
 
 
 [tool.poetry.dependencies]
-python = "^3.6"
-DHParser = { version = "^1.0", optional = false }
+python = "^3.7"
+DHParser = { version = "~1.2", optional = false }
 typing_extensions = { version = "^4.0", optional = true }
 
 [tool.poetry.scripts]

@@ -27,7 +27,7 @@ from typing import Union, List, Tuple, Optional, Dict, Any, \
 try:
     from typing_extensions import GenericMeta, \
         ClassVar, Final, Protocol, NoReturn
-except ImportError:
+except (ImportError, ModuleNotFoundError):
     from .typing_extensions import GenericMeta, \
         ClassVar, Final, Protocol, NoReturn
 # try:
@@ -64,7 +64,11 @@ def resolve_forward_refs(T: type, Ur_T: type = None) -> type:
     """Resolves all forward references found in T."""
     if isinstance(T, ForwardRef):
         if Ur_T is None:  Ur_T = T
-        T = T._evaluate(globals(), sys.modules[Ur_T.__module__].__dict__)
+        if sys.version_info >= (3, 9, 0):
+            recursive_guard = set()
+            T = T._evaluate(globals(), sys.modules[Ur_T.__module__].__dict__, recursive_guard)
+        else:
+           T = T._evaluate(globals(), sys.modules[Ur_T.__module__].__dict__)
         T = resolve_forward_refs(T, Ur_T)
     elif str(T).find('ForwardRef') >= 0:
         if Ur_T is None:  Ur_T = T
@@ -285,12 +289,15 @@ def type_check(func: Callable, check_return_type: bool = True) -> Callable:
     the type check. Likewise, the return type.
 
     Example::
+
     >>> class Position(TypedDict, total=True):
     ...     line: int
     ...     character: int
     >>> class Range(TypedDict, total=True):
     ...     start: Position
     ...     end: Position
+    >>> # just a fix for doctest stumbling over ForwardRef:
+    >>> Range.__annotations__ = {'start': Position, 'end': Position}
     >>> @type_check
     ... def middle_line(rng: Range) -> Position:
     ...     line = (rng['start']['line'] + rng['end']['line']) // 2

@@ -37,28 +37,33 @@ from typing import Generic, Optional, Union, Any, TypeVar
 try:
     from typing_extensions import GenericMeta, \
         ClassVar, Final, Protocol, NoReturn, Literal
-except ImportError:
+except (ImportError, ModuleNotFoundError):
     from .typing_extensions import GenericMeta, \
         ClassVar, Final, Protocol, NoReturn, Literal
 
 try:
     from typing import ForwardRef, _GenericAlias, _SpecialForm
-except ImportError:
+except (ImportError, ModuleNotFoundError):
     from typing import _ForwardRef  # Python 3.6 compatibility
     ForwardRef = _ForwardRef
     _GenericAlias = GenericMeta
     _SpecialForm = Any
+
 try:
     from typing_extensions import get_origin
-except ImportError:
-    def get_origin(typ):
-        try:
-            return typ.__origin__
-        except AttributeError:
-            return Generic
+except (ImportError, ModuleNotFoundError):
+    try:
+        from .typing_extensions import get_origin
+    except (ImportError, ModuleNotFoundError):
+        def get_origin(typ):
+            try:
+                return typ.__origin__
+            except AttributeError:
+                return Generic
+
 try:
     from typing import NotRequired
-except ImportError:
+except (ImportError, ModuleNotFoundError):
     NotRequired = Optional
         
 
@@ -149,8 +154,12 @@ def _new_typed_dict(meta, name, bases, ns) -> dict:
 
     total = True
     for field, field_type in own_annotations.items():
-        if get_origin(field_type) is Union \
-                and type(None) in field_type.__args__:
+        if ((isinstance(field_type, ForwardRef)
+             and (field_type.__forward_arg__.startswith('Optional[')
+                  or (field_type.__forward_arg__.startswith('Union[')
+                      and field_type.__forward_arg__.endswith(', None]'))))
+            or (get_origin(field_type) is Union
+                and type(None) in field_type.__args__)):
             optional_keys.add(field)
             total = False
         else:

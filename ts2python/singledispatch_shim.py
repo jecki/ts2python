@@ -26,15 +26,17 @@ implied. See the License for the specific language governing
 permissions and limitations under the License.
 """
 
+import types
 
 from functools import _find_impl, get_cache_token, update_wrapper
+from typing import Union
 try:
-    from types import GenericAlias
+    from typing import GenericAlias, get_args, get_origin, get_type_hints
 except ImportError:
     try:
-        from typing_extensions import GenericAlias
+        from typing_extensions import GenericAlias, get_args, get_origin, get_type_hints
     except ImportError:
-        from .typing_extensions import GenericAlias
+        from .typing_extensions import GenericAlias, get_args, get_origin, get_type_hints
 
 
 # The following functions have been copied from the Python
@@ -79,14 +81,23 @@ def singledispatch(func):
         except KeyError:
             try:
                 impl = registry[cls]
-                # TODO: case: cls has a name that has been registered as string
             except KeyError:
                 impl = _find_impl(cls, registry)
             dispatch_cache[cls] = impl
         return impl
 
+    def _is_union_type(cls):
+        try:
+            return get_origin(cls) in {Union, types.UnionType}
+        except AttributeError:
+            # Python 3.7
+            return get_origin(cls) in {Union}
+
     def _is_valid_dispatch_type(cls):
-        return isinstance(cls, type) and not isinstance(cls, GenericAlias)
+        if isinstance(cls, type):
+            return True
+        return (_is_union_type(cls) and
+                all(isinstance(arg, type) for arg in get_args(cls)))
 
     def register(cls, func=None):
         """generic_func.register(cls, func) -> func
@@ -102,7 +113,7 @@ def singledispatch(func):
             if func is not None:
                 raise TypeError(
                     f"Invalid first argument to `register()`. "
-                    f"{cls!r} is not a class."
+                    f"{cls!r} is not a class or union type."
                 )
             ann = getattr(cls, '__annotations__', {})
             if not ann:
@@ -114,22 +125,24 @@ def singledispatch(func):
             func = cls
 
             # only import typing if annotation parsing is necessary
-            from typing import get_type_hints
-            try:
-                print('>>>', func, type(func))
-                argname, cls = next(iter(get_type_hints(func).items()))
-                print('###', argname, cls)
-                if not _is_valid_dispatch_type(cls):
+            argname, cls = next(iter(get_type_hints(func).items()))
+            if not _is_valid_dispatch_type(cls):
+                if _is_union_type(cls):
+                    raise TypeError(
+                        f"Invalid annotation for {argname!r}. "
+                        f"{cls!r} not all arguments are classes."
+                    )
+                else:
                     raise TypeError(
                         f"Invalid annotation for {argname!r}. "
                         f"{cls!r} is not a class."
                     )
-            except NameError:
-                cls = next(iter(ann.values()))
-                print('***', cls, type(cls))
 
-
-        registry[cls] = func
+        if _is_union_type(cls):
+            for arg in get_args(cls):
+                registry[arg] = func
+        else:
+            registry[cls] = func
         if cache_token is None and hasattr(cls, '__abstractmethods__'):
             cache_token = get_cache_token()
         dispatch_cache.clear()
@@ -152,39 +165,43 @@ def singledispatch(func):
     return wrapper
 
 
-# Descriptor version
-class singledispatchmethod:
-    """Single-dispatch generic method descriptor.
+try:
+    from functools import singledispatchmethod
+except ImportError:
+    # seems to Python version < 3.8
+    # Here is the definition of singledispatchmethod from Python 3.8
+    class singledispatchmethod:
+        """Single-dispatch generic method descriptor.
 
-    Supports wrapping existing descriptors and handles non-descriptor
-    callables as instance methods.
-    """
-
-    def __init__(self, func):
-        if not callable(func) and not hasattr(func, "__get__"):
-            raise TypeError(f"{func!r} is not callable or a descriptor")
-
-        self.dispatcher = singledispatch(func)
-        self.func = func
-
-    def register(self, cls, method=None):
-        """generic_method.register(cls, func) -> func
-
-        Registers a new implementation for the given *cls* on a *generic_method*.
+        Supports wrapping existing descriptors and handles non-descriptor
+        callables as instance methods.
         """
-        return self.dispatcher.register(cls, func=method)
 
-    def __get__(self, obj, cls=None):
-        def _method(*args, **kwargs):
-            method = self.dispatcher.dispatch(args[0].__class__)
-            return method.__get__(obj, cls)(*args, **kwargs)
+        def __init__(self, func):
+            if not callable(func) and not hasattr(func, "__get__"):
+                raise TypeError(f"{func!r} is not callable or a descriptor")
 
-        _method.__isabstractmethod__ = self.__isabstractmethod__
-        _method.register = self.register
-        update_wrapper(_method, self.func)
-        return _method
+            self.dispatcher = singledispatch(func)
+            self.func = func
 
-    @property
-    def __isabstractmethod__(self):
-        return getattr(self.func, '__isabstractmethod__', False)
+        def register(self, cls, method=None):
+            """generic_method.register(cls, func) -> func
+
+            Registers a new implementation for the given *cls* on a *generic_method*.
+            """
+            return self.dispatcher.register(cls, func=method)
+
+        def __get__(self, obj, cls=None):
+            def _method(*args, **kwargs):
+                method = self.dispatcher.dispatch(args[0].__class__)
+                return method.__get__(obj, cls)(*args, **kwargs)
+
+            _method.__isabstractmethod__ = self.__isabstractmethod__
+            _method.register = self.register
+            update_wrapper(_method, self.func)
+            return _method
+
+        @property
+        def __isabstractmethod__(self):
+            return getattr(self.func, '__isabstractmethod__', False)
 

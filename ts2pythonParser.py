@@ -967,7 +967,7 @@ class ts2pythonCompiler(Compiler):
         name = self.compile(node['identifier'])
         return TYPE_NAME_SUBSTITUTION.get(name, name)
 
-    def compile_type_expression(self, node, type_node):
+    def compile_type_expression(self, node, type_node) -> str:
         unknown_types = set(tn.content for tn in node.select('type_name')
                             if not self.is_known_type(tn.content))
         type_expression = self.compile(type_node)

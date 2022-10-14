@@ -82,7 +82,22 @@ def singledispatch(func):
             try:
                 impl = registry[cls]
             except KeyError:
-                impl = _find_impl(cls, registry)
+                if 'postponed' in registry:
+                    postponed = registry['postponed']
+                    del registry['postponed']
+                    for postponed_cls in postponed:
+                        register(postponed_cls)
+                    if 'postponed' in registry:
+                        for f in registry['postponed']:
+                            get_type_hints(f)   # provoke NameError
+                        raise AssertionError('singledispatch: Internal Error: '
+                                             + str(registry['postponed']))
+                    try:
+                        impl = registry[cls]
+                    except KeyError:
+                        impl = _find_impl(cls, registry)
+                else:
+                    impl = _find_impl(cls, registry)
             dispatch_cache[cls] = impl
         return impl
 
@@ -125,7 +140,11 @@ def singledispatch(func):
             func = cls
 
             # only import typing if annotation parsing is necessary
-            argname, cls = next(iter(get_type_hints(func).items()))
+            try:
+                argname, cls = next(iter(get_type_hints(func).items()))
+            except NameError:
+                registry.setdefault('postponed', []).append(cls)
+                return func
             if not _is_valid_dispatch_type(cls):
                 if _is_union_type(cls):
                     raise TypeError(
@@ -165,43 +184,38 @@ def singledispatch(func):
     return wrapper
 
 
-try:
-    from functools import singledispatchmethod
-except ImportError:
-    # seems to Python version < 3.8
-    # Here is the definition of singledispatchmethod from Python 3.8
-    class singledispatchmethod:
-        """Single-dispatch generic method descriptor.
+class singledispatchmethod:
+    """Single-dispatch generic method descriptor.
 
-        Supports wrapping existing descriptors and handles non-descriptor
-        callables as instance methods.
+    Supports wrapping existing descriptors and handles non-descriptor
+    callables as instance methods.
+    """
+
+    def __init__(self, func):
+        if not callable(func) and not hasattr(func, "__get__"):
+            raise TypeError(f"{func!r} is not callable or a descriptor")
+
+        self.dispatcher = singledispatch(func)
+        self.func = func
+
+    def register(self, cls, method=None):
+        """generic_method.register(cls, func) -> func
+
+        Registers a new implementation for the given *cls* on a *generic_method*.
         """
+        return self.dispatcher.register(cls, func=method)
 
-        def __init__(self, func):
-            if not callable(func) and not hasattr(func, "__get__"):
-                raise TypeError(f"{func!r} is not callable or a descriptor")
+    def __get__(self, obj, cls=None):
+        def _method(*args, **kwargs):
+            method = self.dispatcher.dispatch(args[0].__class__)
+            return method.__get__(obj, cls)(*args, **kwargs)
 
-            self.dispatcher = singledispatch(func)
-            self.func = func
+        _method.__isabstractmethod__ = self.__isabstractmethod__
+        _method.register = self.register
+        update_wrapper(_method, self.func)
+        return _method
 
-        def register(self, cls, method=None):
-            """generic_method.register(cls, func) -> func
-
-            Registers a new implementation for the given *cls* on a *generic_method*.
-            """
-            return self.dispatcher.register(cls, func=method)
-
-        def __get__(self, obj, cls=None):
-            def _method(*args, **kwargs):
-                method = self.dispatcher.dispatch(args[0].__class__)
-                return method.__get__(obj, cls)(*args, **kwargs)
-
-            _method.__isabstractmethod__ = self.__isabstractmethod__
-            _method.register = self.register
-            update_wrapper(_method, self.func)
-            return _method
-
-        @property
-        def __isabstractmethod__(self):
-            return getattr(self.func, '__isabstractmethod__', False)
+    @property
+    def __isabstractmethod__(self):
+        return getattr(self.func, '__isabstractmethod__', False)
 

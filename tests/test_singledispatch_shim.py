@@ -2,6 +2,9 @@
 
 """test_singledispatch_shim.py -- test code for ts2python's singledispatch"""
 
+from __future__ import annotations
+
+# from functools import singledispatch, singledispatchmethod
 from typing import List, Union
 from ts2python.singledispatch_shim import singledispatch, singledispatchmethod
 
@@ -40,7 +43,7 @@ class A:
         pass
 
     @func.register
-    def _(self, param: 'C', a: int):
+    def _(self, param: C, a: int):
         return a
     @func.register
     def _(self, b: complex, c: float):

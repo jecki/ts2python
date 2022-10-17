@@ -666,18 +666,30 @@ class ts2pythonCompiler(Compiler):
         except KeyError:
             return_type = 'Any'
         decorator = node.get_attr('decorator', '')
+        fallback = ""
+        type_error = "raise TypeError(f'First argument {arg1} of single-dispatch " \
+                     "function/method {name} has illegal type {type(arg1)}')"
         if decorator:
-            if decorator.endswith('.register'):  name = '_'
+            if decorator == "@singledispatch":
+                fallback = f"{preface}@singledispatch\ndef {name}(arg1) -> {return_type}:" \
+                           f"\n    {type_error}\n"
+                decorator = f"{name}.register"
+            elif decorator == "@singledispatchmethod":
+                fallback = f"{preface}singledispatchmethod\ndef {name}(self, arg1) -> {return_type}:" \
+                           f"\n    {type_error}\n"
+                decorator = f"{name}.register"
+            else:  assert decorator.endswith('.register')
+            name = '_'
             decorator += '\n'
-        pyfunc = f"{preface}\n{decorator}def {name}({arguments}) -> {return_type}:\n    pass"
+        pyfunc = f"{decorator}def {name}({arguments}) -> {return_type}:\n    pass"
         if is_constructor:
             interface = pick_from_path(self.path, 'interface', reverse=True)
             assert interface
             interface.attr['preface'] = ''.join([
-                interface.get_attr('preface', ''), pyfunc, '\n'])
+                interface.get_attr('preface', ''), f"\n{preface}{pyfunc}", '\n'])
             return ''
         else:
-            return pyfunc
+            return f"{fallback}\n{preface}{pyfunc}"
 
     def on_arg_list(self, node) -> str:
         breadcrumb = '/'.join(nd.name for nd in self.path)

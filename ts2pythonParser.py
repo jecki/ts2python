@@ -30,7 +30,7 @@ import keyword
 from functools import partial, lru_cache
 import os
 import sys
-from typing import Tuple, List, Union, Any, Callable, Set, Dict, Sequence
+from typing import Tuple, List, Union, Any, Callable, Set, Dict, Sequence, cast
 
 
 try:
@@ -95,7 +95,7 @@ def preprocessor_factory() -> PreprocessorFunc:
     return chain_preprocessors(include_prep, tokenizing_prep)
 
 
-get_preprocessor = ThreadLocalSingletonFactory(preprocessor_factory, ident=1)
+get_preprocessor = ThreadLocalSingletonFactory(preprocessor_factory)
 
 
 #######################################################################
@@ -116,7 +116,7 @@ class ts2pythonGrammar(Grammar):
     literal = Forward()
     type = Forward()
     types = Forward()
-    source_hash__ = "1df05a5e0419bbeccb6a6dc0d26a756f"
+    source_hash__ = "78f0bf127eb18af0d7d13aa2aae2cf3f"
     disposable__ = re.compile('INT$|NEG$|FRAC$|DOT$|EXP$|EOF$|_array_ellipsis$|_top_level_assignment$|_top_level_literal$|_quoted_identifier$|_root$|_namespace$|_part$')
     static_analysis_pending__ = []  # type: List[bool]
     parser_initialization__ = ["upon instantiation"]
@@ -234,13 +234,19 @@ ts2python_AST_transformation_table = {
 }
 
 
+def _run_ts2python_AST_transformation(root: RootNode, transformation_table) -> RootNode:
+    root = cast(RootNode, traverse(root, transformation_table=transformation_table))
+    root.stage = 'ast'
+    return root
+
 def ts2pythonTransformer() -> TransformerCallable:
     """Creates a transformation function that does not share state with other
     threads or processes."""
-    return partial(traverse, transformation_table=ts2python_AST_transformation_table.copy())
+    return partial(_run_ts2python_AST_transformation,
+                   transformation_table=ts2python_AST_transformation_table.copy())
 
 
-get_transformer = ThreadLocalSingletonFactory(ts2pythonTransformer, ident=1)
+get_transformer = ThreadLocalSingletonFactory(ts2pythonTransformer)
 
 
 def transform_ts2python(cst):
@@ -1018,7 +1024,7 @@ class ts2pythonCompiler(Compiler):
         return identifier
 
 
-get_compiler = ThreadLocalSingletonFactory(ts2pythonCompiler, ident=1)
+get_compiler = ThreadLocalSingletonFactory(ts2pythonCompiler)
 
 
 def compile_ts2python(ast):

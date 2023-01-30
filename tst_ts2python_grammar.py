@@ -21,8 +21,8 @@ try:
     import DHParser.log
     from DHParser import testing
 except ModuleNotFoundError:
-    print('Could not import DHParser. Please adjust sys.path in file '
-          '"%s" manually' % __file__)
+    print(f'Could not import DHParser. Please, adjust sys.path in file '
+          f'"{__file__}" manually. Current path: {sys.path}')
     sys.exit(1)
 
 
@@ -41,7 +41,12 @@ def recompile_grammar(grammar_src, compiler_name, force=False):
 
 
 def run_grammar_tests(fn_pattern, get_grammar, get_transformer, get_compiler):
-    testdir = os.path.join(scriptpath, TEST_DIRNAME)
+    if fn_pattern.find('/') >= 0 or fn_pattern.find('\\') >= 0:
+        testdir, fn_pattern = os.path.split(fn_pattern)
+        if not testdir.startswith('/') or not testdir[1:2] == ':':
+            testdir = os.path.abspath(testdir)
+    else:
+        testdir = os.path.join(scriptpath, TEST_DIRNAME)
     DHParser.log.start_logging(os.path.join(testdir, LOGGING))
     error_report = testing.grammar_suite(
         testdir, get_grammar, get_transformer,

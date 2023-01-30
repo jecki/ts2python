@@ -30,7 +30,7 @@ import keyword
 from functools import partial, lru_cache
 import os
 import sys
-from typing import Tuple, List, Union, Any, Callable, Set, Dict, Sequence
+from typing import Tuple, List, Union, Any, Callable, Set, Dict, Sequence, cast
 
 
 try:
@@ -95,7 +95,7 @@ def preprocessor_factory() -> PreprocessorFunc:
     return chain_preprocessors(include_prep, tokenizing_prep)
 
 
-get_preprocessor = ThreadLocalSingletonFactory(preprocessor_factory, ident=1)
+get_preprocessor = ThreadLocalSingletonFactory(preprocessor_factory)
 
 
 #######################################################################
@@ -116,7 +116,7 @@ class ts2pythonGrammar(Grammar):
     literal = Forward()
     type = Forward()
     types = Forward()
-    source_hash__ = "1df05a5e0419bbeccb6a6dc0d26a756f"
+    source_hash__ = "78f0bf127eb18af0d7d13aa2aae2cf3f"
     disposable__ = re.compile('INT$|NEG$|FRAC$|DOT$|EXP$|EOF$|_array_ellipsis$|_top_level_assignment$|_top_level_literal$|_quoted_identifier$|_root$|_namespace$|_part$')
     static_analysis_pending__ = []  # type: List[bool]
     parser_initialization__ = ["upon instantiation"]
@@ -234,13 +234,19 @@ ts2python_AST_transformation_table = {
 }
 
 
+def _run_ts2python_AST_transformation(root: RootNode, transformation_table) -> RootNode:
+    root = cast(RootNode, traverse(root, transformation_table=transformation_table))
+    root.stage = 'ast'
+    return root
+
 def ts2pythonTransformer() -> TransformerCallable:
     """Creates a transformation function that does not share state with other
     threads or processes."""
-    return partial(traverse, transformation_table=ts2python_AST_transformation_table.copy())
+    return partial(_run_ts2python_AST_transformation,
+                   transformation_table=ts2python_AST_transformation_table.copy())
 
 
-get_transformer = ThreadLocalSingletonFactory(ts2pythonTransformer, ident=1)
+get_transformer = ThreadLocalSingletonFactory(ts2pythonTransformer)
 
 
 def transform_ts2python(cst):
@@ -666,18 +672,30 @@ class ts2pythonCompiler(Compiler):
         except KeyError:
             return_type = 'Any'
         decorator = node.get_attr('decorator', '')
+        fallback = ""
+        type_error = "raise TypeError(f'First argument {arg1} of single-dispatch " \
+                     "function/method {name} has illegal type {type(arg1)}')"
         if decorator:
-            if decorator.endswith('.register'):  name = '_'
+            if decorator == "@singledispatch":
+                fallback = f"{preface}@singledispatch\ndef {name}(arg1) -> {return_type}:" \
+                           f"\n    {type_error}\n"
+                decorator = f"{name}.register"
+            elif decorator == "@singledispatchmethod":
+                fallback = f"{preface}singledispatchmethod\ndef {name}(self, arg1) -> {return_type}:" \
+                           f"\n    {type_error}\n"
+                decorator = f"{name}.register"
+            else:  assert decorator.endswith('.register')
+            name = '_'
             decorator += '\n'
-        pyfunc = f"{preface}\n{decorator}def {name}({arguments}) -> {return_type}:\n    pass"
+        pyfunc = f"{decorator}def {name}({arguments}) -> {return_type}:\n    pass"
         if is_constructor:
             interface = pick_from_path(self.path, 'interface', reverse=True)
             assert interface
             interface.attr['preface'] = ''.join([
-                interface.get_attr('preface', ''), pyfunc, '\n'])
+                interface.get_attr('preface', ''), f"\n{preface}{pyfunc}", '\n'])
             return ''
         else:
-            return pyfunc
+            return f"{fallback}\n{preface}{pyfunc}"
 
     def on_arg_list(self, node) -> str:
         breadcrumb = '/'.join(nd.name for nd in self.path)
@@ -967,7 +985,7 @@ class ts2pythonCompiler(Compiler):
         name = self.compile(node['identifier'])
         return TYPE_NAME_SUBSTITUTION.get(name, name)
 
-    def compile_type_expression(self, node, type_node):
+    def compile_type_expression(self, node, type_node) -> str:
         unknown_types = set(tn.content for tn in node.select('type_name')
                             if not self.is_known_type(tn.content))
         type_expression = self.compile(type_node)
@@ -1006,7 +1024,7 @@ class ts2pythonCompiler(Compiler):
         return identifier
 
 
-get_compiler = ThreadLocalSingletonFactory(ts2pythonCompiler, ident=1)
+get_compiler = ThreadLocalSingletonFactory(ts2pythonCompiler)
 
 
 def compile_ts2python(ast):

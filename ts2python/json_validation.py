@@ -27,7 +27,7 @@ from typing import Union, List, Tuple, Optional, Dict, Any, \
 try:
     from typing_extensions import GenericMeta, \
         ClassVar, Final, Protocol, NoReturn
-except ImportError:
+except (ImportError, ModuleNotFoundError):
     from .typing_extensions import GenericMeta, \
         ClassVar, Final, Protocol, NoReturn
 # try:
@@ -46,9 +46,9 @@ except ImportError:
 #         except AttributeError:
 #             return Generic
 try:
-    from typeddict_shim import TypedDict, GenericTypedDict, _TypedDictMeta, get_origin
+    from typeddict_shim import TypedDict, GenericTypedDict, _TypedDictMeta, get_origin, ForwardRef
 except (ImportError, ModuleNotFoundError):
-    from .typeddict_shim import TypedDict, GenericTypedDict, _TypedDictMeta, get_origin
+    from .typeddict_shim import TypedDict, GenericTypedDict, _TypedDictMeta, get_origin, ForwardRef
 
 
 
@@ -58,6 +58,22 @@ __all__ = ['validate_type', 'type_check', 'validate_uniform_sequence']
 def strdata(data: Any) -> str:
     datastr = str(data)
     return datastr[:10] + '...' if len(datastr) > 10 else datastr
+
+
+def resolve_forward_refs(T: type, Ur_T: type = None) -> type:
+    """Resolves all forward references found in T."""
+    if isinstance(T, ForwardRef):
+        if Ur_T is None:  Ur_T = T
+        if sys.version_info >= (3, 9, 0):
+            recursive_guard = set()
+            T = T._evaluate(globals(), sys.modules[Ur_T.__module__].__dict__, recursive_guard)
+        else:
+           T = T._evaluate(globals(), sys.modules[Ur_T.__module__].__dict__)
+        T = resolve_forward_refs(T, Ur_T)
+    elif str(T).find('ForwardRef') >= 0:
+        if Ur_T is None:  Ur_T = T
+        T.__args__ = tuple(resolve_forward_refs(arg, Ur_T) for arg in T.__args__)
+    return T
 
 
 def validate_enum(val: Any, typ: Enum):
@@ -216,6 +232,10 @@ def validate_TypedDict(D: Dict, T: _TypedDictMeta):
     for field, field_type in get_type_hints(T).items():
         if field not in D:
             continue
+        resolved_field_type = resolve_forward_refs(field_type, T)
+        if resolved_field_type != field_type:
+            field_type = resolved_field_type
+            T.__annotations__[field] = field_type
         if isinstance(field_type, _TypedDictMeta):
             value = D[field]
             if isinstance(value, Dict):
@@ -226,6 +246,8 @@ def validate_TypedDict(D: Dict, T: _TypedDictMeta):
         elif get_origin(field_type) is Union:
             value = D[field]
             for union_typ in field_type.__args__:
+                # if isinstance(union_typ, ForwardRef):
+                #     union_typ = union_typ._evaluate(globals(), sys.modules[T.__module__].__dict__)
                 if isinstance(union_typ, _TypedDictMeta):
                     if isinstance(value, Dict):
                         try:
@@ -243,8 +265,8 @@ def validate_TypedDict(D: Dict, T: _TypedDictMeta):
                     break
             else:
                 # TODO: bugfix?
-                type_errors.append(f"Field {field}: '{strdata(D[field])}' is not of {field_type}, "
-                                   f"but of type {type(D[field])}")
+                type_errors.append(f"Field {field}: '{strdata(D[field])}' is not any of "
+                                   f"{field_type}, but of type {type(D[field])}")
         elif hasattr(field_type, '__args__'):
             validate_compound_type(D[field], field_type)
         elif isinstance(field_type, TypeVar):
@@ -267,12 +289,15 @@ def type_check(func: Callable, check_return_type: bool = True) -> Callable:
     the type check. Likewise, the return type.
 
     Example::
+
     >>> class Position(TypedDict, total=True):
     ...     line: int
     ...     character: int
     >>> class Range(TypedDict, total=True):
     ...     start: Position
     ...     end: Position
+    >>> # just a fix for doctest stumbling over ForwardRef:
+    >>> Range.__annotations__ = {'start': Position, 'end': Position}
     >>> @type_check
     ... def middle_line(rng: Range) -> Position:
     ...     line = (rng['start']['line'] + rng['end']['line']) // 2

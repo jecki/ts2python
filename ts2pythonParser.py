@@ -69,6 +69,8 @@ from DHParser import start_logging, suspend_logging, resume_logging, is_filename
     gen_find_include_func, preprocess_includes, make_preprocessor, chain_preprocessors, \
     pick_from_path, json_dumps, RootNode, get_config_values, md5, StringView, as_list
 
+from DHParser.dsl import PseudoJunction, create_parser_transition
+
 
 #######################################################################
 #
@@ -116,7 +118,7 @@ class ts2pythonGrammar(Grammar):
     literal = Forward()
     type = Forward()
     types = Forward()
-    source_hash__ = "042f835ce0a8aea2deeea6b9bcb2f93e"
+    source_hash__ = "a632f7e03e8592296269c3f6e1fccdde"
     disposable__ = re.compile('INT$|NEG$|FRAC$|DOT$|EXP$|EOF$|_array_ellipsis$|_top_level_assignment$|_top_level_literal$|_quoted_identifier$|_root$|_namespace$|_part$')
     static_analysis_pending__ = []  # type: List[bool]
     parser_initialization__ = ["upon instantiation"]
@@ -200,24 +202,10 @@ class ts2pythonGrammar(Grammar):
                       'module': [re.compile(r'(?=export|$)')]}
     root__ = TreeReduction(_root, CombinedParser.MERGE_TREETOPS)
     
-
-_raw_grammar = ThreadLocalSingletonFactory(ts2pythonGrammar)
-
-def get_grammar() -> ts2pythonGrammar:
-    grammar = _raw_grammar()
-    if get_config_value('resume_notices'):
-        resume_notices_on(grammar)
-    elif get_config_value('history_tracking'):
-        set_tracer(grammar, trace_history)
-    try:
-        if not grammar.__class__.python_src__:
-            grammar.__class__.python_src__ = get_grammar.python_src__
-    except AttributeError:
-        pass
-    return grammar
     
-def parse_ts2python(document, start_parser = "root_parser__", *, complete_match=True):
-    return get_grammar()(document, start_parser, complete_match=complete_match)
+parsing: PseudoJunction = create_parser_transition(
+    ts2pythonGrammar)
+get_grammar = parsing.factory # for backwards compatibility, only    
 
 
 #######################################################################

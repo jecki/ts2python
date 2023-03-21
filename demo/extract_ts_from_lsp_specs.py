@@ -5,9 +5,12 @@ specification of the language server protocol:
 https://github.com/microsoft/language-server-protocol/tree/gh-pages/_specifications
 """
 
+import re
+
+
 LSP_SPEC_SOURCE = \
     "https://raw.githubusercontent.com/microsoft/language-server-protocol/" \
-    "gh-pages/_specifications/specification-3-16.md"
+    "gh-pages/_specifications/lsp/3.17/specification.md"
 
 
 def extract(specs, dest):
@@ -27,7 +30,7 @@ def extract(specs, dest):
         f.write('\n'.join(ts))
 
 
-def download_specs(url: str) -> str:
+def download_specfile(url: str) -> str:
     import urllib.request
     max_indirections = 2
     while max_indirections > 0:
@@ -38,12 +41,33 @@ def download_specs(url: str) -> str:
         else:
             with open(url, 'rb') as f:
                 specs = f.read()
-        if len(specs) < 255:
+        if len(specs) < 255 and specs.find(b'\n') < 0:
             url = url[: url.rfind('/') + 1] + specs.decode('utf-8').strip()
             max_indirections -= 1
         else:
             max_indirections = 0
     return specs.decode('utf-8')
+
+
+RX_INCLUDE = re.compile(r'{%\s*include_relative\s*([A-Za-z/.]+?\.md)\s*%}')
+
+
+def download_specs(url: str) -> str:
+    specfile = download_specfile(url)
+    url_path = url[:url.rfind('/') + 1]
+    parts = []
+    e = 0
+    for m in RX_INCLUDE.finditer(specfile):
+        s = m.start()
+        parts.append(specfile[e:s])
+        relpath = m.group(1)
+        incl_url = url_path + relpath
+        include = download_specs(incl_url)
+        parts.append(include)
+        e = m.end()
+    parts.append(specfile[e:])
+    specs = ''.join(parts)
+    return specs
 
 
 if __name__ == "__main__":

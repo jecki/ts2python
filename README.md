@@ -197,8 +197,12 @@ or [nose](https://nose.readthedocs.io), in case you have
 either of theses testing-frameworks installed.
 
 For a demonstration how the TypeScript-Interfaces are transpiled
-to Python-code, run the `demo.sh`-script (or `demo.bat` on Windows)
+to Python-code, run the `demo-3-16.sh`-script (or `demo-3-16.bat` on Windows)
 in the "demo"-sub-directory or the ts2python-repository. 
+
+(Presently, this does not work with the LSP 3.17 specs, because the
+specs contain typescript bugs at a few places and thus would need to 
+be corrected by hand after downloading.)
 
 Or, run the `tst_ts2python_grammar.py` in the ts2python-directory
 and look up the grammar-test-reports in the "REPORT"-sub-directory 

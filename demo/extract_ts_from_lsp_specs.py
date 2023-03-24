@@ -10,7 +10,13 @@ import re
 
 LSP_SPEC_SOURCE = \
     "https://raw.githubusercontent.com/microsoft/language-server-protocol/" \
-    "gh-pages/_specifications/lsp/3.17/specification.md"
+    "gh-pages/_specifications/lsp/3.18/specification.md"
+
+
+def top_level_literal(l):
+    if l[0:1] in ("{", "["):
+        return True
+    return False
 
 
 def extract(specs, dest):
@@ -25,7 +31,10 @@ def extract(specs, dest):
             ts.append('')
         else:
             if copy_flag:
-                ts.append(l)
+                if top_level_literal(l):
+                    copy_flag = False  # exclude top-level-literals
+                elif l[0:2] != "//":
+                    ts.append(l)
     with open(dest, 'w', encoding='utf-8') as f:
         f.write('\n'.join(ts))
 
@@ -61,6 +70,7 @@ def download_specs(url: str) -> str:
         s = m.start()
         parts.append(specfile[e:s])
         relpath = m.group(1)
+        parts.append(f'\n```typescript\n\n/* source file: "{relpath}" */\n```\n')
         incl_url = url_path + relpath
         include = download_specs(incl_url)
         parts.append(include)

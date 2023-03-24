@@ -51,7 +51,7 @@ module      = "declare" "module" _quoted_identifier "{" document "}"
 #######################################################################
 
 interface   = ["export"] ("interface"|"class") §identifier [type_parameters]
-              [extends] declarations_block
+              [extends] declarations_block [";"]
 extends     = "extends" (generic_type|type_name) { "," (generic_type|type_name)}
 
 declarations_block = "{" [(function|declaration) { [";"] (function|declaration) }
@@ -163,7 +163,7 @@ boolean    = (`true` | `false`) ~
 string     = /"[^"\n]*"/~ | /'[^'\n]*'/~
 array      = "[" [ literal { "," literal } ] "]"
 object     = "{" [ association { "," association } ] [","] "}"
-  association = name ":" literal
+  association = name §":" literal
   name        = identifier | '"' identifier '"'
 
 #######################################################################

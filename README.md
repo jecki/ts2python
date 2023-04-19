@@ -14,7 +14,7 @@ of JSON-data.
 
 ts2python is open source software under the [Apache 2.0 License](https://www.apache.org/licenses/LICENSE-2.0)
 
-Copyright 2021 Eckhart Arnold <arnold@badw.de>, Bavarian Academy of Sciences and Humanities
+Copyright 2021-2023 Eckhart Arnold <arnold@badw.de>, Bavarian Academy of Sciences and Humanities
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.

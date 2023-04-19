@@ -47,7 +47,7 @@ packages = [
 
 [tool.poetry.dependencies]
 python = "^3.7"
-DHParser = { version = "~1.2", optional = false }
+DHParser = { version = "~1.4", optional = false }
 typing_extensions = { version = "^4.0", optional = true }
 
 [tool.poetry.scripts]

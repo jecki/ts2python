@@ -1,0 +1,6 @@
+Version 0.6.7
+-------------
+
+- Use of NotRequired (PEP 655) instead of "Optional" now default.
+- typeddict_shim is not needed, anymore, for Python 3.11 and above.
+- compatibility with DHParser 1.4.2

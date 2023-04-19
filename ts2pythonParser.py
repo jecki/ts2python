@@ -269,6 +269,8 @@ else:
 """
 
 TYPEDDICT_IMPORTS = """
+
+
 try:
     from ts2python.typeddict_shim import TypedDict, GenericTypedDict, NotRequired, Literal
     # Overwrite typing.TypedDict for Runtime-Validation
@@ -314,8 +316,8 @@ except ImportError:
               f"singledispatchmethod is needed, anywhere!")     
 """
 
-PEP655_IMPORTS = """
-"""
+# PEP655_IMPORTS = """
+# """
 
 
 def to_typename(varname: str) -> str:
@@ -376,7 +378,7 @@ class ts2pythonCompiler(Compiler):
         self.use_enums = get_config_value('ts2python.UseEnum', True)
         self.use_type_union = get_config_value('ts2python.UseTypeUnion', False)
         self.use_literal_type = get_config_value('ts2python.UseLiteralType', True)
-        self.use_not_required = get_config_value('ts2python.UseNotRequired', False)
+        self.use_not_required = get_config_value('ts2python.UseNotRequired', True)
 
         self.overloaded_type_names: Set[str] = set()
         self.known_types: List[Set[str]] = [
@@ -431,8 +433,8 @@ class ts2pythonCompiler(Compiler):
                 GENERAL_IMPORTS, TYPEDDICT_IMPORTS, FUNCTOOLS_IMPORTS,
                 self.additional_imports, chksum, '\n##### BEGIN OF LSP SPECS\n'
             ]
-            if self.base_class_name == 'TypedDict':
-                code_blocks.append(PEP655_IMPORTS)
+            # if self.base_class_name == 'TypedDict':
+            #     code_blocks.append(PEP655_IMPORTS)
         else:
             code_blocks = []
         code_blocks.append(python_code)

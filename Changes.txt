@@ -1,4 +1,4 @@
-Version 0.6.7
+Version 0.6.8
 -------------
 
 - Use of NotRequired (PEP 655) instead of "Optional" now default.

@@ -754,7 +754,8 @@ class ts2pythonCompiler(Compiler):
         if self.use_literal_type and \
                 any(nd[0].name == 'literal' for nd in node.children):
             assert all(nd[0].name == 'literal' for nd in node.children)
-            return f"Literal[{', '.join(union)}]"
+            # return f"Literal[{', '.join(union)}]"
+            return f"Literal[{', '.join(nd.content for nd in node.children)}]"
         elif self.use_type_union or len(union) <= 1:
             return preface + '|'.join(union)
         else:

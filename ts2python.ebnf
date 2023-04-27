@@ -82,7 +82,7 @@ optional    = "?"
 
 type_alias  = ["export"] "type" §identifier [type_parameters] "=" types ";"
 
-types       = (intersection | type) { "|" (intersection | type) }
+types       = ["|"] (intersection | type) { "|" (intersection | type) }
 intersection = type { "&" §type }+
 type        = array_of | basic_type | generic_type | type_name
              | "(" types ")" | mapped_type | declarations_block | type_tuple
@@ -90,7 +90,7 @@ type        = array_of | basic_type | generic_type | type_name
 
 generic_type = type_name type_parameters
   type_parameters = "<" §parameter_types { "," parameter_types } ">"
-  parameter_types = parameter_type  { "|" parameter_type }
+  parameter_types = ["|"] parameter_type  { "|" parameter_type }
   parameter_type  = array_of | basic_type | generic_type     # actually, only a subset of array_of
                   | type_name [extends_type] [equals_type]
                   | declarations_block | type_tuple

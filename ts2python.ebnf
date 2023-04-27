@@ -94,7 +94,7 @@ generic_type = type_name type_parameters
   parameter_type  = array_of | basic_type | generic_type     # actually, only a subset of array_of
                   | type_name [extends_type] [equals_type]
                   | declarations_block | type_tuple
-  extends_type = "extends" (basic_type|type_name)
+  extends_type = "extends" (basic_type|type_name)   # add declarations block, here
   equals_type  = "=" (basic_type|type_name)
 
 array_of    = [ "readonly" ] array_types "[]"

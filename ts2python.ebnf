@@ -50,7 +50,7 @@ module      = "declare" "module" _quoted_identifier "{" document "}"
 #
 #######################################################################
 
-interface   = ["export"] ("interface"|"class") §identifier [type_parameters]
+interface   = ["export"] ["declare"] ("interface"|"class") §identifier [type_parameters]
               [extends] declarations_block [";"]
 extends     = "extends" (generic_type|type_name) { "," (generic_type|type_name)}
 

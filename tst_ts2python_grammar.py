@@ -81,8 +81,9 @@ if __name__ == '__main__':
                           os.path.join(scriptpath, 'ts2pythonParser.py'),
                           force=False)
         sys.path.append('.')
-        from ts2pythonParser import get_grammar, get_transformer, get_compiler
-        error_report = run_grammar_tests(arg, get_grammar, get_transformer, get_compiler)
+        from ts2pythonParser import parsing, ASTTransformation, compiling
+        error_report = run_grammar_tests(arg, parsing.factory,
+                                         ASTTransformation.factory, compiling.factory)
         if error_report:
             print('\n')
             print(error_report)

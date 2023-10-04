@@ -44,32 +44,44 @@ try:
     import regex as re
 except ImportError:
     import re
-from DHParser import start_logging, suspend_logging, resume_logging, is_filename, load_if_file, \
-    Grammar, Compiler, nil_preprocessor, PreprocessorToken, Whitespace, Drop, AnyChar, \
-    Lookbehind, Lookahead, Alternative, Pop, Text, Synonym, Counted, Interleave, INFINITE, \
-    Option, NegativeLookbehind, OneOrMore, RegExp, Retrieve, Series, Capture, TreeReduction, \
-    ZeroOrMore, Forward, NegativeLookahead, Required, CombinedParser, mixin_comment, \
-    compile_source, grammar_changed, last_value, matching_bracket, PreprocessorFunc, is_empty, \
-    remove_if, Node, TransformerCallable, TransformationDict, transformation_factory, traverse, \
-    remove_children_if, normalize_whitespace, is_anonymous, \
-    reduce_single_child, replace_by_single_child, replace_or_reduce, remove_whitespace, \
-    replace_by_children, remove_empty, remove_tokens, flatten, all_of, any_of, \
-    merge_adjacent, collapse, collapse_children_if, transform_result, WHITESPACE_PTYPE, \
-    TOKEN_PTYPE, remove_children, remove_content, remove_brackets, change_name, \
-    remove_anonymous_tokens, keep_children, is_one_of, not_one_of, has_content, apply_if, peek, \
-    remove_anonymous_empty, keep_nodes, traverse_locally, strip, lstrip, rstrip, \
-    replace_content_with, forbid, assert_content, remove_infix_operator, \
-    add_error, error_on, recompile_grammar, left_associative, lean_left, set_config_value, \
-    get_config_value, node_maker, access_thread_locals, access_presets, PreprocessorResult, \
-    finalize_presets, ErrorCode, RX_NEVER_MATCH, set_tracer, resume_notices_on, \
-    trace_history, has_descendant, neg, has_ancestor, optional_last_value, insert, \
-    positions_of, replace_child_names, add_attributes, delimit_children, merge_connected, \
-    has_attr, has_parent, ThreadLocalSingletonFactory, Error, canonical_error_strings, \
-    has_errors, WARNING, ERROR, FATAL, set_preset_value, get_preset_value, NEVER_MATCH_PATTERN, \
-    gen_find_include_func, preprocess_includes, make_preprocessor, chain_preprocessors, \
-    pick_from_path, json_dumps, RootNode, get_config_values, md5, StringView, as_list
 
-from DHParser.dsl import PseudoJunction, create_parser_transition
+from DHParser.compile import Compiler, compile_source, Junction, full_compile
+from DHParser.configuration import set_config_value, get_config_value, access_thread_locals, \
+    access_presets, finalize_presets, set_preset_value, get_preset_value, NEVER_MATCH_PATTERN, \
+    get_config_values
+from DHParser import dsl
+from DHParser.dsl import recompile_grammar, create_parser_junction, \
+    create_preprocess_junction, create_junction, PseudoJunction, never_cancel
+from DHParser.ebnf import grammar_changed
+from DHParser.error import ErrorCode, Error, canonical_error_strings, has_errors, NOTICE, \
+    WARNING, ERROR, FATAL
+from DHParser.log import start_logging, suspend_logging, resume_logging
+from DHParser.nodetree import Node, WHITESPACE_PTYPE, TOKEN_PTYPE, RootNode, Path, pick_from_path
+from DHParser.parse import Grammar, PreprocessorToken, Whitespace, Drop, AnyChar, Parser, \
+    Lookbehind, Lookahead, Alternative, Pop, Text, Synonym, Counted, Interleave, INFINITE, ERR, \
+    Option, NegativeLookbehind, OneOrMore, RegExp, Retrieve, Series, Capture, TreeReduction, \
+    ZeroOrMore, Forward, NegativeLookahead, Required, CombinedParser, Custom, mixin_comment, \
+    last_value, matching_bracket, optional_last_value
+from DHParser.preprocess import nil_preprocessor, PreprocessorFunc, PreprocessorResult, \
+    gen_find_include_func, preprocess_includes, make_preprocessor, chain_preprocessors
+from DHParser.stringview import StringView
+from DHParser.toolkit import is_filename, load_if_file, cpu_count, RX_NEVER_MATCH, \
+    ThreadLocalSingletonFactory, expand_table, md5, as_list
+from DHParser.trace import set_tracer, resume_notices_on, trace_history
+from DHParser.transform import is_empty, remove_if, TransformationDict, TransformerFunc, \
+    transformation_factory, remove_children_if, move_fringes, normalize_whitespace, \
+    is_anonymous, name_matches, reduce_single_child, replace_by_single_child, replace_or_reduce, \
+    remove_whitespace, replace_by_children, remove_empty, remove_tokens, flatten, all_of, \
+    any_of, transformer, merge_adjacent, collapse, collapse_children_if, transform_result, \
+    remove_children, remove_content, remove_brackets, change_name, remove_anonymous_tokens, \
+    keep_children, is_one_of, not_one_of, content_matches, apply_if, peek, \
+    remove_anonymous_empty, keep_nodes, traverse_locally, strip, lstrip, rstrip, \
+    replace_content_with, forbid, assert_content, remove_infix_operator, add_error, error_on, \
+    left_associative, lean_left, node_maker, has_descendant, neg, has_ancestor, insert, \
+    positions_of, replace_child_names, add_attributes, delimit_children, merge_connected, \
+    has_attr, has_parent, has_children, has_child, apply_unless, apply_ifelse, traverse, \
+    TransformerCallable
+from DHParser import parse as parse_namespace__
 
 
 #######################################################################
@@ -78,9 +90,11 @@ from DHParser.dsl import PseudoJunction, create_parser_transition
 #
 #######################################################################
 
-RE_INCLUDE = NEVER_MATCH_PATTERN
-# To capture includes, replace the NEVER_MATCH_PATTERN 
+# To capture includes, replace the NEVER_MATCH_PATTERN
 # by a pattern with group "name" here, e.g. r'\input{(?P<name>.*)}'
+RE_INCLUDE = NEVER_MATCH_PATTERN
+RE_COMMENT = '(?:\\/\\/.*)|(?:\\/\\*(?:.|\\n)*?\\*\\/)'
+
 
 
 def ts2pythonTokenizer(original_text) -> Tuple[str, List[Error]]:
@@ -88,16 +102,18 @@ def ts2pythonTokenizer(original_text) -> Tuple[str, List[Error]]:
     # to the source code and returns the modified source.
     return original_text, []
 
+# def preprocessor_factory() -> PreprocessorFunc:
+#     # below, the second parameter must always be the same as ts2pythonGrammar.COMMENT__!
+#     find_next_include = gen_find_include_func(RE_INCLUDE, '(?:\\/\\/.*)|(?:\\/\\*(?:.|\\n)*?\\*\\/)')
+#     include_prep = partial(preprocess_includes, find_next_include=find_next_include)
+#     tokenizing_prep = make_preprocessor(ts2pythonTokenizer)
+#     return chain_preprocessors(include_prep, tokenizing_prep)
+#
+#
+# get_preprocessor = ThreadLocalSingletonFactory(preprocessor_factory)
 
-def preprocessor_factory() -> PreprocessorFunc:
-    # below, the second parameter must always be the same as ts2pythonGrammar.COMMENT__!
-    find_next_include = gen_find_include_func(RE_INCLUDE, '(?:\\/\\/.*)|(?:\\/\\*(?:.|\\n)*?\\*\\/)')
-    include_prep = partial(preprocess_includes, find_next_include=find_next_include)
-    tokenizing_prep = make_preprocessor(ts2pythonTokenizer)
-    return chain_preprocessors(include_prep, tokenizing_prep)
-
-
-get_preprocessor = ThreadLocalSingletonFactory(preprocessor_factory)
+preprocessing: PseudoJunction = create_preprocess_junction(
+    ts2pythonTokenizer, RE_INCLUDE, RE_COMMENT)
 
 
 #######################################################################
@@ -118,7 +134,8 @@ class ts2pythonGrammar(Grammar):
     literal = Forward()
     type = Forward()
     types = Forward()
-    source_hash__ = "3d4013980e6617b25135117efd447d91"
+    source_hash__ = "2703a9ce5d85615e8ea4e7b64044a036"
+    early_tree_reduction__ = CombinedParser.MERGE_TREETOPS
     disposable__ = re.compile('INT$|NEG$|FRAC$|DOT$|EXP$|EOF$|_array_ellipsis$|_top_level_assignment$|_top_level_literal$|_quoted_identifier$|_root$|_namespace$|_part$')
     static_analysis_pending__ = []  # type: List[bool]
     parser_initialization__ = ["upon instantiation"]
@@ -200,12 +217,9 @@ class ts2pythonGrammar(Grammar):
                       '_top_level_assignment': [re.compile(r'(?=export|$)')],
                       '_top_level_literal': [re.compile(r'(?=export|$)')],
                       'module': [re.compile(r'(?=export|$)')]}
-    root__ = TreeReduction(_root, CombinedParser.MERGE_TREETOPS)
-    
-    
-parsing: PseudoJunction = create_parser_transition(
-    ts2pythonGrammar)
-get_grammar = parsing.factory # for backwards compatibility, only    
+    root__ = _root
+        
+parsing: PseudoJunction = create_parser_junction(ts2pythonGrammar)
 
 
 #######################################################################
@@ -222,24 +236,15 @@ ts2python_AST_transformation_table = {
 }
 
 
-def _run_ts2python_AST_transformation(root: RootNode, transformation_table) -> RootNode:
-    root = cast(RootNode, traverse(root, transformation_table=transformation_table))
-    root.stage = 'ast'
-    return root
-
 def ts2pythonTransformer() -> TransformerCallable:
     """Creates a transformation function that does not share state with other
     threads or processes."""
-    return partial(_run_ts2python_AST_transformation,
-                   transformation_table=ts2python_AST_transformation_table.copy())
+    return partial(transformer,
+                   transformation_table=ts2python_AST_transformation_table.copy(),
+                   src_stage='cst', dst_stage='ast')
 
-
-get_transformer = ThreadLocalSingletonFactory(ts2pythonTransformer)
-
-
-def transform_ts2python(cst):
-    get_transformer()(cst)
-
+ASTTransformation: Junction = Junction(
+    'cst', ThreadLocalSingletonFactory(ts2pythonTransformer), 'ast')
 
 #######################################################################
 #
@@ -423,6 +428,7 @@ class ts2pythonCompiler(Compiler):
         type_aliases = {nd['identifier'].content for nd in root.select_children('type_alias')}
         namespaces = {nd['identifier'].content for nd in root.select_children('namespace')}
         self.overloaded_type_names = type_aliases & namespaces
+        self.tree.stage = 'py'
         return None
 
     def finalize(self, python_code: Any) -> Any:
@@ -1015,12 +1021,8 @@ class ts2pythonCompiler(Compiler):
         return identifier
 
 
-get_compiler = ThreadLocalSingletonFactory(ts2pythonCompiler)
-
-
-def compile_ts2python(ast):
-    return get_compiler()(ast)
-
+compiling: Junction = create_junction(
+    ts2pythonCompiler, "ast", "test".lower())
 
 #######################################################################
 #
@@ -1033,8 +1035,8 @@ RESULT_FILE_EXTENSION = ".sxpr"  # Change this according to your needs!
 
 def compile_src(source: str) -> Tuple[Any, List[Error]]:
     """Compiles ``source`` and returns (result, errors)."""
-    result_tuple = compile_source(source, get_preprocessor(), get_grammar(), get_transformer(),
-                                  get_compiler())
+    result_tuple = compile_source(source, preprocessing.factory, parsing.factory,
+                                  ASTTransformation.factory, compiling.factory)
     return result_tuple[:2]  # drop the AST at the end of the result tuple
 
 
@@ -1065,7 +1067,7 @@ def process_file(source: str, result_filename: str = '') -> str:
         if source_filename == source:
             with open(source_filename, 'r', encoding='utf-8') as f:
                 source = f.read()
-        m = re.search('source_hash__ *= *"([\w.!? ]*)"', result)
+        m = re.search(r'source_hash__ *= *"([\w.!? ]*)"', result)
         if m and m.groups()[-1] == source_hash(source):
             return ''  # no re-compilation necessary, because source hasn't changed
     result, errors = compile_src(source)
@@ -1145,9 +1147,9 @@ def inspect(test_file_path: str):
     assert test_file_path[-4:] == '.ini'
     from DHParser.testing import unit_from_file
     test_unit = unit_from_file(test_file_path, additional_stages={'py'})
-    grammar = get_grammar()
-    transformer = get_transformer()
-    compiler = get_compiler()
+    grammar = parsing.factory
+    transformer = ASTTransformation.factory
+    compiler = compiling.factory
     results = []
     for parser in test_unit:
         for testname, test_source in test_unit[parser].get('match', dict()).items():

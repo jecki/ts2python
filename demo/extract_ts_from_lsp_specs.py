@@ -58,20 +58,26 @@ def download_specfile(url: str) -> str:
     return specs.decode('utf-8')
 
 
-RX_INCLUDE = re.compile(r'{%\s*include_relative\s*([A-Za-z/.]+?\.md)\s*%}')
+RX_INCLUDE = re.compile(r'{%\s*include_relative\s*(?P<relative>[A-Za-z0-9/.]+?\.md)\s*%}|{%\s*include\s*(?P<absolute>[A-Za-z0-9/.]+?\.md)\s*%}')
 
 
 def download_specs(url: str) -> str:
     specfile = download_specfile(url)
-    url_path = url[:url.rfind('/') + 1]
+    relurl_path = url[:url.rfind('/') + 1]
+    absurl_path = url[:url.find('_specifications/')] + '_includes/'
     parts = []
     e = 0
     for m in RX_INCLUDE.finditer(specfile):
         s = m.start()
         parts.append(specfile[e:s])
-        relpath = m.group(1)
-        parts.append(f'\n```typescript\n\n/* source file: "{relpath}" */\n```\n')
-        incl_url = url_path + relpath
+        if m.group('relative') is not None:
+            incpath = m.group('relative')
+            incl_url = relurl_path + incpath
+        else:
+            assert m.group('absolute') is not None
+            incpath = m.group('absolute')
+            incl_url = absurl_path + incpath
+        parts.append(f'\n```typescript\n\n/* source file: "{incpath}" */\n```\n')
         include = download_specs(incl_url)
         parts.append(include)
         e = m.end()

@@ -50,8 +50,7 @@ from DHParser.configuration import set_config_value, get_config_value, access_th
     access_presets, finalize_presets, set_preset_value, get_preset_value, NEVER_MATCH_PATTERN, \
     get_config_values
 from DHParser import dsl
-from DHParser.dsl import recompile_grammar, create_parser_junction, \
-    create_preprocess_junction, create_junction, PseudoJunction, never_cancel
+from DHParser.dsl import recompile_grammar, never_cancel
 from DHParser.ebnf import grammar_changed
 from DHParser.error import ErrorCode, Error, canonical_error_strings, has_errors, NOTICE, \
     WARNING, ERROR, FATAL
@@ -62,6 +61,8 @@ from DHParser.parse import Grammar, PreprocessorToken, Whitespace, Drop, AnyChar
     Option, NegativeLookbehind, OneOrMore, RegExp, Retrieve, Series, Capture, TreeReduction, \
     ZeroOrMore, Forward, NegativeLookahead, Required, CombinedParser, Custom, mixin_comment, \
     last_value, matching_bracket, optional_last_value
+from DHParser.pipeline import create_parser_junction, create_preprocess_junction, \
+    create_junction, PseudoJunction, full_pipeline, end_points
 from DHParser.preprocess import nil_preprocessor, PreprocessorFunc, PreprocessorResult, \
     gen_find_include_func, preprocess_includes, make_preprocessor, chain_preprocessors
 from DHParser.stringview import StringView
@@ -134,9 +135,9 @@ class ts2pythonGrammar(Grammar):
     literal = Forward()
     type = Forward()
     types = Forward()
-    source_hash__ = "2703a9ce5d85615e8ea4e7b64044a036"
+    source_hash__ = "9e87250150a0f471aae1220c6b4e6aeb"
     early_tree_reduction__ = CombinedParser.MERGE_TREETOPS
-    disposable__ = re.compile('INT$|NEG$|FRAC$|DOT$|EXP$|EOF$|_array_ellipsis$|_top_level_assignment$|_top_level_literal$|_quoted_identifier$|_root$|_namespace$|_part$')
+    disposable__ = re.compile('(?:$.)|(?:INT$|_array_ellipsis$|EXP$|_top_level_assignment$|DOT$|_namespace$|NEG$|_quoted_identifier$|_root$|FRAC$|EOF$|_top_level_literal$|_part$)')
     static_analysis_pending__ = []  # type: List[bool]
     parser_initialization__ = ["upon instantiation"]
     COMMENT__ = r'(?:\/\/.*)|(?:\/\*(?:.|\n)*?\*\/)'
@@ -166,7 +167,7 @@ class ts2pythonGrammar(Grammar):
     integer = Series(INT, NegativeLookahead(RegExp('[.Ee]')), dwsp__)
     type_tuple = Series(Series(Drop(Text("[")), dwsp__), types, ZeroOrMore(Series(Series(Drop(Text(",")), dwsp__), types)), Series(Drop(Text("]")), dwsp__))
     _top_level_literal = Drop(Synonym(literal))
-    _array_ellipsis = Drop(Series(literal, Drop(ZeroOrMore(Drop(Series(Series(Drop(Text(",")), dwsp__), literal))))))
+    _array_ellipsis = Drop(Series(literal, ZeroOrMore(Series(Series(Drop(Text(",")), dwsp__), literal))))
     assignment = Series(variable, Series(Drop(Text("=")), dwsp__), Alternative(literal, variable), Series(Drop(Text(";")), dwsp__))
     _top_level_assignment = Drop(Synonym(assignment))
     const = Series(Option(Series(Drop(Text("export")), dwsp__)), Series(Drop(Text("const")), dwsp__), declaration, Option(Series(Series(Drop(Text("=")), dwsp__), Alternative(literal, identifier))), Series(Drop(Text(";")), dwsp__), mandatory=2)
@@ -220,6 +221,7 @@ class ts2pythonGrammar(Grammar):
     root__ = _root
         
 parsing: PseudoJunction = create_parser_junction(ts2pythonGrammar)
+get_grammar = parsing.factory # for backwards compatibility, only
 
 
 #######################################################################
@@ -1022,7 +1024,35 @@ class ts2pythonCompiler(Compiler):
 
 
 compiling: Junction = create_junction(
-    ts2pythonCompiler, "ast", "test".lower())
+    ts2pythonCompiler, "ast", "py")
+
+
+#######################################################################
+#
+# Processing-Pipeline
+#
+#######################################################################
+
+# Add your own stages to the junctions and target-lists, below
+# (See DHParser.compile for a description of junctions)
+
+# ADD YOUR OWN POST-PROCESSING-JUNCTIONS HERE:
+junctions = set([ASTTransformation, compiling])
+
+# put your targets of interest, here. A target is the name of result (or stage)
+# of any transformation, compilation or postprocessing step after parsing.
+# Serializations of the stages listed here will be written to disk when
+# calling process_file() or batch_process() and also appear in test-reports.
+targets = end_points(junctions)
+# alternative: targets = set([compiling.dst])
+
+# provide a set of those stages for which you would like to see the output
+# in the test-report files, here. (AST is always included)
+test_targets = set(j.dst for j in junctions)
+# alternative: test_targets = targets
+
+# add one or more serializations for those targets that are node-trees
+serializations = expand_table(dict([('*', ['sxpr'])]))
 
 #######################################################################
 #
@@ -1033,11 +1063,11 @@ compiling: Junction = create_junction(
 RESULT_FILE_EXTENSION = ".sxpr"  # Change this according to your needs!
 
 
-def compile_src(source: str) -> Tuple[Any, List[Error]]:
+def compile_src(source: str, target: str = "py") -> Tuple[Any, List[Error]]:
     """Compiles ``source`` and returns (result, errors)."""
-    result_tuple = compile_source(source, preprocessing.factory, parsing.factory,
-                                  ASTTransformation.factory, compiling.factory)
-    return result_tuple[:2]  # drop the AST at the end of the result tuple
+    results = full_pipeline(source, preprocessing.factory, parsing.factory,
+                           junctions, {target})
+    return results[target]
 
 
 def serialize_result(result: Any) -> Union[str, bytes]:

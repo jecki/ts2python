@@ -30,7 +30,8 @@
 _root       = document EOF
 document    = ~ { interface | type_alias | _namespace | enum | const | module
                 | _top_level_assignment | _array_ellipsis | _top_level_literal
-                | ["export"] declaration ";" | ["export"] function ";" }
+                | ["export"] declaration ";" | ["export"] function ";"
+                | Import ";" }
 
 @interface_resume = /(?=export|$)/
 @type_alias_resume = /(?=export|$)/
@@ -43,6 +44,18 @@ document    = ~ { interface | type_alias | _namespace | enum | const | module
 
 module      = "declare" "module" _quoted_identifier "{" document "}"
 
+
+#######################################################################
+#
+#:  Imports
+#
+#######################################################################
+
+Import      = "import" [( symlist | symbol ) "from"] string
+symlist     = "{" symbol { "," symbol } "}"
+symbol      = identifier | wildcard [ "as" alias ]
+alias       = identifier
+wildcard    =   "*"
 
 #######################################################################
 #

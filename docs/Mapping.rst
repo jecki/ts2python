@@ -351,6 +351,12 @@ becomes::
 however, if the ``TypedDict``-Shim from the
 ``ts2typeddict.json_validation``-module is used.)
 
+Imports
+-------
+
+Starting from version 0.6.9 TypeScript imports, e.g.
+``import {ChangeInfo, CommentRange} from './rest-api';`` will be
+parsed and ignored so that they don't cause any parser errors.
 
 .. _Typescript interfaces: https://www.typescriptlang.org/docs/handbook/2/objects.html
 .. _TypedDicts: https://www.python.org/dev/peps/pep-0589/

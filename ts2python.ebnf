@@ -1,4 +1,4 @@
-# interfaces subest of typescript-grammar
+# interfaces subset of typescript-grammar
 # for typescript see: https://www.typescriptlang.org/docs/
 # for examples of typescript-interfaces
 # see: https://microsoft.github.io/language-server-protocol/specifications/specification-current/
@@ -102,7 +102,7 @@ array_of    = [ "readonly" ] array_types "[]"
   array_type = basic_type | generic_type | type_name | "(" types ")"
               | type_tuple | declarations_block
 
-type_name   = identifier
+type_name   = name
 type_tuple  = "[" types {"," types} "]"
 
 mapped_type = "{" map_signature [";"] "}"
@@ -163,8 +163,8 @@ boolean    = (`true` | `false`) ~
 string     = /"[^"\n]*"/~ | /'[^'\n]*'/~
 array      = "[" [ literal { "," literal } ] "]"
 object     = "{" [ association { "," association } ] [","] "}"
-  association = name §":" literal
-  name        = identifier | '"' identifier '"'
+  association = key §":" literal
+  key         = identifier | '"' identifier '"'
 
 #######################################################################
 #
@@ -181,11 +181,11 @@ basic_type   = (`object` | `array` | `string` | `number` | `boolean` | `null`
 #
 #######################################################################
 
-variable   = identifier { `.` identifier }
+variable   = name
 _quoted_identifier = identifier | '"' identifier §'"' | "'" identifier §"'"
-identifier = !(`true`|`false`) _part { `.` _part } ~
+name       = !(`true`|`false`) _part {'.' _part} ~
+identifier = !(`true`|`false`) _part ~
   _part    = /(?!\d)\w+/
-
 INT         = [NEG] ( /[1-9][0-9]+/ | /[0-9]/ )
 NEG         = `-`
 FRAC        = [ DOT /[0-9]+/ ]

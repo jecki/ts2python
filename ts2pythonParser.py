@@ -135,9 +135,9 @@ class ts2pythonGrammar(Grammar):
     literal = Forward()
     type = Forward()
     types = Forward()
-    source_hash__ = "9e87250150a0f471aae1220c6b4e6aeb"
+    source_hash__ = "f7aff7797a3b38b77eb71b5a4dec7b01"
     early_tree_reduction__ = CombinedParser.MERGE_TREETOPS
-    disposable__ = re.compile('(?:$.)|(?:INT$|_array_ellipsis$|EXP$|_top_level_assignment$|DOT$|_namespace$|NEG$|_quoted_identifier$|_root$|FRAC$|EOF$|_top_level_literal$|_part$)')
+    disposable__ = re.compile('(?:$.)|(?:_root$|FRAC$|_part$|_array_ellipsis$|INT$|EOF$|_top_level_literal$|_namespace$|_top_level_assignment$|DOT$|_quoted_identifier$|NEG$|EXP$)')
     static_analysis_pending__ = []  # type: List[bool]
     parser_initialization__ = ["upon instantiation"]
     COMMENT__ = r'(?:\/\/.*)|(?:\/\*(?:.|\n)*?\*\/)'
@@ -153,12 +153,13 @@ class ts2pythonGrammar(Grammar):
     NEG = Text("-")
     INT = Series(Option(NEG), Alternative(RegExp('[1-9][0-9]+'), RegExp('[0-9]')))
     _part = RegExp('(?!\\d)\\w+')
-    identifier = Series(NegativeLookahead(Alternative(Text("true"), Text("false"))), _part, ZeroOrMore(Series(Text("."), _part)), dwsp__)
+    identifier = Series(NegativeLookahead(Alternative(Text("true"), Text("false"))), _part, dwsp__)
+    name = Series(NegativeLookahead(Alternative(Text("true"), Text("false"))), _part, ZeroOrMore(Series(Series(Drop(Text('.')), dwsp__), _part)), dwsp__)
     _quoted_identifier = Alternative(identifier, Series(Series(Drop(Text('"')), dwsp__), identifier, Series(Drop(Text('"')), dwsp__), mandatory=2), Series(Series(Drop(Text("\'")), dwsp__), identifier, Series(Drop(Text("\'")), dwsp__), mandatory=2))
-    variable = Series(identifier, ZeroOrMore(Series(Text("."), identifier)))
+    variable = Synonym(name)
     basic_type = Series(Alternative(Text("object"), Text("array"), Text("string"), Text("number"), Text("boolean"), Text("null"), Text("integer"), Text("uinteger"), Text("decimal"), Text("unknown"), Text("any"), Text("void")), dwsp__)
-    name = Alternative(identifier, Series(Series(Drop(Text('"')), dwsp__), identifier, Series(Drop(Text('"')), dwsp__)))
-    association = Series(name, Series(Drop(Text(":")), dwsp__), literal, mandatory=1)
+    key = Alternative(identifier, Series(Series(Drop(Text('"')), dwsp__), identifier, Series(Drop(Text('"')), dwsp__)))
+    association = Series(key, Series(Drop(Text(":")), dwsp__), literal, mandatory=1)
     object = Series(Series(Drop(Text("{")), dwsp__), Option(Series(association, ZeroOrMore(Series(Series(Drop(Text(",")), dwsp__), association)))), Option(Series(Drop(Text(",")), dwsp__)), Series(Drop(Text("}")), dwsp__))
     array = Series(Series(Drop(Text("[")), dwsp__), Option(Series(literal, ZeroOrMore(Series(Series(Drop(Text(",")), dwsp__), literal)))), Series(Drop(Text("]")), dwsp__))
     string = Alternative(Series(RegExp('"[^"\\n]*"'), dwsp__), Series(RegExp("'[^'\\n]*'"), dwsp__))
@@ -173,7 +174,7 @@ class ts2pythonGrammar(Grammar):
     const = Series(Option(Series(Drop(Text("export")), dwsp__)), Series(Drop(Text("const")), dwsp__), declaration, Option(Series(Series(Drop(Text("=")), dwsp__), Alternative(literal, identifier))), Series(Drop(Text(";")), dwsp__), mandatory=2)
     item = Series(_quoted_identifier, Option(Series(Series(Drop(Text("=")), dwsp__), literal)))
     enum = Series(Option(Series(Drop(Text("export")), dwsp__)), Series(Drop(Text("enum")), dwsp__), identifier, Series(Drop(Text("{")), dwsp__), item, ZeroOrMore(Series(Series(Drop(Text(",")), dwsp__), item)), Option(Series(Drop(Text(",")), dwsp__)), Series(Drop(Text("}")), dwsp__), mandatory=3)
-    type_name = Synonym(identifier)
+    type_name = Synonym(name)
     equals_type = Series(Series(Drop(Text("=")), dwsp__), Alternative(basic_type, type_name))
     extends_type = Series(Series(Drop(Text("extends")), dwsp__), Alternative(basic_type, type_name))
     func_type = Series(Series(Drop(Text("(")), dwsp__), Option(arg_list), Series(Drop(Text(")")), dwsp__), Series(Drop(Text("=>")), dwsp__), types)
@@ -940,9 +941,9 @@ class ts2pythonCompiler(Compiler):
                '\n}'
 
     def on_association(self, node) -> str:
-        return f'"{self.compile(node["name"])}": ' + self.compile(node['literal'])
+        return f'"{self.compile(node["key"])}": ' + self.compile(node['literal'])
 
-    def on_name(self, node) -> str:
+    def on_key(self, node) -> str:
         return node.content
 
     def on_basic_type(self, node) -> str:
@@ -981,7 +982,7 @@ class ts2pythonCompiler(Compiler):
         return ""
 
     def on_type_name(self, node) -> str:
-        name = self.compile(node['identifier'])
+        name = self.compile(node['name'])
         return TYPE_NAME_SUBSTITUTION.get(name, name)
 
     def compile_type_expression(self, node, type_node) -> str:
@@ -1014,14 +1015,17 @@ class ts2pythonCompiler(Compiler):
         assert False, "Qualifiers should be ignored and this method should never be called!"
 
     def on_variable(self, node) -> str:
-        return node.content
+        return self.compile(node['name'])
+
+    def on_name(self, node):
+        return '.'.join((name + '_' if keyword.iskeyword(name) else name)
+                        for name in node.content.split('.'))
 
     def on_identifier(self, node) -> str:
         identifier = node.content
         if keyword.iskeyword(identifier):
             identifier += '_'
         return identifier
-
 
 compiling: Junction = create_junction(
     ts2pythonCompiler, "ast", "py")

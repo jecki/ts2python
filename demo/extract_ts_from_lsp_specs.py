@@ -13,8 +13,10 @@ LSP_SPEC_SOURCE = \
     "gh-pages/_specifications/lsp/3.18/specification.md"
 
 
-def top_level_literal(l):
+def no_declaration(l):
     if l[0:1] in ("{", "["):
+        return True
+    if re.match(r'\w+(?:\.\w+)*\(', l):
         return True
     return False
 
@@ -31,8 +33,8 @@ def extract(specs, dest):
             ts.append('')
         else:
             if copy_flag:
-                if top_level_literal(l):
-                    copy_flag = False  # exclude top-level-literals
+                if no_declaration(l):
+                    copy_flag = False
                 elif l[0:2] != "//":
                     ts.append(l)
     with open(dest, 'w', encoding='utf-8') as f:

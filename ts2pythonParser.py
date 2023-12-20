@@ -1103,6 +1103,11 @@ def process_file(source: str, result_filename: str = '') -> str:
     string, if no errors of warnings occurred.
     """
     source_filename = source if is_filename(source) else ''
+    if not result_filename:
+        if source_filename:
+            result_filename = source_filename[:result_filename.rfind('.')] + '.py'
+        else:
+            result_filename = "out.py"
     if os.path.isfile(result_filename):
         with open(result_filename, 'r', encoding='utf-8') as f:
             result = f.read()

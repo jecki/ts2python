@@ -792,7 +792,7 @@ class ts2pythonCompiler(Compiler):
         elif typ.name == 'literal':
             literal_typ = typ[0].name
             if self.use_literal_type:
-                return f"Literal[{self.compile(typ)}]"
+                return self.compile(typ)
             elif literal_typ == 'array':
                 return 'List'
             elif literal_typ == 'object':

@@ -135,9 +135,9 @@ class ts2pythonGrammar(Grammar):
     literal = Forward()
     type = Forward()
     types = Forward()
-    source_hash__ = "40f4fd28a993c44ff97dd38a1eb9ed2c"
+    source_hash__ = "ca8ce3540c24a62c41b7af20cf673fc1"
     early_tree_reduction__ = CombinedParser.MERGE_TREETOPS
-    disposable__ = re.compile('(?:$.)|(?:_top_level_assignment$|EOF$|_root$|NEG$|_array_ellipsis$|_namespace$|EXP$|_top_level_literal$|DOT$|_part$|FRAC$|_quoted_identifier$|INT$)')
+    disposable__ = re.compile('(?:$.)|(?:DOT$|_namespace$|NEG$|_top_level_literal$|_array_ellipsis$|INT$|EXP$|FRAC$|_part$|_top_level_assignment$|_quoted_identifier$|EOF$|_root$)')
     static_analysis_pending__ = []  # type: List[bool]
     parser_initialization__ = ["upon instantiation"]
     COMMENT__ = r'(?:\/\/.*)|(?:\/\*(?:.|\n)*?\*\/)'
@@ -225,7 +225,7 @@ class ts2pythonGrammar(Grammar):
                       '_top_level_literal': [re.compile(r'(?=export|$)')],
                       'module': [re.compile(r'(?=export|$)')]}
     root__ = _root
-
+        
 parsing: PseudoJunction = create_parser_junction(ts2pythonGrammar)
 get_grammar = parsing.factory # for backwards compatibility, only
 

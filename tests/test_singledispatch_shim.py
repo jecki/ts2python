@@ -50,6 +50,18 @@ class A:
         return b, c
 
 
+class B:
+    @singledispatchmethod
+    def func(self, param):
+        pass
+
+    @func.register
+    def _(self, param: "C", a: int):
+        return a
+    @func.register
+    def _(self, b: complex, c: float):
+        return b, c
+
 
 class C:
     pass
@@ -68,6 +80,11 @@ class TestForwardReference:
         a = A()
         assert a.func(C(), 3) == 3
         assert a.func((3 + 2j), 5.0) == ((3 + 2j), 5.0)
+
+    def test_forward_reference_string_notation(self):
+        b = B()
+        assert b.func(C(), 3) == 3
+        assert b.func((3 + 2j), 5.0) == ((3 + 2j), 5.0)
 
 
 class TestGenericAlias:

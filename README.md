@@ -4,7 +4,6 @@
 ![](https://img.shields.io/pypi/status/ts2python) 
 ![](https://img.shields.io/pypi/pyversions/ts2python) 
 ![](https://img.shields.io/pypi/l/ts2python)
-
 [![Stand With Ukraine](https://raw.githubusercontent.com/vshymanskyy/StandWithUkraine/main/badges/StandWithUkraine.svg)](https://stand-with-ukraine.pp.ua)
 
 

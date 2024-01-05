@@ -343,6 +343,22 @@ def to_varname(typename: str) -> str:
     return typename[0].lower() + (typename[1:-1] if typename[-1:] == '_' else typename[1:])
 
 
+def to_dict(declarations: str) -> str:
+    r"""Converts a sequence of declarations to a dictionary.
+    Example::
+
+        >>> decls = "name: str\nversion: int"
+        >>> print(to_dict(decls))
+        {"name": str, "version": int}
+    """
+    entries = declarations.split('\n')
+    for i in range(len(entries)):
+        k = entries[i].find(":")
+        assert k >= 0
+        entries[i] = f'"{entries[i][:k]}"{entries[i][k:]}'
+    return "".join(["{", ", ".join(entries), "}"])
+
+
 NOT_YET_IMPLEMENTED_WARNING = ErrorCode(310)
 UNSUPPORTED_WARNING = ErrorCode(320)
 
@@ -383,7 +399,13 @@ class ts2pythonCompiler(Compiler):
         else:
             self.additional_imports = ''
         self.base_class_name = bcn
+        self.render_anonymous = get_config_value('ts2python.RenderAnonymous', 'local')
         self.class_decorator = get_config_value('ts2python.ClassDecorator', '').strip()
+        if self.render_anonymous not in ('type', 'functional', 'local', 'toplevel'):
+            raise ValueError(
+                f'Illegal value "{self.render_anonymous}" for '
+                f'ts2python.RenderAnonymous. Must be one of "type", '
+                f'"functional", "local", "toplevel".')
         if self.class_decorator:
             if self.class_decorator[0] != '@':
                 self.class_decorator = '@' + self.class_decorator
@@ -426,12 +448,6 @@ class ts2pythonCompiler(Compiler):
             if typename in type_set:
                 return True
         return False
-
-    # def qualified_obj_name(self, pos: int=0, varname: bool=False) -> str:
-    #     obj_name = self.obj_name[1:] if len(self.obj_name) > 1 else self.obj_name
-    #     if pos < 0:  obj_name = obj_name[:pos]
-    #     if varname:  obj_name = obj_name[:-1] + [to_varname(obj_name[-1])]
-    #     return '.'.join(obj_name)
 
     def prepare(self, root: Node) -> None:
         type_aliases = {nd['identifier'].content for nd in root.select_children('type_alias')}
@@ -786,10 +802,16 @@ class ts2pythonCompiler(Compiler):
             self.local_classes.append([])
             self.optional_keys.append([])
             decls = self.compile(typ)
-            return ''.join([self.render_class_header(self.obj_name[-1], '') + "    ",
-                            self.render_local_classes().replace('\n', '\n    '),
-                            decls.replace('\n', '\n    ')])   # maybe add one '\n'?
-            # return 'Dict'
+            if self.base_class_name != "TypedDict" or self.render_anonymous == "local":
+                return ''.join([self.render_class_header(self.obj_name[-1], '') + "    ",
+                                self.render_local_classes().replace('\n', '\n    '),
+                                decls.replace('\n', '\n    ')])
+            elif self.render_anonymous == "functional":
+                # assume base_class_name == "TypedDict", render_anonymous == "functional"
+                return f'TypedDict("{self.obj_name[-1]}", {to_dict(decls)})'
+            else:
+                assert self.render_anonymous == "type"
+                return f'TypedDict[{to_dict(decls)}]'
         elif typ.name == 'literal':
             literal_typ = typ[0].name
             if self.use_literal_type:
@@ -1268,9 +1290,12 @@ def main():
     parser.add_argument('--singlethread', action='store_const', const='singlethread',
                         help='Run batch jobs in a single thread (recommended only for debugging)')
     parser.add_argument('-c', '--compatibility', nargs=1, action='extend', type=str,
-                        help='Minimal required python version (must be >= 3.6)')
+                        help='Minimal required python version (must be >= 3.7)')
     parser.add_argument('-b', '--base', nargs=1, action='extend', type=str,
                         help='Base class name, e.g. TypedDict (default) or BaseModel (pydantic)')
+    parser.add_argument('-a', '--anonymous', nargs=1, action='extend', type=str,
+                        help='How to render anonymous interfaces: "local" (default), '
+                             '"toplevel", "functional", "type"')
     parser.add_argument('-d', '--decorator', nargs=1, action='extend', type=str,
                         help="addes the given decorator ")
     parser.add_argument('-p', '--peps', nargs='+', action='extend', type=str,
@@ -1295,6 +1320,7 @@ def main():
             if version_info >= (3, 10):
                 set_preset_value('ts2python.UseTypeUnion', True, allow_new_key=True)
         if args.base:  set_preset_value('ts2python.BaseClassName', args.base[0].strip())
+        if args.anonymous:  set_preset_value('ts2python.RenderAnonymous', args.anonymous[0].strip())
         if args.decorator:  set_preset_value('ts2python.ClassDecorator', args.decorator[0].strip())
         if args.peps:
             args_peps = [pep.strip() for pep in args.peps]

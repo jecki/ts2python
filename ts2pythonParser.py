@@ -395,8 +395,9 @@ class ts2pythonCompiler(Compiler):
 
         self.overloaded_type_names: Set[str] = set()
         self.known_types: List[Set[str]] = [
-            {'Union', 'List', 'Tuple', 'Optional', 'Dict', 'Any',
-             'Generic', 'Coroutine', 'list'}]
+            {'Union', 'List', 'Tuple', 'Optional', 'Dict', 'Set', 'Any',
+             'Generic', 'Coroutine', 'list', 'tuple', 'dict', 'set',
+             'frozenset', 'int', 'float'}]
         self.local_classes: List[List[str]] = [[]]
         self.base_classes: Dict[str, List[str]] = {}
         self.typed_dicts: Set[str] = {'TypedDict'}  # names of classes that are TypedDicts

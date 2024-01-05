@@ -1,6 +1,9 @@
 Version 0.6.9
 -------------
 - read (but ignore) TypeScript imports
+- add alternative ways to render anonymous interfaces as TypedDicts:
+  Apart from "local" (default), now "functional" and "type" can
+  be selected. "type" is still erperimental
 
 
 Version 0.6.8

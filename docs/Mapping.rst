@@ -306,6 +306,36 @@ becomes::
     TextDocumentContentChangeEvent = Union[
         TextDocumentContentChangeEvent_0, TextDocumentContentChangeEvent_1]
 
+As of Version 0.6.9, anonymous interfaces can also be mapped with
+functional syntax::
+
+    interface InitializeResult {
+		capabilities: ServerCapabilities;
+		serverInfo?: {
+			name: string;
+			version?: string;
+		};
+    }
+
+becomes::
+
+    class InitializeResult(TypedDict):
+        capabilities: 'ServerCapabilities'
+        serverInfo: NotRequired[TypedDict("ServerInfo_0",
+                                {"name": str, "version": NotRequired[str]})]
+
+The "functional" representation can be selected by assigning the
+value "functional" to the configuration key "ts2python.RenderAnonymous".
+Alternatively, it can be selected with the command line option
+"--anonymous" or "-a".
+
+There is also an experimental "type"-syntax, which renders the
+anonymous interface in the above example as::
+
+    TypedDict[{"name": str, "version": NotRequired[str]}]
+
+However, this is not (yet) in conformance with the Python-Standard.
+(See this post on `inline TypedDict definitions`_)
 
 Namespaces and Generics
 -----------------------
@@ -365,3 +395,4 @@ parsed and ignored so that they don't cause any parser errors.
 .. _PEP 655: https://www.python.org/dev/peps/pep-0655/
 .. _Index signatures: https://www.typescriptlang.org/docs/handbook/2/objects.html#index-signatures
 .. _Enums: https://docs.python.org/3/library/enum.html
+.. _inline TypedDict definitions: https://discuss.python.org/t/allow-local-class-type-definitions-inside-typeddict/41611/3

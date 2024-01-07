@@ -61,6 +61,9 @@ if __name__ == '__main__':
         DEBUG = True
         del argv[1]
 
+    from DHParser.configuration import read_local_config
+    read_local_config(os.path.join(scriptpath, 'ts2python/ts2pythonParser.ini'))
+
     access_presets()
     set_preset_value('test_parallelization', False)
     if DEBUG:  set_preset_value('history_tracking', True)
@@ -69,7 +72,7 @@ if __name__ == '__main__':
     if (len(argv) >= 2 and (argv[1].endswith('.ebnf') or
         os.path.splitext(argv[1])[1].lower() in testing.TEST_READERS.keys())):
         # if called with a single filename that is either an EBNF file or a known
-        # test file type then use the given argument
+        # test file-type then use the given argument
         arg = argv[1]
     else:
         # otherwise run all tests in the test directory

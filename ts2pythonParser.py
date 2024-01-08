@@ -584,7 +584,10 @@ class ts2pythonCompiler(Compiler):
         decls = self.compile(node['declarations_block'])
         interface = self.render_class_header(name, base_classes, force_base_class)
         self.base_classes[name] = base_class_list
-        interface += ('    ' + self.render_local_classes().replace('\n', '\n    ')).rstrip(' ')
+        if self.base_class_name == "TypedDict" and self.render_anonymous == "toplevel":
+            interface = self.render_local_classes() + '\n' + interface
+        else:
+            interface += ('    '+self.render_local_classes().replace('\n', '\n    ')).rstrip(' ')
         self.known_types.pop()
         self.known_types[-1].add(name)
         self.scope_type.pop()
@@ -641,8 +644,11 @@ class ts2pythonCompiler(Compiler):
 
     def on_declarations_block(self, node) -> str:
         self.mark_overloaded_functions(node)
-        declarations = '\n'.join(self.compile(nd) for nd in node
-                                 if nd.name in ('declaration', 'function'))
+        # declarations = '\n'.join(self.compile(nd) for nd in node
+        #                          if nd.name in ('declaration', 'function'))
+        raw_decls = [self.compile(nd) for nd in node
+                     if nd.name in ('declaration', 'function')]
+        declarations = '\n'.join(d for d in raw_decls if d)
         return declarations or "pass"
 
     def on_declaration(self, node) -> str:
@@ -791,7 +797,7 @@ class ts2pythonCompiler(Compiler):
             # return f"Literal[{', '.join(union)}]"
             return f"Literal[{', '.join(nd.content for nd in node.children)}]"
         elif self.use_type_union or len(union) <= 1:
-            return preface + '|'.join(union)
+            return preface + ' | '.join(union)
         else:
             return preface + f"Union[{', '.join(union)}]"
 
@@ -806,8 +812,11 @@ class ts2pythonCompiler(Compiler):
                 return ''.join([self.render_class_header(self.obj_name[-1], '') + "    ",
                                 self.render_local_classes().replace('\n', '\n    '),
                                 decls.replace('\n', '\n    ')])
+            elif self.render_anonymous == "toplevel":
+                return ''.join([self.render_local_classes(),
+                                self.render_class_header('_'.join(self.obj_name[1:]), '') + "    ",
+                                decls.replace('\n', '\n    ')])
             elif self.render_anonymous == "functional":
-                # assume base_class_name == "TypedDict", render_anonymous == "functional"
                 return f'TypedDict("{self.obj_name[-1]}", {to_dict(decls)})'
             else:
                 assert self.render_anonymous == "type"

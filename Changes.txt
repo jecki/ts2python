@@ -1,3 +1,10 @@
+Version 0.7.0
+-------------
+- rendering of anonymous interfaces as toplevel-TypedDicts now
+  possible (use switch -a toplevel) to avoid error messages by
+  type checkers
+
+
 Version 0.6.9
 -------------
 - read (but ignore) TypeScript imports

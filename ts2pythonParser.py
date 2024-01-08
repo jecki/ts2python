@@ -1317,7 +1317,7 @@ def main():
     from DHParser.configuration import read_local_config
     read_local_config(os.path.join(scriptpath, 'ts2python/ts2pythonParser.ini'))
 
-    if args.debug or args.compatibility or args.base or args.decorator or args.peps:
+    if args.debug or args.compatibility or args.base or args.decorator or args.peps or args.anonymous:
         access_presets()
         if args.debug is not None:
             log_dir = 'LOGS'

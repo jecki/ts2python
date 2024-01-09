@@ -75,7 +75,8 @@ declaration = qualifiers ["let"|"var"] identifier [optional] !`(` [":" types]
 
 # @function_resume = /(?=;)/
 
-function    = [[static] ["function"] identifier [optional] [type_parameters]]
+function    = [["export"] [static]
+               ["function"] identifier [optional] [type_parameters]]
               "(" §[arg_list] ")" [":" types]
   arg_list  = argument { "," argument } ["," arg_tail] | arg_tail
   arg_tail  = "..." identifier [":" array_of]

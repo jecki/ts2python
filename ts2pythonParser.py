@@ -554,11 +554,10 @@ class ts2pythonCompiler(Compiler):
         try:
             tp = self.compile(node['type_parameters'])
             tpl = [p.strip("'") for p in tp.split(', ')]
-            if self.use_type_parameters:
-                tps = '[' + tp + ']'
-            else:
-                preface = ''.join(f"{p} = TypeVar('{p}')\n"
-                                  for p in tpl if not self.is_known_type(p))
+            tps = '[' + ', '.join(p for p in tpl) + ']'
+            # tps = '[' + tp + ']'
+            preface = ''.join(f"{p} = TypeVar('{p}')\n"
+                              for p in tpl if not self.is_known_type(p))
             for p in tpl:  self.known_types[-1].add(p)
         except KeyError:
             pass
@@ -571,6 +570,8 @@ class ts2pythonCompiler(Compiler):
         self.local_classes.append([])
         self.optional_keys.append([])
         tps, preface = self.process_type_parameters(node)
+        if self.use_type_parameters:  preface = ''
+        # else:  tps =''
         preface += '\n'
         preface += node.get_attr('preface', '')
         self.known_types.append(set())
@@ -597,6 +598,7 @@ class ts2pythonCompiler(Compiler):
         else:
             interface += ('    '+self.render_local_classes().replace('\n', '\n    ')).rstrip(' ')
         self.optional_keys.pop()
+        self.local_classes.pop()
         self.known_types.pop()
         self.known_types[-1].add(name)
         self.scope_type.pop()
@@ -702,6 +704,8 @@ class ts2pythonCompiler(Compiler):
         else:  # anonymous function
             name = "__call__"
         tps, preface = self.process_type_parameters(node)
+        if self.use_type_parameters:  preface = ''
+        else:  tps =''
         try:
             arguments = self.compile(node['arg_list'])
             if self.scope_type[-1] == 'interface':
@@ -811,8 +815,6 @@ class ts2pythonCompiler(Compiler):
                 union[i] = cname
         if self.is_toplevel():
             preface = self.render_local_classes()
-            # self.local_classes.append([])
-            # self.optional_keys.append([])
         else:
             preface = ''
         if self.use_literal_type and \
@@ -848,8 +850,8 @@ class ts2pythonCompiler(Compiler):
             self.optional_keys.append([])
             decls = self.compile(typ)
             result = self.render_declarations(decls)
-            self.local_classes.pop()
             self.optional_keys.pop()
+            self.local_classes.pop()
             return result
         elif typ.name == 'literal':
             literal_typ = typ[0].name

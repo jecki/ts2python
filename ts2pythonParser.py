@@ -787,6 +787,12 @@ class ts2pythonCompiler(Compiler):
             typ = self.compile(node['type'])
             return f'Optional[{typ}]' if node[-1].name == 'optional' else typ
 
+    def render_union(self, preface, union) -> str:
+        if self.use_type_union or len(union) <= 1:
+            return preface + ' | '.join(union)
+        else:
+            return preface + f"Union[{', '.join(union)}]"
+
     def on_types(self, node) -> str:
         union = []
         i = 0
@@ -819,13 +825,23 @@ class ts2pythonCompiler(Compiler):
             preface = ''
         if self.use_literal_type and \
                 any(nd[0].name == 'literal' for nd in node.children):
-            assert all(nd[0].name == 'literal' for nd in node.children)
-            # return f"Literal[{', '.join(union)}]"
-            return f"Literal[{', '.join(nd.content for nd in node.children)}]"
-        elif self.use_type_union or len(union) <= 1:
-            return preface + ' | '.join(union)
+            if all(nd[0].name == 'literal' for nd in node.children):
+                return f"Literal[{', '.join(nd.content for nd in node.children)}]"
+            new_union = []
+            literal_package = []
+            for i, nd in enumerate(node.children):
+                if nd[0].name == 'literal':
+                    literal_package.append(nd.content)
+                else:
+                    if literal_package:
+                        new_union.append(f"Literal[{', '.join(l for l in literal_package)}]")
+                        literal_package = []
+                    new_union.append(union[i])
+            if literal_package:
+                new_union.append(f"Literal[{', '.join(l for l in literal_package)}]")
+            return self.render_union(preface, new_union)
         else:
-            return preface + f"Union[{', '.join(union)}]"
+            return self.render_union(preface, union)
 
     def render_declarations(self, decls) -> str:
         if self.base_class_name != "TypedDict" or self.render_anonymous == "local":

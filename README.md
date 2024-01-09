@@ -172,6 +172,14 @@ With the type decorator the last call fails with a TypeError:
 
 Both the call and the return types can be validated.
 
+## Type Checkers
+
+The output ts2python is somewhat more liberal than what strict
+typecheckers like mypy or pylance seem to allow. In particular
+class definitions inside TypedDicts are considered illegal by
+the specification und thus marked as an error by some 
+type-checkers. Use the command-line switch "-a toplevel" to
+generate Python-code that is more acceptable to type checkers.
 
 ## Full Documentation
 

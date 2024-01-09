@@ -306,6 +306,10 @@ becomes::
     TextDocumentContentChangeEvent = Union[
         TextDocumentContentChangeEvent_0, TextDocumentContentChangeEvent_1]
 
+
+Alternative Representations for Anonymous Interfaces
+----------------------------------------------------
+
 As of Version 0.6.9, anonymous interfaces can also be mapped with
 functional syntax::
 
@@ -327,7 +331,7 @@ becomes::
 The "functional" representation can be selected by assigning the
 value "functional" to the configuration key "ts2python.RenderAnonymous".
 Alternatively, it can be selected with the command line option
-"--anonymous" or "-a".
+"--anonymous functional" or "-a functional".
 
 There is also an experimental "type"-syntax, which renders the
 anonymous interface in the above example as::
@@ -335,7 +339,20 @@ anonymous interface in the above example as::
     TypedDict[{"name": str, "version": NotRequired[str]}]
 
 However, this is not (yet) in conformance with the Python-Standard.
-(See this post on `inline TypedDict definitions`_)
+(See this post on `inline TypedDict definitions`_). It can be turned
+on with "-a type"
+
+Finally, with "-a toplevel", the definition of classes inside classes
+can be avoided completely. This helps to avoid complaints by type-checkers
+like mypy or pylance. The result look like this::
+
+    class InitializeResult_ServerInfo_0(TypedDict):
+        name: str
+        version: NotRequired[str]
+
+    class InitializeResult(TypedDict):
+        capabilities: 'ServerCapabilities'
+        serverInfo: NotRequired[InitializeResult_ServerInfo_0]
 
 Namespaces and Generics
 -----------------------

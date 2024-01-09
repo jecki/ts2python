@@ -414,6 +414,7 @@ class ts2pythonCompiler(Compiler):
             self.class_decorator += '\n'
         self.use_enums = get_config_value('ts2python.UseEnum', True)
         self.use_type_union = get_config_value('ts2python.UseTypeUnion', False)
+        self.use_type_parameters = get_config_value('ts2Python.UseTypeParameters', False)
         self.use_literal_type = get_config_value('ts2python.UseLiteralType', True)
         self.use_not_required = get_config_value('ts2python.UseNotRequired', True)
 
@@ -507,7 +508,7 @@ class ts2pythonCompiler(Compiler):
     def render_class_header(self, name: str,
                             base_classes: str,
                             force_base_class: str = '') -> str:
-        optional_key_list = self.optional_keys.pop()
+        optional_key_list = self.optional_keys[-1]
         decorator = self.class_decorator
         base_class_name = (force_base_class or self.base_class_name).strip()
         if base_class_name == 'TypedDict':
@@ -544,19 +545,24 @@ class ts2pythonCompiler(Compiler):
 
     def render_local_classes(self) -> str:
         self.func_name = ''
-        classes = self.local_classes.pop()
+        classes = self.local_classes[-1]
         return '\n'.join(lc for lc in classes) + '\n' if classes else ''
 
     def process_type_parameters(self, node: Node) -> Tuple[str, str]:
+        tps = ''
+        preface = ''
         try:
             tp = self.compile(node['type_parameters'])
-            tp = tp.strip("'")
-            preface = f"{tp} = TypeVar('{tp}')\n"
-            self.known_types[-1].add(tp)
+            tpl = [p.strip("'") for p in tp.split(', ')]
+            if self.use_type_parameters:
+                tps = '[' + tp + ']'
+            else:
+                preface = ''.join(f"{p} = TypeVar('{p}')\n"
+                                  for p in tpl if not self.is_known_type(p))
+            for p in tpl:  self.known_types[-1].add(p)
         except KeyError:
-            tp = ''
-            preface = ''
-        return tp, preface
+            pass
+        return tps, preface
 
     def on_interface(self, node) -> str:
         name = self.compile(node['identifier'])
@@ -564,7 +570,7 @@ class ts2pythonCompiler(Compiler):
         self.scope_type.append('interface')
         self.local_classes.append([])
         self.optional_keys.append([])
-        tp, preface = self.process_type_parameters(node)
+        tps, preface = self.process_type_parameters(node)
         preface += '\n'
         preface += node.get_attr('preface', '')
         self.known_types.append(set())
@@ -572,10 +578,10 @@ class ts2pythonCompiler(Compiler):
         try:
             base_class_list = self.bases(node['extends'])
             base_classes = self.compile(node['extends'])
-            if tp:
-                base_classes += f", Generic[{tp}]"
+            if tps:
+                base_classes += f", Generic{tps}"
         except KeyError:
-            base_classes = f"Generic[{tp}]" if tp else ''
+            base_classes = f"Generic{tps}" if tps else ''
         if any(bc not in self.typed_dicts for bc in base_class_list):
             force_base_class = ' '
         elif 'function' in node['declarations_block']:
@@ -590,6 +596,7 @@ class ts2pythonCompiler(Compiler):
             interface = self.render_local_classes() + '\n' + interface
         else:
             interface += ('    '+self.render_local_classes().replace('\n', '\n    ')).rstrip(' ')
+        self.optional_keys.pop()
         self.known_types.pop()
         self.known_types[-1].add(name)
         self.scope_type.pop()
@@ -620,6 +627,8 @@ class ts2pythonCompiler(Compiler):
             self.optional_keys.append([])
             types = self.compile(node['types'])
             preface = self.render_local_classes()
+            self.optional_keys.pop()
+            self.local_classes.pop()
             code = preface + f"{alias} = {types}"
         else:
             code = ''
@@ -627,7 +636,7 @@ class ts2pythonCompiler(Compiler):
         return code
 
     def mark_overloaded_functions(self, scope: Node):
-        is_interface = self.scope_type[-1] == 'interface'
+        is_interface = self.scope_type[-1] in ('interface', 'namespace')
         first_use: Dict[str, Node] = dict()
         try:
             for func_decl in as_list(scope['function']):
@@ -677,8 +686,8 @@ class ts2pythonCompiler(Compiler):
                     T = f"Optional[{T}]"
         if self.is_toplevel() and bool(self.local_classes[-1]):
             preface = self.render_local_classes()
-            self.local_classes.append([])
-            self.optional_keys.append([])
+            self.local_classes.pop()
+            self.optional_keys.pop()
             return preface + f"{identifier}: {T}"
         return f"{identifier}: {T}"
 
@@ -692,7 +701,7 @@ class ts2pythonCompiler(Compiler):
                 is_constructor = True
         else:  # anonymous function
             name = "__call__"
-        tp, preface = self.process_type_parameters(node)
+        tps, preface = self.process_type_parameters(node)
         try:
             arguments = self.compile(node['arg_list'])
             if self.scope_type[-1] == 'interface':
@@ -709,17 +718,17 @@ class ts2pythonCompiler(Compiler):
                      "function/method {name} has illegal type {type(arg1)}')"
         if decorator:
             if decorator == "@singledispatch":
-                fallback = f"{preface}@singledispatch\ndef {name}(arg1) -> {return_type}:" \
+                fallback = f"\n{preface}@singledispatch\ndef {name}{tps}(arg1) -> {return_type}:" \
                            f"\n    {type_error}\n"
                 decorator = f"@{name}.register"
             elif decorator == "@singledispatchmethod":
-                fallback = f"{preface}\n@singledispatchmethod\ndef {name}(self, arg1) -> {return_type}:" \
+                fallback = f"\n{preface}@singledispatchmethod\ndef {name}{tps}(self, arg1) -> {return_type}:" \
                            f"\n    {type_error}\n"
                 decorator = f"@{name}.register"
             else:  assert decorator.endswith('.register')
             name = '_'
             decorator += '\n'
-        pyfunc = f"{decorator}def {name}({arguments}) -> {return_type}:\n    pass"
+        pyfunc = f"{decorator}def {name}{tps}({arguments}) -> {return_type}:\n    pass"
         if is_constructor:
             interface = pick_from_path(self.path, 'interface', reverse=True)
             assert interface
@@ -727,7 +736,7 @@ class ts2pythonCompiler(Compiler):
                 interface.get_attr('preface', ''), f"\n{preface}{pyfunc}", '\n'])
             return ''
         else:
-            return f"{fallback}\n{preface}{pyfunc}"
+            return f"{fallback}\n{preface if not fallback else ''}{pyfunc}"
 
     def on_arg_list(self, node) -> str:
         breadcrumb = '/'.join(nd.name for nd in self.path)
@@ -802,8 +811,8 @@ class ts2pythonCompiler(Compiler):
                 union[i] = cname
         if self.is_toplevel():
             preface = self.render_local_classes()
-            self.local_classes.append([])
-            self.optional_keys.append([])
+            # self.local_classes.append([])
+            # self.optional_keys.append([])
         else:
             preface = ''
         if self.use_literal_type and \
@@ -826,13 +835,9 @@ class ts2pythonCompiler(Compiler):
                             self.render_class_header('_'.join(self.obj_name[1:]), '') + "    ",
                             decls.replace('\n', '\n    ')])
         elif self.render_anonymous == "functional":
-            self.local_classes.pop()
-            self.optional_keys.pop()
             return f'TypedDict("{self.obj_name[-1]}", {to_dict(decls)})'
         else:
             assert self.render_anonymous == "type"
-            self.local_classes.pop()
-            self.optional_keys.pop()
             return f'TypedDict[{to_dict(decls)}]'
 
     def on_type(self, node) -> str:
@@ -842,7 +847,10 @@ class ts2pythonCompiler(Compiler):
             self.local_classes.append([])
             self.optional_keys.append([])
             decls = self.compile(typ)
-            return self.render_declarations(decls)
+            result = self.render_declarations(decls)
+            self.local_classes.pop()
+            self.optional_keys.pop()
+            return result
         elif typ.name == 'literal':
             literal_typ = typ[0].name
             if self.use_literal_type:
@@ -925,6 +933,7 @@ class ts2pythonCompiler(Compiler):
             namespace.append(self.compile(child))
         if not header:
             header = self.render_class_header(name, '')[:-1]  # leave out the trailing "\n"
+            # self.optional_keys.pop()?
         namespace.insert(0, header)
         self.strip_type_from_const = save
         return '\n    '.join(namespace)
@@ -937,8 +946,13 @@ class ts2pythonCompiler(Compiler):
         name = self.compile(node['identifier'])
         declarations = [f'class {name}:']
         assert len(node.children) >= 2
+        self.mark_overloaded_functions(node)
+        self.obj_name.append(name)
+        self.scope_type.append('namespace')
         self.local_classes.append([])
         self.optional_keys.append([])
+        self.known_types.append(set())
+        self.mark_overloaded_functions(node)
         declaration = self.compile(node[1])
         declaration = declaration.lstrip('\n')
         declarations.extend(declaration.split('\n'))
@@ -948,7 +962,12 @@ class ts2pythonCompiler(Compiler):
         local_classes = self.render_local_classes().replace('\n', '\n    ')
         if local_classes:
             declarations.insert(1, local_classes)
+        self.known_types.pop()
+        self.known_types[-1].add(name)
+        self.local_classes.pop()
         self.optional_keys.pop()
+        self.scope_type.pop()
+        self.obj_name.pop()
         return '\n    '.join(declarations)
 
     def on_enum(self, node) -> str:
@@ -1365,6 +1384,8 @@ def main():
             version_info = tuple(int(part) for part in args.compatibility[0].split('.'))
             if version_info >= (3, 10):
                 set_preset_value('ts2python.UseTypeUnion', True, allow_new_key=True)
+            if version_info >= (3, 12):
+                set_preset_value('ts2python.UseTypeParameters', True, allow_new_key=True)
         if args.base:  set_preset_value('ts2python.BaseClassName', args.base[0].strip())
         if args.anonymous:  set_preset_value('ts2python.RenderAnonymous', args.anonymous[0].strip())
         if args.decorator:  set_preset_value('ts2python.ClassDecorator', args.decorator[0].strip())

@@ -134,19 +134,19 @@ be arbitrarily complex and deeply nested.
 The ts2python-Parser can, of course, also be accessed directly
 from Python with the followin imports and function calls:
 
-   from ts2python.ts2pthonParser import process_file
-   ...
-   process_file("SOURCE.ts", "DESTINATION.py")
+    from ts2python.ts2pthonParser import process_file
+    ...
+    process_file("SOURCE.ts", "DESTINATION.py")
 
 Or, use:
 
-   from ts2pthon.ts2pythonParser import compile_src, serialize_result
-   ...
-   result, errors = compile_src(DOCUMENT)
-   if errors:
-       for e in errors:  print(e)
-   else:
-      print(serialize_result(result))
+    from ts2pthon.ts2pythonParser import compile_src, serialize_result
+    ...
+    result, errors = compile_src(DOCUMENT)
+    if errors:
+        for e in errors:  print(e)
+    else:
+       print(serialize_result(result))
 
 
 ## Validation

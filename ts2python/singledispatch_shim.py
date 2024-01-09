@@ -142,6 +142,8 @@ def singledispatch(func):
             # only import typing if annotation parsing is necessary
             try:
                 argname, cls = next(iter(get_type_hints(func).items()))
+                if not isinstance(cls, type) and str(type(cls))[1:6] == "class":
+                    raise NameError
             except NameError:
                 registry.setdefault('postponed', []).append(cls)
                 return func
@@ -154,7 +156,7 @@ def singledispatch(func):
                 else:
                     raise TypeError(
                         f"Invalid annotation for {argname!r}. "
-                        f"{cls!r} is not a class."
+                        f"{cls!r} of type {type(cls)!r} is not a class."
                     )
 
         if _is_union_type(cls):

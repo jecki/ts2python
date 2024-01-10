@@ -405,6 +405,26 @@ Starting from version 0.6.9 TypeScript imports, e.g.
 ``import {ChangeInfo, CommentRange} from './rest-api';`` will be
 parsed and ignored so that they don't cause any parser errors.
 
+Types derived from other Types
+------------------------------
+
+ts2Python has only rudimentary support for types that are derived
+from other types (see `Creating Types from Types`_ in the Typescript-manual).
+While some of these derived types are accepted by ts2python's parser, they
+are practically never properly matched to similar Python-types. In many
+cases types derived from other tpes will - for the lack of a deeper semantic
+analysis of Typescript-input by ts2python - simply be represented as type
+``Any`` on the Python-side.
+
+Because
+Python's type system isn't as elaborated as that of Typescript, a translation
+that keeps all information will often not be possible, anyway. The main
+reason, however, why this is not done is that it would require ts2python to
+actually reason about the types it parses, which something which ts2python
+has not been designed for. However, more purely syntactic support for
+these constructs can be added in the future, if required.
+
+
 .. _Typescript interfaces: https://www.typescriptlang.org/docs/handbook/2/objects.html
 .. _TypedDicts: https://www.python.org/dev/peps/pep-0589/
 .. _TypedDict: https://www.python.org/dev/peps/pep-0589/
@@ -413,3 +433,4 @@ parsed and ignored so that they don't cause any parser errors.
 .. _Index signatures: https://www.typescriptlang.org/docs/handbook/2/objects.html#index-signatures
 .. _Enums: https://docs.python.org/3/library/enum.html
 .. _inline TypedDict definitions: https://discuss.python.org/t/allow-local-class-type-definitions-inside-typeddict/41611/3
+.. _Creating Types from Types: https://www.typescriptlang.org/docs/handbook/2/types-from-types.html

@@ -1,4 +1,4 @@
-Version 0.7.0
+Version 0.7.1
 -------------
 - rendering of anonymous interfaces as toplevel-TypedDicts now
   possible (use switch -a toplevel) to avoid error messages by
@@ -8,6 +8,7 @@ Version 0.7.0
   Caveat: Not all of these constructs are supported and, if they are supported,
   they will appear strongly simplified on the Python side, often simply by
   using "Any". But at least some of the constructs will be parsed, now.
+
 
 Version 0.6.9
 -------------

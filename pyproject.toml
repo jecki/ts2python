@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "ts2python"
-version = "0.7.1"
+version = "0.7.2"
 description = "Python-Interoperability for Typescript-Interfaces"
 
 license = "Apache-2.0"
@@ -41,7 +41,6 @@ packages = [
     { include = "ts2pythonParser.py" },
     { include = "ts2python" },
     { include = "demo" },
-    { include = "tests_grammar", format = "sdist" },
     { include = "tests", format = "sdist" },
     { include = "docs", format = "sdist" }
 ]

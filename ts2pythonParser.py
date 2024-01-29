@@ -135,9 +135,9 @@ class ts2pythonGrammar(Grammar):
     literal = Forward()
     type = Forward()
     types = Forward()
-    source_hash__ = "02b59e19aa8dc5491fc54589c02d15ae"
+    source_hash__ = "f5d6985c194bfdd012ff895722e6072d"
     early_tree_reduction__ = CombinedParser.MERGE_TREETOPS
-    disposable__ = re.compile('(?:$.)|(?:NEG$|EXP$|_root$|_array_ellipsis$|EOF$|_namespace$|FRAC$|_top_level_assignment$|_part$|INT$|_top_level_literal$|_quoted_identifier$|DOT$)')
+    disposable__ = re.compile('(?:$.)|(?:_array_ellipsis$|_root$|INT$|DOT$|_top_level_assignment$|EOF$|_part$|NEG$|_quoted_identifier$|_namespace$|_top_level_literal$|FRAC$|EXP$)')
     static_analysis_pending__ = []  # type: List[bool]
     parser_initialization__ = ["upon instantiation"]
     COMMENT__ = r'(?:\/\/.*)|(?:\/\*(?:.|\n)*?\*\/)'
@@ -624,11 +624,12 @@ class ts2pythonCompiler(Compiler):
             self.basic_type_aliases.add(alias)
         self.obj_name.append(alias)
         if alias not in self.overloaded_type_names:
+            _, preface = self.process_type_parameters(node)
             self.known_types[-1].add(alias)
             self.local_classes.append([])
             self.optional_keys.append([])
             types = self.compile(node['types'])
-            preface = self.render_local_classes()
+            preface += self.render_local_classes()
             self.optional_keys.pop()
             self.local_classes.pop()
             code = preface + f"{alias} = {types}"
@@ -705,7 +706,7 @@ class ts2pythonCompiler(Compiler):
             name = "__call__"
         tps, preface = self.process_type_parameters(node)
         if self.use_type_parameters:  preface = ''
-        else:  tps =''
+        else:  tps = ''
         try:
             arguments = self.compile(node['arg_list'])
             if self.scope_type[-1] == 'interface':

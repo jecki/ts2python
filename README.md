@@ -30,11 +30,12 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License.
 
-The complete source-code of ts2python can be downloaded from the [its git-repository](https://github.com/jecki/ts2python).
+The complete source-code of ts2python can be downloaded from the 
+[git-repository](https://github.com/jecki/ts2python).
 
 ## Purpose
 
-When processing JSON data, as for example form a 
+When processing JSON data, as for example, form a 
 [JSON-RPC](https://www.jsonrpc.org/) call, with Python, it would
 be helpful to have Python-definitions of the JSON-structures at
 hand, in order to solicit IDE-Support, static type checking and,
@@ -81,8 +82,8 @@ from the
 can be transpiled to Python Typed-Dicts. 
 
 Tier 2 support is still very much work in progress. I am 
-using "vscode.d.ts"-definition file as test case. Some things work,
-but there are still some unsupported constructs and the Python
+using "vscode.d.ts"-definition file as test-case. Some things work,
+but there are still some unsupported constructs, and the Python
 code emitted for features that go beyond Tier 1 may not even
 be valid Python all the time! Please, keep that in mind.
 

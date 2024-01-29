@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "ts2python"
-version = "0.7.2"
+version = "0.7.3"
 description = "Python-Interoperability for Typescript-Interfaces"
 
 license = "Apache-2.0"
@@ -39,12 +39,9 @@ classifiers = [
 
 packages = [
     { include = "ts2pythonParser.py" },
-    { include = "ts2python" },
-    { include = "demo" },
-    { include = "tests", format = "sdist" },
-    { include = "docs", format = "sdist" }
+    { include = "ts2python.ebnf" },
+    { include = "ts2python" }
 ]
-
 
 [tool.poetry.dependencies]
 python = "^3.7"

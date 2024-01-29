@@ -67,8 +67,8 @@ interface   = ["export"] ["declare"] ("interface"|"class") §identifier [type_pa
               [extends] declarations_block [";"]
 extends     = "extends" (generic_type|type_name) { "," (generic_type|type_name)}
 
-declarations_block = "{" [(function|declaration) { [";"] (function|declaration) }
-                          [";" map_signature] [";"]] "}"
+declarations_block = "{" [(function|declaration) { [";"|","] (function|declaration) }
+                          [";" map_signature] [";"|","]] "}"
 
 declaration = qualifiers ["let"|"var"] identifier [optional] !`(` [":" types]
 

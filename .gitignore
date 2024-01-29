@@ -138,3 +138,7 @@ REPORT
 LOGS
 **/LOGS/*
 /DHParser/
+
+
+# Other
+scratch/

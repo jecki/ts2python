@@ -95,7 +95,7 @@ ts2python can be installed from the command line with the command:
 
     $ pip install ts2python
 
-ts2python requires the parsing-expression-grammar-framwork 
+ts2python requires the parsing-expression-grammar-framework 
 [DHParser](https://gitlab.lrz.de/badw-it/DHParser)
 which will automatically be installed as a dependency by 
 the `pip`-command. ts2python requires at least Python Version 3.8

@@ -99,7 +99,7 @@ type_alias  = ["export"] "type" §identifier [type_parameters] "=" types ";"
 types       = ["|"] (intersection | type) { "|" (intersection | type) }
 intersection = type { "&" §type }+
 type        = array_of | basic_type | generic_type | indexed_type
-            | type_name | "(" types ")" | mapped_type
+            | type_name !`(` | "(" types ")" | mapped_type
             | declarations_block | type_tuple | literal | func_type
 
 generic_type = type_name type_parameters
@@ -128,7 +128,7 @@ map_signature = index_signature ":" types
 
 indexed_type = type_name "[" (type_name | literal) "]"
 
-func_type   = "(" [arg_list] ")" "=>" types
+func_type   = ["new"] "(" [arg_list] ")" "=>" types
 
 #######################################################################
 #

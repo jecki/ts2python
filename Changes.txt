@@ -1,3 +1,10 @@
+Version 0.7.2
+-------------
+- bugfixes
+- more advanced types supported (by the parser only! which
+  means they are read but may not be translated to Python
+  very well)
+
 Version 0.7.1
 -------------
 - rendering of anonymous interfaces as toplevel-TypedDicts now

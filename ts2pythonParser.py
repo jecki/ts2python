@@ -135,17 +135,17 @@ class ts2pythonGrammar(Grammar):
     literal = Forward()
     type = Forward()
     types = Forward()
-    source_hash__ = "f5d6985c194bfdd012ff895722e6072d"
+    source_hash__ = "d30ad2145a3ad00a9fd886f043e003db"
     early_tree_reduction__ = CombinedParser.MERGE_TREETOPS
-    disposable__ = re.compile('(?:$.)|(?:_array_ellipsis$|_root$|INT$|DOT$|_top_level_assignment$|EOF$|_part$|NEG$|_quoted_identifier$|_namespace$|_top_level_literal$|FRAC$|EXP$)')
+    disposable__ = re.compile('(?:$.)|(?:NEG$|FRAC$|_top_level_literal$|_root$|EOF$|_part$|_quoted_identifier$|_namespace$|EXP$|_top_level_assignment$|INT$|DOT$|_array_ellipsis$)')
     static_analysis_pending__ = []  # type: List[bool]
     parser_initialization__ = ["upon instantiation"]
-    COMMENT__ = r'(?:\/\/.*)|(?:\/\*(?:.|\n)*?\*\/)'
+    COMMENT__ = r'(?:\/\/.*)\n?|(?:\/\*(?:.|\n)*?\*\/) *\n?'
     comment_rx__ = re.compile(COMMENT__)
     WHITESPACE__ = r'\s*'
     WSP_RE__ = mixin_comment(whitespace=WHITESPACE__, comment=COMMENT__)
     wsp__ = Whitespace(WSP_RE__)
-    dwsp__ = Drop(Whitespace(WSP_RE__))
+    dwsp__ = Drop(Whitespace(WSP_RE__, keep_comments=True))
     EOF = Drop(NegativeLookahead(RegExp('.')))
     EXP = Option(Series(Alternative(Text("E"), Text("e")), Option(Alternative(Text("+"), Text("-"))), RegExp('[0-9]+')))
     DOT = Text(".")
@@ -241,7 +241,8 @@ get_grammar = parsing.factory # for backwards compatibility, only
 ts2python_AST_transformation_table = {
     # AST Transformations for the ts2python-grammar
     # "<": flatten,
-    ":Text": change_name('TEXT')
+    ":Text": change_name('TEXT'),
+    "comment__": remove_if(lambda p: p[-1].content.rfind('\n') < 0)
     # "*": replace_by_single_child
 }
 
@@ -417,6 +418,7 @@ class ts2pythonCompiler(Compiler):
         self.use_type_parameters = get_config_value('ts2Python.UseTypeParameters', False)
         self.use_literal_type = get_config_value('ts2python.UseLiteralType', True)
         self.use_not_required = get_config_value('ts2python.UseNotRequired', True)
+        self.keep_comments = get_config_value('ts2python.KeepMultilineComments', False)
 
         self.overloaded_type_names: Set[str] = set()
         self.known_types: List[Set[str]] = [
@@ -486,6 +488,20 @@ class ts2pythonCompiler(Compiler):
             "Malformed syntax-tree! Possibly caused by a parsing error.")
         return ""
         # raise ValueError('Malformed syntax-tree!')
+
+    def on_comment__(self, node) -> str:
+        assert node.content.rfind("\n") >= 0  # inline comments should have been removed
+        if self.keep_comments:
+            comment = node.content.strip()
+            comment = re.sub('/\*+\s*|\s*\*/|//[ \t]*', '', comment)
+            comment = re.sub('(?:\n|^)[ \t]*\* ?', '\n', comment).lstrip()
+            lines = comment.split('\n')
+            for i in range(len(lines)):
+                line = lines[i].strip()
+                lines[i] = "# " + line if line else ''
+            comment = '\n'.join(lines)
+            return f"\n{comment}"
+        return ""
 
     def on_document(self, node) -> str:
         if 'module' in node and isinstance(node['module'], Sequence) > 1:
@@ -635,6 +651,8 @@ class ts2pythonCompiler(Compiler):
             code = preface + f"{alias} = {types}"
         else:
             code = ''
+        if node[-1].name == 'comment__':
+            code += '\n\n' + self.compile(node[-1])
         self.obj_name.pop()
         return code
 
@@ -661,7 +679,7 @@ class ts2pythonCompiler(Compiler):
         # declarations = '\n'.join(self.compile(nd) for nd in node
         #                          if nd.name in ('declaration', 'function'))
         raw_decls = [self.compile(nd) for nd in node
-                     if nd.name in ('declaration', 'function')]
+                     if nd.name in ('declaration', 'function', 'comment__')]
         declarations = '\n'.join(d for d in raw_decls if d)
         return declarations or "pass"
 
@@ -1384,6 +1402,8 @@ def main():
                         help="addes the given decorator ")
     parser.add_argument('-p', '--peps', nargs='+', action='extend', type=str,
                         help='Assume Python-PEPs, e.g. 655 or ~655')
+    parser.add_argument('-k', '--comments', action='store_const', const="comments",
+                        help="Preserve (multiline) comments")
 
     args = parser.parse_args()
     file_names, out, log_dir = args.files, args.out[0], ''
@@ -1425,6 +1445,7 @@ def main():
                 if pep == '584':  set_preset_value('ts2python.UseLiteralType', **kwargs)
                 if pep == '604':  set_preset_value('ts2python.TypeUnion', **kwargs)
                 if pep == '655':  set_preset_value('ts2python.UseNotRequired', **kwargs)
+        if args.comments: set_preset_value('ts2python.KeepMultilineComments', True)
         finalize_presets()
         _ = get_config_values('ts2python.*')  # fill config value cache
 

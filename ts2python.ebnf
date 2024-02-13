@@ -11,13 +11,13 @@
 
 @ whitespace  = /\s*/           # implicit whitespace, includes linefeeds
 @ literalws   = right           # literals have implicit whitespace on the right hand side
-@ comment     = /(?:\/\/.*)|(?:\/\*(?:.|\n)*?\*\/)/   # /* ... */ or // to EOL
+@ comment     = /(?:\/\/.*)\n?|(?:\/\*(?:.|\n)*?\*\/) *\n?/   # /* ... */ or // to EOL
 @ ignorecase  = False           # literals and regular expressions are case-sensitive
 @ reduction   = merge_treetops  # anonymous nodes are being reduced where possible
 @ disposable  = INT, NEG, FRAC, DOT, EXP, EOF,
                 _array_ellipsis, _top_level_assignment, _top_level_literal,
                 _quoted_identifier, _root, _namespace, _part
-@ drop        = whitespace, strings, EOF,
+@ drop        = whitespace, no_comments, strings, EOF,
                 _array_ellipsis, _top_level_assignment, _top_level_literal
 
 

@@ -60,7 +60,7 @@ from DHParser.parse import Grammar, PreprocessorToken, Whitespace, Drop, AnyChar
     Lookbehind, Lookahead, Alternative, Pop, Text, Synonym, Counted, Interleave, INFINITE, ERR, \
     Option, NegativeLookbehind, OneOrMore, RegExp, Retrieve, Series, Capture, TreeReduction, \
     ZeroOrMore, Forward, NegativeLookahead, Required, CombinedParser, Custom, mixin_comment, \
-    last_value, matching_bracket, optional_last_value
+    last_value, matching_bracket, optional_last_value, SmartRE
 from DHParser.pipeline import create_parser_junction, create_preprocess_junction, \
     create_junction, PseudoJunction, full_pipeline, end_points
 from DHParser.preprocess import nil_preprocessor, PreprocessorFunc, PreprocessorResult, \
@@ -135,88 +135,166 @@ class ts2pythonGrammar(Grammar):
     literal = Forward()
     type = Forward()
     types = Forward()
-    source_hash__ = "d30ad2145a3ad00a9fd886f043e003db"
+    source_hash__ = "643016d855dcabd101436b7dbd160e44"
     early_tree_reduction__ = CombinedParser.MERGE_TREETOPS
-    disposable__ = re.compile('(?:$.)|(?:NEG$|FRAC$|_top_level_literal$|_root$|EOF$|_part$|_quoted_identifier$|_namespace$|EXP$|_top_level_assignment$|INT$|DOT$|_array_ellipsis$)')
+    disposable__ = re.compile(
+        '(?:DOT$|INT$|_top_level_assignment$|_root$|EXP$|_quoted_identifier$|_array_ellipsis$|NEG$|_part$|_top_level_literal$|FRAC$|EOF$|_namespace$)')
     static_analysis_pending__ = []  # type: List[bool]
     parser_initialization__ = ["upon instantiation"]
-    COMMENT__ = r'(?:\/\/.*)\n?|(?:\/\*(?:.|\n)*?\*\/) *\n?'
+    COMMENT__ = r'(?://.*)\n?|(?:/\*(?:.|\n)*?\*/) *\n?'
     comment_rx__ = re.compile(COMMENT__)
     WHITESPACE__ = r'\s*'
     WSP_RE__ = mixin_comment(whitespace=WHITESPACE__, comment=COMMENT__)
     wsp__ = Whitespace(WSP_RE__)
     dwsp__ = Drop(Whitespace(WSP_RE__, keep_comments=True))
-    EOF = Drop(NegativeLookahead(RegExp('.')))
-    EXP = Option(Series(Alternative(Text("E"), Text("e")), Option(Alternative(Text("+"), Text("-"))), RegExp('[0-9]+')))
+    EOF = Drop(SmartRE(f'(?!.)', '!/./'))
+    EXP = Option(SmartRE(f'(?P<:Text>E|e)(?:(?P<:Text>\\+|\\-)?)([0-9]+)', '`E`|`e` [`+`|`-`] /[0-9]+/'))
     DOT = Text(".")
     FRAC = Option(Series(DOT, RegExp('[0-9]+')))
     NEG = Text("-")
-    INT = Series(Option(NEG), Alternative(RegExp('[1-9][0-9]+'), RegExp('[0-9]')))
+    INT = Series(Option(NEG), SmartRE(f'([1-9][0-9]+|[0-9])', '/[1-9][0-9]+/|/[0-9]/'))
     _part = RegExp('(?!\\d)\\w+')
-    identifier = Series(NegativeLookahead(Alternative(Text("true"), Text("false"))), _part, dwsp__)
-    name = Series(NegativeLookahead(Alternative(Text("true"), Text("false"))), _part, ZeroOrMore(Series(Series(Drop(Text('.')), dwsp__), _part)), dwsp__)
-    _quoted_identifier = Alternative(identifier, Series(Series(Drop(Text('"')), dwsp__), identifier, Series(Drop(Text('"')), dwsp__), mandatory=2), Series(Series(Drop(Text("\'")), dwsp__), identifier, Series(Drop(Text("\'")), dwsp__), mandatory=2))
+    identifier = Series(SmartRE(f'(?!true|false)', '!`true`|`false`'), _part, dwsp__)
+    name = Series(SmartRE(f'(?!true|false)', '!`true`|`false`'), _part,
+                  ZeroOrMore(Series(Series(Drop(Text('.')), dwsp__), _part)), dwsp__)
+    _quoted_identifier = Alternative(identifier, Series(Series(Drop(Text('"')), dwsp__), identifier,
+                                                        Series(Drop(Text('"')), dwsp__), mandatory=2),
+                                     Series(Series(Drop(Text("\'")), dwsp__), identifier,
+                                            Series(Drop(Text("\'")), dwsp__), mandatory=2))
     variable = Synonym(name)
-    basic_type = Series(Alternative(Text("object"), Text("array"), Text("string"), Text("number"), Text("boolean"), Text("null"), Text("integer"), Text("uinteger"), Text("decimal"), Text("unknown"), Text("any"), Text("void")), dwsp__)
+    basic_type = SmartRE(
+        f'(?P<:Text>object|array|string|number|boolean|null|integer|uinteger|decimal|unknown|any|void)(?P<comment__>{WSP_RE__})',
+        '`object`|`array`|`string`|`number`|`boolean`|`null`|`integer`|`uinteger`|`decimal`|`unknown`|`any`|`void` ~')
     key = Alternative(identifier, Series(Series(Drop(Text('"')), dwsp__), identifier, Series(Drop(Text('"')), dwsp__)))
     association = Series(key, Series(Drop(Text(":")), dwsp__), literal, mandatory=1)
-    object = Series(Series(Drop(Text("{")), dwsp__), Option(Series(association, ZeroOrMore(Series(Series(Drop(Text(",")), dwsp__), association)))), Option(Series(Drop(Text(",")), dwsp__)), Series(Drop(Text("}")), dwsp__))
-    array = Series(Series(Drop(Text("[")), dwsp__), Option(Series(literal, ZeroOrMore(Series(Series(Drop(Text(",")), dwsp__), literal)))), Series(Drop(Text("]")), dwsp__))
-    string = Alternative(Series(RegExp('"[^"\\n]*"'), dwsp__), Series(RegExp("'[^'\\n]*'"), dwsp__))
-    boolean = Series(Alternative(Text("true"), Text("false")), dwsp__)
+    object = Series(Series(Drop(Text("{")), dwsp__),
+                    Option(Series(association, ZeroOrMore(Series(Series(Drop(Text(",")), dwsp__), association)))),
+                    Option(Series(Drop(Text(",")), dwsp__)), Series(Drop(Text("}")), dwsp__))
+    array = Series(Series(Drop(Text("[")), dwsp__),
+                   Option(Series(literal, ZeroOrMore(Series(Series(Drop(Text(",")), dwsp__), literal)))),
+                   Series(Drop(Text("]")), dwsp__))
+    string = SmartRE(f'("[^"\\n]*")(?P<comment__>{WSP_RE__})|(\'[^\'\\n]*\')(?P<comment__>{WSP_RE__})',
+                     '/"[^"\\n]*"/ ~|/\'[^\'\\n]*\'/ ~')
+    boolean = SmartRE(f'(?P<:Text>true|false)(?P<comment__>{WSP_RE__})', '`true`|`false` ~')
     number = Series(INT, FRAC, EXP, dwsp__)
-    integer = Series(INT, NegativeLookahead(RegExp('[.Ee]')), dwsp__)
+    integer = Series(INT, SmartRE(f'(?![.Ee])', '!/[.Ee]/'), dwsp__)
     type_name = Synonym(name)
     _top_level_literal = Drop(Synonym(literal))
     _array_ellipsis = Drop(Series(literal, ZeroOrMore(Series(Series(Drop(Text(",")), dwsp__), literal))))
-    assignment = Series(variable, Series(Drop(Text("=")), dwsp__), Alternative(literal, variable), Series(Drop(Text(";")), dwsp__))
+    assignment = Series(variable, Series(Drop(Text("=")), dwsp__), Alternative(literal, variable),
+                        Series(Drop(Text(";")), dwsp__))
     _top_level_assignment = Drop(Synonym(assignment))
-    const = Series(Option(Series(Drop(Text("export")), dwsp__)), Series(Drop(Text("const")), dwsp__), declaration, Option(Series(Series(Drop(Text("=")), dwsp__), Alternative(literal, identifier))), Series(Drop(Text(";")), dwsp__), mandatory=2)
+    const = Series(Option(Series(Drop(Text("export")), dwsp__)), Series(Drop(Text("const")), dwsp__), declaration,
+                   Option(Series(Series(Drop(Text("=")), dwsp__), Alternative(literal, identifier))),
+                   Series(Drop(Text(";")), dwsp__), mandatory=2)
     item = Series(_quoted_identifier, Option(Series(Series(Drop(Text("=")), dwsp__), literal)))
-    enum = Series(Option(Series(Drop(Text("export")), dwsp__)), Series(Drop(Text("enum")), dwsp__), identifier, Series(Drop(Text("{")), dwsp__), item, ZeroOrMore(Series(Series(Drop(Text(",")), dwsp__), item)), Option(Series(Drop(Text(",")), dwsp__)), Series(Drop(Text("}")), dwsp__), mandatory=3)
+    enum = Series(Option(Series(Drop(Text("export")), dwsp__)), Series(Drop(Text("enum")), dwsp__), identifier,
+                  Series(Drop(Text("{")), dwsp__), item, ZeroOrMore(Series(Series(Drop(Text(",")), dwsp__), item)),
+                  Option(Series(Drop(Text(",")), dwsp__)), Series(Drop(Text("}")), dwsp__), mandatory=3)
     keyof = Series(Text("keyof"), dwsp__)
     readonly = Series(Text("readonly"), dwsp__)
     optional = Series(Text("?"), dwsp__)
-    func_type = Series(Option(Series(Drop(Text("new")), dwsp__)), Series(Drop(Text("(")), dwsp__), Option(arg_list), Series(Drop(Text(")")), dwsp__), Series(Drop(Text("=>")), dwsp__), types)
-    extends = Series(Series(Drop(Text("extends")), dwsp__), Alternative(generic_type, type_name), ZeroOrMore(Series(Series(Drop(Text(",")), dwsp__), Alternative(generic_type, type_name))))
-    index_signature = Series(Option(readonly), Series(Drop(Text("[")), dwsp__), identifier, Alternative(Series(Drop(Text(":")), dwsp__), Series(Option(Series(Drop(Text("in")), dwsp__)), keyof), Series(Drop(Text("in")), dwsp__)), type, Series(Drop(Text("]")), dwsp__), Option(optional))
+    func_type = Series(Option(Series(Drop(Text("new")), dwsp__)), Series(Drop(Text("(")), dwsp__), Option(arg_list),
+                       Series(Drop(Text(")")), dwsp__), Series(Drop(Text("=>")), dwsp__), types)
+    extends = Series(Series(Drop(Text("extends")), dwsp__), Alternative(generic_type, type_name),
+                     ZeroOrMore(Series(Series(Drop(Text(",")), dwsp__), Alternative(generic_type, type_name))))
+    index_signature = Series(Option(readonly), Series(Drop(Text("[")), dwsp__), identifier,
+                             Alternative(Series(Drop(Text(":")), dwsp__),
+                                         Series(Option(Series(Drop(Text("in")), dwsp__)), keyof),
+                                         Series(Drop(Text("in")), dwsp__)), type, Series(Drop(Text("]")), dwsp__),
+                             Option(optional))
     map_signature = Series(index_signature, Series(Drop(Text(":")), dwsp__), types)
-    mapped_type = Series(Series(Drop(Text("{")), dwsp__), map_signature, Option(Series(Drop(Text(";")), dwsp__)), Series(Drop(Text("}")), dwsp__))
-    extends_type = Series(Series(Drop(Text("extends")), dwsp__), Option(keyof), Alternative(basic_type, type_name, mapped_type))
-    type_tuple = Series(Series(Drop(Text("[")), dwsp__), types, ZeroOrMore(Series(Series(Drop(Text(",")), dwsp__), types)), Series(Drop(Text("]")), dwsp__))
-    indexed_type = Series(type_name, Series(Drop(Text("[")), dwsp__), Alternative(type_name, literal), Series(Drop(Text("]")), dwsp__))
-    array_type = Alternative(basic_type, generic_type, type_name, Series(Series(Drop(Text("(")), dwsp__), types, Series(Drop(Text(")")), dwsp__)), type_tuple, declarations_block)
+    mapped_type = Series(Series(Drop(Text("{")), dwsp__), map_signature, Option(Series(Drop(Text(";")), dwsp__)),
+                         Series(Drop(Text("}")), dwsp__))
+    extends_type = Series(Series(Drop(Text("extends")), dwsp__), Option(keyof),
+                          Alternative(basic_type, type_name, mapped_type))
+    type_tuple = Series(Series(Drop(Text("[")), dwsp__), types,
+                        ZeroOrMore(Series(Series(Drop(Text(",")), dwsp__), types)), Series(Drop(Text("]")), dwsp__))
+    indexed_type = Series(type_name, Series(Drop(Text("[")), dwsp__), Alternative(type_name, literal),
+                          Series(Drop(Text("]")), dwsp__))
+    array_type = Alternative(basic_type, generic_type, type_name,
+                             Series(Series(Drop(Text("(")), dwsp__), types, Series(Drop(Text(")")), dwsp__)),
+                             type_tuple, declarations_block)
     array_types = Synonym(array_type)
     array_of = Series(Option(Series(Drop(Text("readonly")), dwsp__)), array_types, Series(Drop(Text("[]")), dwsp__))
     equals_type = Series(Series(Drop(Text("=")), dwsp__), Alternative(basic_type, type_name))
-    parameter_type = Alternative(array_of, basic_type, generic_type, indexed_type, Series(type_name, Option(extends_type), Option(equals_type)), declarations_block, type_tuple)
-    parameter_types = Series(Option(Series(Drop(Text("|")), dwsp__)), parameter_type, ZeroOrMore(Series(Series(Drop(Text("|")), dwsp__), parameter_type)))
-    type_parameters = Series(Series(Drop(Text("<")), dwsp__), parameter_types, ZeroOrMore(Series(Series(Drop(Text(",")), dwsp__), parameter_types)), Series(Drop(Text(">")), dwsp__), mandatory=1)
-    interface = Series(Option(Series(Drop(Text("export")), dwsp__)), Option(Series(Drop(Text("declare")), dwsp__)), Alternative(Series(Drop(Text("interface")), dwsp__), Series(Drop(Text("class")), dwsp__)), identifier, Option(type_parameters), Option(extends), declarations_block, Option(Series(Drop(Text(";")), dwsp__)), mandatory=3)
-    type_alias = Series(Option(Series(Drop(Text("export")), dwsp__)), Series(Drop(Text("type")), dwsp__), identifier, Option(type_parameters), Series(Drop(Text("=")), dwsp__), types, Series(Drop(Text(";")), dwsp__), mandatory=2)
+    parameter_type = Alternative(array_of, basic_type, generic_type, indexed_type,
+                                 Series(type_name, Option(extends_type), Option(equals_type)), declarations_block,
+                                 type_tuple)
+    parameter_types = Series(Option(Series(Drop(Text("|")), dwsp__)), parameter_type,
+                             ZeroOrMore(Series(Series(Drop(Text("|")), dwsp__), parameter_type)))
+    type_parameters = Series(Series(Drop(Text("<")), dwsp__), parameter_types,
+                             ZeroOrMore(Series(Series(Drop(Text(",")), dwsp__), parameter_types)),
+                             Series(Drop(Text(">")), dwsp__), mandatory=1)
+    interface = Series(Option(Series(Drop(Text("export")), dwsp__)), Option(Series(Drop(Text("declare")), dwsp__)),
+                       SmartRE(f'(?:interface)(?P<comment__>{WSP_RE__})|(?:class)(?P<comment__>{WSP_RE__})',
+                               '"interface"|"class"'), identifier, Option(type_parameters), Option(extends),
+                       declarations_block, Option(Series(Drop(Text(";")), dwsp__)), mandatory=3)
+    type_alias = Series(Option(Series(Drop(Text("export")), dwsp__)), Series(Drop(Text("type")), dwsp__), identifier,
+                        Option(type_parameters), Series(Drop(Text("=")), dwsp__), types,
+                        Series(Drop(Text(";")), dwsp__), mandatory=2)
     wildcard = Series(Text("*"), dwsp__)
     intersection = Series(type, OneOrMore(Series(Series(Drop(Text("&")), dwsp__), type, mandatory=1)))
     alias = Synonym(identifier)
-    namespace = Series(Option(Series(Drop(Text("export")), dwsp__)), Series(Drop(Text("namespace")), dwsp__), identifier, Series(Drop(Text("{")), dwsp__), ZeroOrMore(Alternative(interface, type_alias, enum, const, Series(Option(Series(Drop(Text("export")), dwsp__)), declaration, Series(Drop(Text(";")), dwsp__)), Series(Option(Series(Drop(Text("export")), dwsp__)), function, Series(Drop(Text(";")), dwsp__)))), Series(Drop(Text("}")), dwsp__), mandatory=2)
-    virtual_enum = Series(Option(Series(Drop(Text("export")), dwsp__)), Series(Drop(Text("namespace")), dwsp__), identifier, Series(Drop(Text("{")), dwsp__), ZeroOrMore(Alternative(interface, type_alias, enum, const, Series(declaration, Series(Drop(Text(";")), dwsp__)))), Series(Drop(Text("}")), dwsp__))
+    namespace = Series(Option(Series(Drop(Text("export")), dwsp__)), Series(Drop(Text("namespace")), dwsp__),
+                       identifier, Series(Drop(Text("{")), dwsp__), ZeroOrMore(
+            Alternative(interface, type_alias, enum, const,
+                        Series(Option(Series(Drop(Text("export")), dwsp__)), declaration,
+                               Series(Drop(Text(";")), dwsp__)),
+                        Series(Option(Series(Drop(Text("export")), dwsp__)), function,
+                               Series(Drop(Text(";")), dwsp__)))), Series(Drop(Text("}")), dwsp__), mandatory=2)
+    virtual_enum = Series(Option(Series(Drop(Text("export")), dwsp__)), Series(Drop(Text("namespace")), dwsp__),
+                          identifier, Series(Drop(Text("{")), dwsp__), ZeroOrMore(
+            Alternative(interface, type_alias, enum, const, Series(declaration, Series(Drop(Text(";")), dwsp__)))),
+                          Series(Drop(Text("}")), dwsp__))
     static = Series(Text("static"), dwsp__)
     _namespace = Alternative(virtual_enum, namespace)
     qualifiers = Interleave(readonly, static, repetitions=[(0, 1), (0, 1)])
     argument = Series(identifier, Option(optional), Option(Series(Series(Drop(Text(":")), dwsp__), types)))
-    arg_tail = Series(Series(Drop(Text("...")), dwsp__), identifier, Option(Series(Series(Drop(Text(":")), dwsp__), array_of)))
+    arg_tail = Series(Series(Drop(Text("...")), dwsp__), identifier,
+                      Option(Series(Series(Drop(Text(":")), dwsp__), array_of)))
     symbol = Alternative(identifier, Series(wildcard, Option(Series(Series(Drop(Text("as")), dwsp__), alias))))
-    symlist = Series(Series(Drop(Text("{")), dwsp__), symbol, ZeroOrMore(Series(Series(Drop(Text(",")), dwsp__), symbol)), Series(Drop(Text("}")), dwsp__))
-    Import = Series(Series(Drop(Text("import")), dwsp__), Option(Series(Alternative(symlist, symbol), Series(Drop(Text("from")), dwsp__))), string)
-    module = Series(Series(Drop(Text("declare")), dwsp__), Series(Drop(Text("module")), dwsp__), _quoted_identifier, Series(Drop(Text("{")), dwsp__), document, Series(Drop(Text("}")), dwsp__))
+    symlist = Series(Series(Drop(Text("{")), dwsp__), symbol,
+                     ZeroOrMore(Series(Series(Drop(Text(",")), dwsp__), symbol)), Series(Drop(Text("}")), dwsp__))
+    Import = Series(Series(Drop(Text("import")), dwsp__),
+                    Option(Series(Alternative(symlist, symbol), Series(Drop(Text("from")), dwsp__))), string)
+    module = Series(Series(Drop(Text("declare")), dwsp__), Series(Drop(Text("module")), dwsp__), _quoted_identifier,
+                    Series(Drop(Text("{")), dwsp__), document, Series(Drop(Text("}")), dwsp__))
     literal.set(Alternative(integer, number, boolean, string, array, object))
     generic_type.set(Series(type_name, type_parameters))
-    type.set(Alternative(array_of, basic_type, generic_type, indexed_type, Series(type_name, NegativeLookahead(Text("("))), Series(Series(Drop(Text("(")), dwsp__), types, Series(Drop(Text(")")), dwsp__)), mapped_type, declarations_block, type_tuple, literal, func_type))
-    types.set(Series(Option(Series(Drop(Text("|")), dwsp__)), Alternative(intersection, type), ZeroOrMore(Series(Series(Drop(Text("|")), dwsp__), Alternative(intersection, type)))))
-    arg_list.set(Alternative(Series(argument, ZeroOrMore(Series(Series(Drop(Text(",")), dwsp__), argument)), Option(Series(Series(Drop(Text(",")), dwsp__), arg_tail))), arg_tail))
-    function.set(Series(Option(Series(Option(Series(Drop(Text("export")), dwsp__)), Option(static), Option(Series(Drop(Text("function")), dwsp__)), identifier, Option(optional), Option(type_parameters))), Series(Drop(Text("(")), dwsp__), Option(arg_list), Series(Drop(Text(")")), dwsp__), Option(Series(Series(Drop(Text(":")), dwsp__), types)), mandatory=2))
-    declaration.set(Series(qualifiers, Option(Alternative(Series(Drop(Text("let")), dwsp__), Series(Drop(Text("var")), dwsp__))), identifier, Option(optional), NegativeLookahead(Text("(")), Option(Series(Series(Drop(Text(":")), dwsp__), types))))
-    declarations_block.set(Series(Series(Drop(Text("{")), dwsp__), Option(Series(Alternative(function, declaration), ZeroOrMore(Series(Option(Alternative(Series(Drop(Text(";")), dwsp__), Series(Drop(Text(",")), dwsp__))), Alternative(function, declaration))), Option(Series(Series(Drop(Text(";")), dwsp__), map_signature)), Option(Alternative(Series(Drop(Text(";")), dwsp__), Series(Drop(Text(",")), dwsp__))))), Series(Drop(Text("}")), dwsp__)))
-    document.set(Series(dwsp__, ZeroOrMore(Alternative(interface, type_alias, _namespace, enum, const, module, _top_level_assignment, _array_ellipsis, _top_level_literal, Series(Option(Series(Drop(Text("export")), dwsp__)), declaration, Series(Drop(Text(";")), dwsp__)), Series(Option(Series(Drop(Text("export")), dwsp__)), function, Series(Drop(Text(";")), dwsp__)), Series(Import, Series(Drop(Text(";")), dwsp__))))))
+    type.set(
+        Alternative(array_of, basic_type, generic_type, indexed_type, Series(type_name, NegativeLookahead(Text("("))),
+                    Series(Series(Drop(Text("(")), dwsp__), types, Series(Drop(Text(")")), dwsp__)), mapped_type,
+                    declarations_block, type_tuple, literal, func_type))
+    types.set(Series(Option(Series(Drop(Text("|")), dwsp__)), Alternative(intersection, type),
+                     ZeroOrMore(Series(Series(Drop(Text("|")), dwsp__), Alternative(intersection, type)))))
+    arg_list.set(Alternative(Series(argument, ZeroOrMore(Series(Series(Drop(Text(",")), dwsp__), argument)),
+                                    Option(Series(Series(Drop(Text(",")), dwsp__), arg_tail))), arg_tail))
+    function.set(Series(Option(Series(Option(Series(Drop(Text("export")), dwsp__)), Option(static),
+                                      Option(Series(Drop(Text("function")), dwsp__)), identifier, Option(optional),
+                                      Option(type_parameters))), Series(Drop(Text("(")), dwsp__), Option(arg_list),
+                        Series(Drop(Text(")")), dwsp__), Option(Series(Series(Drop(Text(":")), dwsp__), types)),
+                        mandatory=2))
+    declaration.set(Series(qualifiers, Option(
+        SmartRE(f'(?:let)(?P<comment__>{WSP_RE__})|(?:var)(?P<comment__>{WSP_RE__})', '"let"|"var"')), identifier,
+                           Option(optional), NegativeLookahead(Text("(")),
+                           Option(Series(Series(Drop(Text(":")), dwsp__), types))))
+    declarations_block.set(Series(Series(Drop(Text("{")), dwsp__), Option(Series(Alternative(function, declaration),
+                                                                                 ZeroOrMore(Series(Option(SmartRE(
+                                                                                     f'(?:;)(?P<comment__>{WSP_RE__})|(?:,)(?P<comment__>{WSP_RE__})',
+                                                                                     '";"|","')), Alternative(function,
+                                                                                                              declaration))),
+                                                                                 Option(Series(
+                                                                                     Series(Drop(Text(";")), dwsp__),
+                                                                                     map_signature)), Option(
+            SmartRE(f'(?:;)(?P<comment__>{WSP_RE__})|(?:,)(?P<comment__>{WSP_RE__})', '";"|","')))),
+                                  Series(Drop(Text("}")), dwsp__)))
+    document.set(Series(dwsp__, ZeroOrMore(
+        Alternative(interface, type_alias, _namespace, enum, const, module, _top_level_assignment, _array_ellipsis,
+                    _top_level_literal,
+                    Series(Option(Series(Drop(Text("export")), dwsp__)), declaration, Series(Drop(Text(";")), dwsp__)),
+                    Series(Option(Series(Drop(Text("export")), dwsp__)), function, Series(Drop(Text(";")), dwsp__)),
+                    Series(Import, Series(Drop(Text(";")), dwsp__))))))
     _root = Series(document, EOF)
     resume_rules__ = {'interface': [re.compile(r'(?=export|$)')],
                       'type_alias': [re.compile(r'(?=export|$)')],
@@ -492,15 +570,17 @@ class ts2pythonCompiler(Compiler):
     def on_comment__(self, node) -> str:
         assert node.content.rfind("\n") >= 0  # inline comments should have been removed
         if self.keep_comments:
-            comment = node.content.strip()
-            comment = re.sub('/\*+\s*|\s*\*/|//[ \t]*', '', comment)
-            comment = re.sub('(?:\n|^)[ \t]*\* ?', '\n', comment).lstrip()
+            comment = node.content
+            multiline = True if re.match(' *\n', comment) else False
+            comment = comment.strip()
+            comment = re.sub(r'/\*+\s*|\s*\*/|//[ \t]*', '', comment)
+            comment = re.sub(r'(?:\n|^)[ \t]*\* ?', '\n', comment).lstrip()
             lines = comment.split('\n')
             for i in range(len(lines)):
                 line = lines[i].strip()
                 lines[i] = "# " + line if line else ''
             comment = '\n'.join(lines)
-            return f"\n{comment}"
+            return f"\n{comment}" if multiline else comment
         return ""
 
     def on_document(self, node) -> str:

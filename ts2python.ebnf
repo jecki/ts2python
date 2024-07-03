@@ -9,6 +9,7 @@
 #
 #######################################################################
 
+@ optimizations = all
 @ whitespace  = /\s*/           # implicit whitespace, includes linefeeds
 @ literalws   = right           # literals have implicit whitespace on the right hand side
 @ comment     = /(?:\/\/.*)\n?|(?:\/\*(?:.|\n)*?\*\/) *\n?/   # /* ... */ or // to EOL

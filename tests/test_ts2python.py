@@ -360,16 +360,16 @@ class TestScriptCall:
         pythonpath = os.environ.get('PYTHONPATH', '') + os.pathsep + scriptdir_parent
         os.environ['PYTHONPATH'] = pythonpath
         cmd = os.path.abspath(os.path.join(scriptdir, '..', 'ts2pythonParser.py'))
-        result = subprocess.run(['python', cmd, 'testdata.ts'])
+        result = subprocess.run(['python3', cmd, 'testdata.ts'])
         assert result.returncode == 0
         assert os.path.exists('testdata.py')
-        result = subprocess.run(['python', 'testdata.py'])
+        result = subprocess.run(['python3', 'testdata.py'])
         assert result.returncode == 0
         with open('testdata.py', 'r', encoding='utf-8') as f:
             script = PATH_FIX + f.read()
         with open('testdata.py', 'w', encoding='utf-8') as f:
             f.write(script)
-        result = subprocess.run(['python', 'testdata.py'])
+        result = subprocess.run(['python3', 'testdata.py'])
         assert result.returncode == 0
 
 

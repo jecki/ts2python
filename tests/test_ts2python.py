@@ -203,7 +203,7 @@ if fix2 not in sys.path:  sys.path.append(fix2)
 '''
 
 class TestValidation:
-    def setup(self):
+    def setup_class(self):
         self.test_code, err = compile_src(TEST_DATA)
         self.test_code = PATH_FIX + self.test_code
         assert not err
@@ -346,11 +346,11 @@ class TestOptions:
 
 
 class TestScriptCall:
-    def setup(self):
+    def setup_class(self):
         with open('testdata.ts', 'w', encoding='utf-8') as f:
             f.write(TEST_DATA)
 
-    def teardown(self):
+    def teardown_class(self):
         if os.path.exists('testdata.ts'):
            os.remove('testdata.ts')
         if os.path.exists('testdata.py'):

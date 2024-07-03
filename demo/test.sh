@@ -1,5 +1,6 @@
 #!/usr/bin/sh
 
+export PYTHONPATH=../:$PYTHONPATH
 python3.11 specification.py
 python3.10 specification.py
 python3.9 specification.py

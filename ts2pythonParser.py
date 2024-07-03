@@ -60,7 +60,7 @@ from DHParser.parse import Grammar, PreprocessorToken, Whitespace, Drop, AnyChar
     Lookbehind, Lookahead, Alternative, Pop, Text, Synonym, Counted, Interleave, INFINITE, ERR, \
     Option, NegativeLookbehind, OneOrMore, RegExp, Retrieve, Series, Capture, TreeReduction, \
     ZeroOrMore, Forward, NegativeLookahead, Required, CombinedParser, Custom, mixin_comment, \
-    last_value, matching_bracket, optional_last_value
+    last_value, matching_bracket, optional_last_value, SmartRE
 from DHParser.pipeline import create_parser_junction, create_preprocess_junction, \
     create_junction, PseudoJunction, full_pipeline, end_points
 from DHParser.preprocess import nil_preprocessor, PreprocessorFunc, PreprocessorResult, \
@@ -135,12 +135,12 @@ class ts2pythonGrammar(Grammar):
     literal = Forward()
     type = Forward()
     types = Forward()
-    source_hash__ = "f5d6985c194bfdd012ff895722e6072d"
+    source_hash__ = "ec15c6ea05d2ce2e23ac7874610f05a3"
     early_tree_reduction__ = CombinedParser.MERGE_TREETOPS
-    disposable__ = re.compile('(?:$.)|(?:_array_ellipsis$|_root$|INT$|DOT$|_top_level_assignment$|EOF$|_part$|NEG$|_quoted_identifier$|_namespace$|_top_level_literal$|FRAC$|EXP$)')
+    disposable__ = re.compile('(?:_top_level_assignment$|_array_ellipsis$|_namespace$|NEG$|DOT$|_top_level_literal$|_part$|EOF$|_quoted_identifier$|EXP$|FRAC$|_root$|INT$)')
     static_analysis_pending__ = []  # type: List[bool]
     parser_initialization__ = ["upon instantiation"]
-    COMMENT__ = r'(?:\/\/.*)|(?:\/\*(?:.|\n)*?\*\/)'
+    COMMENT__ = r'(?://.*)|(?:/\*(?:.|\n)*?\*/)'
     comment_rx__ = re.compile(COMMENT__)
     WHITESPACE__ = r'\s*'
     WSP_RE__ = mixin_comment(whitespace=WHITESPACE__, comment=COMMENT__)

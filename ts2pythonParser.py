@@ -944,7 +944,8 @@ class ts2pythonCompiler(Compiler):
     def on_func_type(self, node) -> str:
         if 'arg_list' in node:
             arg_list = self.compile(node["arg_list"])
-            if arg_list.find('= None') >= 0 or arg_list.find('*') >= 0:
+            if  arg_list == "..." or arg_list.find('= None') >= 0 \
+                    or arg_list.find('*') >= 0:
                 # See https://docs.python.org/3/library/typing.html#typing.Callable
                 args = '...'
             else:

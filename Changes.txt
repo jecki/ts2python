@@ -1,6 +1,7 @@
 Version 0.7.5
 -------------
 - bugfixes related to comments
+- bugs #21, #19
 - slightly faster Parsing with upcoming DHParser 1.8.0
 
 Version 0.7.4

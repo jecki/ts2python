@@ -61,10 +61,31 @@ Presently, ts2python is mostly limited to Typescript-Interfaces that do not
 contain any methods. The language server-protocol-definitions can be transpiled
 successfully.
 
-However, as of now, most Typescript-header files, i.e. the
-files ending with ".d.ts" cannot be transpiled, because support for
-function headers, classes and interfaces with methods, ambient modules
-and namespaces is still incomplete. This will be added in the future.
+Hacking ts2python
+-----------------
+
+Hacking ts2python is not easy. (Sorry!) The reason is that ts2python
+was primarily designed for a relatively limeted application case, i.e.
+transpiling interface dfinitions. In order to keep things simple, the
+abstract syntax tree (AST) from the TypeScript source is directly converted
+to Python code, rather than transforming the TypeScript-AST to a Python-AST
+first.
+
+Adding such a tree to tree transoformation before the Pyhton code
+generation stage makes sense, among other things, because some components
+need to be re-ordered, since Python does not know anonymous classes/interfaces.
+However, for the above mentioned restriced purpose this appeared to me like
+overengineering. Though, now I regret it, because it makes adding more features
+harder.
+
+In the present implementation in order to keep track of code snippets
+that must be reordered or of names and scopes that need to be completed
+or filled in later, or more generally, for any task that cannot be
+completed, locally, when transforming a particular node of the AST,
+several different stacks are kept as instance-variables of the
+ts2PythonCompiler-object like ``known_types``, ``local_classes``,
+``base_classes``, ``obj_name``, ``scope_type``, ``optional_keys``.
+
 
 
 .. _ts2python:  https://github.com/jecki/ts2python/

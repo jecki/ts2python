@@ -1,3 +1,7 @@
+Version 0.7.5
+-------------
+- bugfixes related to comments
+
 Version 0.7.4
 -------------
 - comments can be preserved: option "-k" or "--comments". Exception:

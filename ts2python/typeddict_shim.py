@@ -38,7 +38,7 @@ try:
     from typing_extensions import GenericMeta, \
         ClassVar, Final, Protocol, NoReturn, Literal
 except (ImportError, ModuleNotFoundError):
-    from .typing_extensions import GenericMeta, \
+    from DHParser.externallibs.typing_extensions import GenericMeta, \
         ClassVar, Final, Protocol, NoReturn, Literal
 
 try:
@@ -50,16 +50,19 @@ except (ImportError, ModuleNotFoundError):
     _SpecialForm = object
 
 try:
-    from typing_extensions import get_origin
+    from typing_extensions import get_origin, get_args
 except (ImportError, ModuleNotFoundError):
     try:
-        from .typing_extensions import get_origin
+        from DHParser.externallibs.typing_extensions import get_origin, get_args
     except (ImportError, ModuleNotFoundError):
         def get_origin(typ):
             try:
                 return typ.__origin__
             except AttributeError:
                 return Generic
+        def get_args(typ):
+            return typ.__args__
+
 
 try:
     from typing import NotRequired

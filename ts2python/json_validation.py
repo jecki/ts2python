@@ -19,28 +19,31 @@ permissions and limitations under the License.
 """
 
 
-from enum import Enum, IntEnum
+from enum import Enum
 import functools
 import sys
-from typing import Union, List, Tuple, Optional, Dict, Any, \
-    Generic, TypeVar, Iterable, Callable, get_type_hints
+from typing import Union, List, Tuple, Dict, Any, \
+    TypeVar, Iterable, Callable, get_type_hints
 try:
     from typing_extensions import GenericMeta, \
-        ClassVar, Final, Protocol, NoReturn
+        ClassVar, Final, Protocol, NoReturn, Literal
 except (ImportError, ModuleNotFoundError):
-    from .typing_extensions import GenericMeta, \
-        ClassVar, Final, Protocol, NoReturn
+    from DHParser.externallibs.typing_extensions import GenericMeta, \
+        ClassVar, Final, Protocol, NoReturn, Literal
 
 if sys.version_info >= (3, 11):
-    from typing import TypedDict, _TypedDictMeta, get_origin, ForwardRef
+    from typing import TypedDict, _TypedDictMeta, get_origin, get_args, ForwardRef
 else:
     try:
-        from ts2python.typeddict_shim import TypedDict, _TypedDictMeta, get_origin, ForwardRef
+        from ts2python.typeddict_shim import TypedDict, _TypedDictMeta, get_origin, \
+            get_args, ForwardRef
     except (ImportError, ModuleNotFoundError):
         try:
-            from typeddict_shim import TypedDict, _TypedDictMeta, get_origin, ForwardRef
+            from typeddict_shim import TypedDict, _TypedDictMeta, get_origin, \
+                get_args, ForwardRef
         except (ImportError, ModuleNotFoundError):
-            from .typeddict_shim import TypedDict, _TypedDictMeta, get_origin, ForwardRef
+            from .typeddict_shim import TypedDict, _TypedDictMeta, get_origin, \
+                get_args, ForwardRef
 
 
 
@@ -172,7 +175,11 @@ def validate_compound_type(value: Any, T):
     """
     if not hasattr(T, '__args__'):
         raise ValueError(f'{T} is not a compound type.')
-    if isinstance(value, get_origin(T)):
+    OT = get_origin(T)
+    if OT is Literal:
+        if value not in get_args(T):
+            raise TypeError(f"{value} is not of type {T}")
+    elif isinstance(value, OT):
         if isinstance(value, Dict):
             assert len(T.__args__) == 2, str(T)
             key_type, value_type = T.__args__
@@ -191,7 +198,7 @@ def validate_compound_type(value: Any, T):
                 raise ValueError(f"Unknown compound type {T}")
             validate_uniform_sequence(value, T.__args__[0])
     else:
-        raise TypeError(f"{value} is not of type {get_origin(T)}")
+        raise TypeError(f"{value} is not of type {T}")
 
 
 def validate_TypedDict(D: Dict, T: _TypedDictMeta):

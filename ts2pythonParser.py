@@ -544,10 +544,7 @@ class ts2pythonCompiler(Compiler):
         if base_class_name == 'TypedDict':
             total = not bool(optional_key_list) or self.use_not_required
             if base_classes:
-                if base_classes.find('Generic[') >= 0:
-                    td_name = 'GenericTypedDict'
-                else:
-                    td_name = 'TypedDict'
+                td_name = 'TypedDict'  #  if base_classes.find('Generic[') < 0 else 'GenericTypedDict'
                 if self.use_not_required:
                     return decorator + \
                            f"class {name}({base_classes}, {td_name}):\n"
@@ -916,9 +913,11 @@ class ts2pythonCompiler(Compiler):
                     return 'int'
                 except ValueError:
                     return 'str'
+            elif literal_typ == 'boolean':
+                return 'bool'
             else:
                 assert literal_typ == 'string', literal_typ
-                literal = self.compile(typ)
+                _ = self.compile(typ)
                 return 'str'
         else:
             return self.compile(typ)
@@ -1435,8 +1434,15 @@ def main():
             set_preset_value('log_syntax_trees', frozenset(['cst', 'ast']))  # don't use a set literal, here
         if args.compatibility:
             version_info = tuple(int(part) for part in args.compatibility[0].split('.'))
+            if not version_info >= (3, 7):
+                print('Compatibility version must be >= 3.7')
+                sys.exit(1)
+            if version_info >= (3, 8):
+                set_preset_value('ts2python.UseLiteralType', True, allow_new_key=True)
             if version_info >= (3, 10):
                 set_preset_value('ts2python.UseTypeUnion', True, allow_new_key=True)
+            if version_info >= (3, 11):
+                set_preset_value('ts2python.UseNotRequired', True, allow_new_key=True)
             if version_info >= (3, 12):
                 set_preset_value('ts2python.UseTypeParameters', True, allow_new_key=True)
         if args.base:  set_preset_value('ts2python.BaseClassName', args.base[0].strip())
@@ -1444,19 +1450,19 @@ def main():
         if args.decorator:  set_preset_value('ts2python.ClassDecorator', args.decorator[0].strip())
         if args.peps:
             args_peps = [pep.strip() for pep in args.peps]
-            all_peps = {'435', '584', '604', '655', '~435', '~584', '~604', '~655'}
+            all_peps = {'435', '584', '586', '604', '655', '~435', '~584', '~586', '~604', '~655'}
             if not all(pep in all_peps for pep in args_peps):
                 print(f'Unsupported PEPs specified: {args_peps}\n'
                       'Allowed PEP arguments are:\n'
                       '  435  - use Enums (Python 3.4)\n'
                       '  604  - use type union (Python 3.10)\n'
-                      '  584  - use Literal type (Python 3.8)\n'
+                      '  586  - use Literal type (Python 3.8)\n'
                       '  655  - use NotRequired instead of Optional\n')
                 sys.exit(1)
             for pep in args_peps:
                 kwargs= {'value': pep[0] != '~', 'allow_new_key': True}
                 if pep == '435':  set_preset_value('ts2python.UseEnum', **kwargs)
-                if pep == '584':  set_preset_value('ts2python.UseLiteralType', **kwargs)
+                if pep in ('586', '584'):  set_preset_value('ts2python.UseLiteralType', **kwargs)
                 if pep == '604':  set_preset_value('ts2python.TypeUnion', **kwargs)
                 if pep == '655':  set_preset_value('ts2python.UseNotRequired', **kwargs)
         if args.comments: set_preset_value('ts2python.KeepMultilineComments', True)

@@ -31,12 +31,12 @@ import types
 from functools import _find_impl, get_cache_token, update_wrapper
 from typing import Union
 try:
-    from typing import GenericAlias, get_args, get_origin, get_type_hints
+    from typing import get_args, get_origin, get_type_hints
 except ImportError:
     try:
-        from typing_extensions import GenericAlias, get_args, get_origin, get_type_hints
+        from typing_extensions import get_args, get_origin, get_type_hints
     except ImportError:
-        from .typing_extensions import GenericAlias, get_args, get_origin, get_type_hints
+        from .typing_extensions import get_args, get_origin, get_type_hints
 
 
 # The following functions have been copied from the Python

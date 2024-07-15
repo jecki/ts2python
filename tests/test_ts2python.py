@@ -204,6 +204,9 @@ if fix2 not in sys.path:  sys.path.append(fix2)
 
 class TestValidation:
     def setup_class(self):
+        # Use this, to test with non-legacy code, i.e. Python >= 3.11
+        # from DHParser.configuration import set_config_value
+        # set_config_value('ts2python.UseNotRequired', True, allow_new_key=True)
         self.test_code, err = compile_src(TEST_DATA)
         self.test_code = PATH_FIX + self.test_code
         assert not err

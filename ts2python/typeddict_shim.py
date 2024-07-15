@@ -71,7 +71,7 @@ except (ImportError, ModuleNotFoundError):
         
 
 __all__ = ['NotRequired', 'TypedDict', 'GenericTypedDict', '_TypedDictMeta',
-           'GenericMeta', 'get_origin', 'Literal']
+           'GenericMeta', 'get_origin', 'Literal', 'is_typeddict']
 
 
 # The following functions have been copied from the Python
@@ -115,7 +115,12 @@ def _type_check(arg, msg, is_argument=True, module=None):
         raise TypeError(f"Plain {arg} is not valid as type argument")
     if isinstance(arg, (type, TypeVar, ForwardRef)):
         return arg
+    if sys.version_info >= (3, 10):
+        from types import UnionType
+        if isinstance(arg, UnionType):
+            return arg
     if not callable(arg):
+        print(sys.version_info, sys.version_info >= (3, 9))
         raise TypeError(f"{msg} Got {arg!r:.100}.")
     return arg
 
@@ -140,7 +145,7 @@ def _new_typed_dict(meta, name, bases, ns) -> dict:
     annotations = {}
     own_annotations = ns.get('__annotations__', {})
     # own_annotation_keys = set(own_annotations.keys())
-    msg = "TypedDict('Name', {f0: t0, f1: t1, ...}); each t must be a type"
+    msg = "TypedDict('Name', {f0: t0, f1: t1, ...}); each t must be a type."
     own_annotations = {
         n: _type_check(tp, msg, module=tp_dict.__module__)
         for n, tp in own_annotations.items()
@@ -202,11 +207,12 @@ class _TypedDictMeta(type):
 
 _is_pypy = hasattr(sys, 'pypy_version_info')
     
-if sys.version_info >= (3, 11) and not _is_pypy:
-    from typing import TypedDict
-    GenericTypedDict = TypedDict
+# if sys.version_info >= (3, 11) and not _is_pypy:
+#     from typing import TypedDict
+#     GenericTypedDict = TypedDict
+# elif ...
 
-elif sys.version_info >= (3, 7) and not _is_pypy:
+if sys.version_info >= (3, 7) and not _is_pypy:
     def TypedDict(typename, fields=None, *, total=True, **kwargs):
         """An alternative implementation of typing.TypedDict that, instead of
         relying on the `total`-parameter, allows to treat individual fields
@@ -289,3 +295,15 @@ else:  # Python Version 3.6
 
 # up to this point all functions have been copied and adapted from
 # the typing.py module of the Python-STL
+
+try:
+    from typing import _TypedDictMeta as _typing_TypedDictMeta
+    typing_TDM_flag = True  # _typing_TypedDictMeta is not the same as _TypedDictMeta
+except (ImportError, ModuleNotFoundError):
+    _typing_TypedDictMeta = _TypedDictMeta
+    typing_TDM_flag = False  # _typing_TypedDictMeta is the same as _TypedDictMeta
+
+
+def is_typeddict(typ) -> bool:
+    return isinstance(typ, _typing_TypedDictMeta) \
+        or (typing_TDM_flag and isinstance(typ, _TypedDictMeta))

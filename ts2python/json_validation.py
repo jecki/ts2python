@@ -22,6 +22,7 @@ permissions and limitations under the License.
 from enum import Enum
 import functools
 import sys
+import typing
 from typing import Union, List, Tuple, Dict, Any, \
     TypeVar, Iterable, Callable, get_type_hints
 try:
@@ -31,20 +32,19 @@ except (ImportError, ModuleNotFoundError):
     from DHParser.externallibs.typing_extensions import GenericMeta, \
         ClassVar, Final, Protocol, NoReturn, Literal
 
+try:
+    from ts2python.typeddict_shim import TypedDict, _TypedDictMeta, get_origin, \
+        get_args, ForwardRef, is_typeddict
+except (ImportError, ModuleNotFoundError):
+    try:
+        from typeddict_shim import TypedDict, _TypedDictMeta, get_origin, \
+            get_args, ForwardRef, is_typeddict
+    except (ImportError, ModuleNotFoundError):
+        from .typeddict_shim import TypedDict, _TypedDictMeta, get_origin, \
+            get_args, ForwardRef, is_typeddict
+
 if sys.version_info >= (3, 11):
     from typing import TypedDict, _TypedDictMeta, get_origin, get_args, ForwardRef
-else:
-    try:
-        from ts2python.typeddict_shim import TypedDict, _TypedDictMeta, get_origin, \
-            get_args, ForwardRef
-    except (ImportError, ModuleNotFoundError):
-        try:
-            from typeddict_shim import TypedDict, _TypedDictMeta, get_origin, \
-                get_args, ForwardRef
-        except (ImportError, ModuleNotFoundError):
-            from .typeddict_shim import TypedDict, _TypedDictMeta, get_origin, \
-                get_args, ForwardRef
-
 
 
 __all__ = ['validate_type', 'type_check', 'validate_uniform_sequence']
@@ -82,7 +82,7 @@ def validate_enum(val: Any, typ: Enum):
 
 def is_TypedDictClass(typ) -> bool:
     """True, if typ is an instance of _TypedDictMeta."""
-    return isinstance(typ, _TypedDictMeta)
+    return is_typeddict(typ)
     # try:
     #   return isinstance(typ, _TypedDictMeta) or str(typ.__class__)[-16:-2] == "_TypedDictMeta"
     # except AttributeError:
@@ -345,6 +345,7 @@ def type_check(func: Callable, check_return_type: bool = True) -> Callable:
             try:
                 validate_type(arg_dict[name], typ)
             except TypeError as e:
+                raise(e)
                 raise TypeError(
                     f'Parameter "{name}" of function "{func.__name__}" failed '
                     f'the type-check, because:\n{str(e)}')

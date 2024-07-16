@@ -2,8 +2,6 @@
 
 """test_ts2python.py -- test code for ts2python.py."""
 
-import sys
-
 
 import os
 import subprocess

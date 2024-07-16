@@ -23,7 +23,7 @@ from enum import Enum
 import functools
 import sys
 import typing
-from typing import Union, List, Tuple, Dict, Any, \
+from typing import Union, List, Tuple, Dict, Set, Any, \
     TypeVar, Iterable, Callable, get_type_hints
 try:
     from typing_extensions import GenericMeta, \
@@ -34,17 +34,17 @@ except (ImportError, ModuleNotFoundError):
 
 try:
     from ts2python.typeddict_shim import TypedDict, _TypedDictMeta, get_origin, \
-        get_args, ForwardRef, is_typeddict
+        get_args, ForwardRef, _GenericAlias, is_typeddict
 except (ImportError, ModuleNotFoundError):
     try:
         from typeddict_shim import TypedDict, _TypedDictMeta, get_origin, \
-            get_args, ForwardRef, is_typeddict
+            get_args, ForwardRef, _GenericAlias, is_typeddict
     except (ImportError, ModuleNotFoundError):
         from .typeddict_shim import TypedDict, _TypedDictMeta, get_origin, \
-            get_args, ForwardRef, is_typeddict
+            get_args, ForwardRef, _GenericAlias, is_typeddict
 
 if sys.version_info >= (3, 11):
-    from typing import TypedDict, _TypedDictMeta, get_origin, get_args, ForwardRef
+    from typing import _GenericAlias, TypedDict, _TypedDictMeta, get_origin, get_args, ForwardRef
 
 
 __all__ = ['validate_type', 'type_check', 'validate_uniform_sequence']
@@ -55,19 +55,21 @@ def strdata(data: Any) -> str:
     return datastr[:10] + '...' if len(datastr) > 10 else datastr
 
 
-def resolve_forward_refs(T: type, Ur_T: type = None) -> type:
+def resolve_forward_refs(T: type, Ur_T: type = None,) -> type:
     """Resolves all forward references found in T."""
     if isinstance(T, ForwardRef):
         if Ur_T is None:  Ur_T = T
         if sys.version_info >= (3, 9, 0):
-            recursive_guard = set()
-            T = T._evaluate(globals(), sys.modules[Ur_T.__module__].__dict__, recursive_guard)
+            T = T._evaluate(globals(), sys.modules[Ur_T.__module__].__dict__,
+                            recursive_guard=set())
         else:
            T = T._evaluate(globals(), sys.modules[Ur_T.__module__].__dict__)
-        T = resolve_forward_refs(T, Ur_T)
-    elif str(T).find('ForwardRef') >= 0:
+        # T = resolve_forward_refs(T, Ur_T)
+        return T
+    elif not isinstance(T, _GenericAlias) and str(T).find('ForwardRef') >= 0:
         if Ur_T is None:  Ur_T = T
-        T.__args__ = tuple(resolve_forward_refs(arg, Ur_T) for arg in T.__args__)
+        T.__args__ = tuple(resolve_forward_refs(arg, Ur_T)
+                           for arg in T.__args__)
     return T
 
 
@@ -345,7 +347,6 @@ def type_check(func: Callable, check_return_type: bool = True) -> Callable:
             try:
                 validate_type(arg_dict[name], typ)
             except TypeError as e:
-                raise(e)
                 raise TypeError(
                     f'Parameter "{name}" of function "{func.__name__}" failed '
                     f'the type-check, because:\n{str(e)}')

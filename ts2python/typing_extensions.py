@@ -3018,7 +3018,7 @@ else:
             ...     def a(self) -> str: ...
             ...     b: int
             >>> get_protocol_members(P)
-            frozenset({'a', 'b'})
+            frozenset({'b', 'a'})
 
         Raise a TypeError for arguments that are not Protocols.
         """

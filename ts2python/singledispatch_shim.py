@@ -26,10 +26,10 @@ implied. See the License for the specific language governing
 permissions and limitations under the License.
 """
 
-import types
 
 from functools import _find_impl, get_cache_token, update_wrapper
-from typing import Union
+from typing import Union, ForwardRef
+import sys
 try:
     from typing import get_args, get_origin, get_type_hints
 except ImportError:
@@ -132,11 +132,24 @@ def singledispatch(func):
                 )
             ann = getattr(cls, '__annotations__', {})
             if not ann:
-                raise TypeError(
-                    f"Invalid first argument to `register()`: {cls!r}. "
-                    f"Use either `@register(some_class)` or plain `@register` "
-                    f"on an annotated function."
-                )
+                if isinstance(cls, ForwardRef):
+                    obj = next(iter(registry.values()))
+                    mod = obj.__module__
+                    method = cls.__forward_value__
+                    cls.__forward_value__ = None
+                    if sys.version_info >= (3, 9, 0):
+                        cls = cls._evaluate(globals(), sys.modules[mod].__dict__,
+                                        recursive_guard=set())
+                    else:
+                        cls = cls._evaluate(globals(), sys.modules[mod].__dict__)
+                else:
+                    raise TypeError(
+                        f"Invalid first argument to `register()`: {cls!r}. "
+                        f"Use either `@register(some_class)` or plain `@register` "
+                        f"on an annotated function."
+                    )
+            else:
+                method = None
             func = cls
 
             # only import typing if annotation parsing is necessary
@@ -145,8 +158,12 @@ def singledispatch(func):
                 if not isinstance(cls, type) and str(type(cls))[1:6] == "class":
                     raise NameError
             except NameError:
+                if cls != func:
+                    cls.__forward_value__ = func
                 registry.setdefault('postponed', []).append(cls)
                 return func
+            except StopIteration:
+                func = method
             if not _is_valid_dispatch_type(cls):
                 if _is_union_type(cls):
                     raise TypeError(

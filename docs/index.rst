@@ -54,6 +54,38 @@ type of the root data structure beforehand, e.g.::
 The only requirement is that the root type of the json data is known beforehand.
 Everything else simply falls into place.
 
+Backwards compatibility
+-----------------------
+
+ts2python tries to be as backwards compatible as possible. To run ts2python you
+need at least Python version 3.8. The code ts2python generates is backwards
+compatible down to version 3.7. If you do not need to be compatible with older
+version, you can use the --compatibility [VERSION] switch to generate code
+for newer versions only. Usually, this code is a bit cleaner than the fully
+compatible code, e.g.:
+
+   $ ts2python --compatibility 3.11 [FILENAME.ts]
+
+In order to achieve full conformity with most type-checkers, it is advisable
+to use compatibility level 3.11 and above and also add the `-a toplevel`-switch
+to always turn anonymous TypeScript interfaces into top-level classes, rather
+than locally defined classes, which is not allowed for Python's TypedDict, although
+it should be (in my IMHO) and works perfectly well - except for the complaints of
+the type checkers.
+
+WIth compatibility level 3.11 and above, the generated code does not need to
+use ts2python's "typeddict_shim"-compatibility layer, any more, which greatly
+simplifies the import-block at the beginning of the generated code and thus
+eliminates on of two dependencies of the generated code on the ts2pytho-package.
+
+The other remaining dependency "singledispatch_shim" can be removed from the
+generated code by hand, if there are no single-dispatch functions in the
+code that dispatch on a forward-referenced type, i.e. a type that is denoted
+ion the code by a string containing the type name rather than the type name
+directly. (It's a current limitation of functools.singledispatch that it
+cannot handle forward references.)
+
+
 Current Limitations
 -------------------
 

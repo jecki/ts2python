@@ -119,7 +119,7 @@ imported in Python-Code:
 
     from interfaces import *
 
-Json-data which adheres to a specific structure (no matter
+JSON-data which adheres to a specific structure (no matter
 whether defined on the typescript side via interfaces or
 on the Python-side via TypedDicts) can easily be interchanged
 and deserialized:
@@ -192,14 +192,42 @@ With the type decorator the last call fails with a TypeError:
 
 Both the call and the return types can be validated.
 
+
+## Python-Version compatibility
+
+By default, ts2python generates code that is compatibel with Python
+3.7 and above. This code is not strictly standard-conform, because
+it imitates certain features that became available only with higher
+versions (like "NotRequired" for individual TypedDict-Fields) with
+other means. "Not strictly standard-conform" means, the code works,
+but type-checkers might complain. 
+
+In order to generate code for higher Python-Versions only, you
+can use the compatibility switch from the command line:
+
+    $ ts2python --compatibility 3.11 interfaces.ts
+
+In this example, the generated code is compatible only with
+Python version 3.11 and above. To achive full compatibility
+with type checkers (e.g. Pylance) it is advisable also use the
+`-a toplevel` switch (see below).
+
+
 ## Type Checkers
 
 The output ts2python is somewhat more liberal than what strict
 typecheckers like mypy or pylance seem to allow. In particular
 class definitions inside TypedDicts are considered illegal by
 the specification und thus marked as an error by some 
-type-checkers. Use the command-line switch "-a toplevel" to
-generate Python-code that is more acceptable to type checkers.
+type-checkers. Use the command-line switch `-a toplevel` to
+generate Python-code that is more acceptable to type checkers, e.g.:
+
+    $ ts2python --compatibility 3.11 -a toplevel interfaces.ts
+
+However, IMHO defining nested anonymous TypeScript interfaces on the 
+toplevel in the Python code can make the code quite a bit less
+readable thatn allowing ts2python to define them as local classes
+of TypedDict-classes. 
 
 ## Full Documentation
 
@@ -227,12 +255,12 @@ or [nose](https://nose.readthedocs.io), in case you have
 either of theses testing-frameworks installed.
 
 For a demonstration how the TypeScript-Interfaces are transpiled
-to Python-code, run the `demo-3-16.sh`-script (or `demo-3-16.bat` on Windows)
+to Python-code, run the `demo.sh`-script (or `demo.bat` on Windows)
 in the "demo"-sub-directory or the ts2python-repository. 
 
-(Presently, this does not work with the LSP 3.17 specs, because the
-specs contain typescript bugs at a few places and thus would need to 
-be corrected by hand after downloading.)
+Once, you have run the `demo.sh`-script you can also run the 
+`test.sh` which tests the compatibility with every Python-Version
+higher or equal than 3.7 that is installed on your system.
 
 Or, run the `tst_ts2python_grammar.py` in the ts2python-directory
 and look up the grammar-test-reports in the "REPORT"-sub-directory 

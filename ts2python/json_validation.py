@@ -21,8 +21,8 @@ permissions and limitations under the License.
 
 from enum import Enum
 import functools
+import inspect
 import sys
-import typing
 from typing import Union, List, Tuple, Dict, Set, Any, \
     TypeVar, Iterable, Callable, get_type_hints
 try:
@@ -57,6 +57,12 @@ def strdata(data: Any) -> str:
 
 def resolve_forward_refs(T: type, Ur_T: type = None,) -> type:
     """Resolves all forward references found in T."""
+    if isinstance(T, _GenericAlias):
+        O = get_origin(T)
+        if inspect.isclass(O):
+            return O
+        else:
+            T = O[get_args(T)]
     if isinstance(T, ForwardRef):
         if Ur_T is None:  Ur_T = T
         if sys.version_info >= (3, 9, 0):
@@ -66,10 +72,10 @@ def resolve_forward_refs(T: type, Ur_T: type = None,) -> type:
            T = T._evaluate(globals(), sys.modules[Ur_T.__module__].__dict__)
         # T = resolve_forward_refs(T, Ur_T)
         return T
-    elif not isinstance(T, _GenericAlias) and str(T).find('ForwardRef') >= 0:
+    elif str(T).find('ForwardRef') >= 0:
         if Ur_T is None:  Ur_T = T
         T.__args__ = tuple(resolve_forward_refs(arg, Ur_T)
-                           for arg in T.__args__)
+                           for arg in get_args(T))
     return T
 
 
@@ -255,6 +261,7 @@ def validate_TypedDict(D: Dict, T: _TypedDictMeta):
         elif get_origin(field_type) is Union:
             value = D[field]
             for union_typ in field_type.__args__:
+                union_typ = resolve_forward_refs(union_typ, T)
                 if isinstance(union_typ, ForwardRef):
                     if sys.version_info >= (3, 9):
                         union_typ = union_typ._evaluate(globals(), sys.modules[T.__module__].__dict__,

@@ -255,8 +255,12 @@ def validate_TypedDict(D: Dict, T: _TypedDictMeta):
         elif get_origin(field_type) is Union:
             value = D[field]
             for union_typ in field_type.__args__:
-                # if isinstance(union_typ, ForwardRef):
-                #     union_typ = union_typ._evaluate(globals(), sys.modules[T.__module__].__dict__)
+                if isinstance(union_typ, ForwardRef):
+                    if sys.version_info >= (3, 9):
+                        union_typ = union_typ._evaluate(globals(), sys.modules[T.__module__].__dict__,
+                                                        recursive_guard=set())
+                    else:
+                        union_typ = union_typ._evaluate(globals(), sys.modules[T.__module__].__dict__)
                 if is_TypedDictClass(union_typ):
                     if isinstance(value, Dict):
                         try:

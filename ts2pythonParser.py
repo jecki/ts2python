@@ -676,6 +676,8 @@ class ts2pythonCompiler(Compiler):
         self.obj_name.append(alias)
         if alias not in self.overloaded_type_names:
             _, preface = self.process_type_parameters(node)
+            if alias in self.known_types[-1]:
+                pass # TODO: Resolve type name conflict, here!!!
             self.known_types[-1].add(alias)
             self.local_classes.append([])
             self.optional_keys.append([])
@@ -1024,6 +1026,7 @@ class ts2pythonCompiler(Compiler):
         # self.tree.new_error(node, errmsg, NOT_YET_IMPLEMENTED_WARNING)
         # return "# " + errmsg
         name = self.compile(node['identifier'])
+        self.known_types[-1].add(name)
         declarations = [f'class {name}:']
         assert len(node.children) >= 2
         self.mark_overloaded_functions(node)

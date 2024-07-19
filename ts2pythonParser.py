@@ -891,15 +891,18 @@ class ts2pythonCompiler(Compiler):
         union = []
         i = 0
 
+        obj_name_stub = self.obj_name[-1]
+        fname = self.func_name[:1].upper() + self.func_name[1:]
         for nd in node.children:
-            obj_name_stub = self.obj_name[-1]
             n = obj_name_stub.rfind('_')
             ending = obj_name_stub[n + 1:]
             if n >= 0 and (not ending or ending.isdecimal()):
                 obj_name_stub = obj_name_stub[:n]
-            fname = self.func_name[:1].upper() + self.func_name[1:]
             self.obj_name[-1] = fname + obj_name_stub + '_' + str(i)
+            save = self.func_name
+            self.func_name = ""
             typ = self.compile_type_expression(node, nd)
+            self.func_name = save
             if typ not in union:
                 union.append(typ)
                 i += 1

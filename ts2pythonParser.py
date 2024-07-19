@@ -138,9 +138,9 @@ class ts2pythonGrammar(Grammar):
     literal = Forward()
     type = Forward()
     types = Forward()
-    source_hash__ = "6f5af29911dbd640d3d093d214b6da50"
+    source_hash__ = "7fcd1c3a277609f9dca739b22ea12725"
     early_tree_reduction__ = CombinedParser.MERGE_TREETOPS
-    disposable__ = re.compile('(?:DOT$|_array_ellipsis$|_top_level_assignment$|NEG$|_part$|_top_level_literal$|INT$|EXP$|EOF$|FRAC$|_quoted_identifier$|_namespace$)')
+    disposable__ = re.compile('(?:_array_ellipsis$|_part$|DOT$|_top_level_literal$|INT$|EOF$|_top_level_assignment$|FRAC$|_namespace$|EXP$|_quoted_identifier$|NEG$)')
     static_analysis_pending__ = []  # type: List[bool]
     parser_initialization__ = ["upon instantiation"]
     COMMENT__ = r'(?://.*)\n?|(?:/\*(?:.|\n)*?\*/) *\n?'
@@ -157,7 +157,7 @@ class ts2pythonGrammar(Grammar):
     INT = Series(Option(NEG), SmartRE(f'([1-9][0-9]+|[0-9])', '/[1-9][0-9]+/|/[0-9]/'))
     _part = RegExp('(?!\\d)\\w+')
     identifier = Series(SmartRE(f'(?!true|false)', '!`true`|`false`'), _part, dwsp__)
-    name = Series(SmartRE(f'(?!true|false)', '!`true`|`false`'), _part, ZeroOrMore(Series(Series(Drop(Text('.')), dwsp__), _part)), dwsp__)
+    name = Series(SmartRE(f'(?!true|false)', '!`true`|`false`'), _part, ZeroOrMore(Series(Text("."), _part)), dwsp__)
     _quoted_identifier = Alternative(identifier, Series(Series(Drop(Text('"')), dwsp__), identifier, Series(Drop(Text('"')), dwsp__), mandatory=2), Series(Series(Drop(Text("\'")), dwsp__), identifier, Series(Drop(Text("\'")), dwsp__), mandatory=2))
     variable = Synonym(name)
     basic_type = SmartRE(f'(?P<:Text>object|array|string|number|boolean|null|integer|uinteger|decimal|unknown|any|void)(?P<comment__>{WSP_RE__})', '`object`|`array`|`string`|`number`|`boolean`|`null`|`integer`|`uinteger`|`decimal`|`unknown`|`any`|`void` ~')
@@ -181,7 +181,7 @@ class ts2pythonGrammar(Grammar):
     readonly = Series(Text("readonly"), dwsp__)
     optional = Series(Text("?"), dwsp__)
     func_type = Series(Option(Series(Drop(Text("new")), dwsp__)), Series(Drop(Text("(")), dwsp__), Option(arg_list), Series(Drop(Text(")")), dwsp__), Series(Drop(Text("=>")), dwsp__), types)
-    extends = Series(Series(Drop(Text("extends")), dwsp__), Alternative(generic_type, type_name), ZeroOrMore(Series(Series(Drop(Text(",")), dwsp__), Alternative(generic_type, type_name))))
+    extends = Series(SmartRE(f'(?:extends)(?P<comment__>{WSP_RE__})|(?:implements)(?P<comment__>{WSP_RE__})', '"extends"|"implements"'), Alternative(generic_type, type_name), ZeroOrMore(Series(Series(Drop(Text(",")), dwsp__), Alternative(generic_type, type_name))))
     index_signature = Series(Option(readonly), Series(Drop(Text("[")), dwsp__), identifier, Alternative(Series(Drop(Text(":")), dwsp__), Series(Option(Series(Drop(Text("in")), dwsp__)), keyof), Series(Drop(Text("in")), dwsp__)), type, Series(Drop(Text("]")), dwsp__), Option(optional))
     map_signature = Series(index_signature, Series(Drop(Text(":")), dwsp__), types)
     mapped_type = Series(Series(Drop(Text("{")), dwsp__), map_signature, Option(Series(Drop(Text(";")), dwsp__)), Series(Drop(Text("}")), dwsp__))
@@ -206,8 +206,9 @@ class ts2pythonGrammar(Grammar):
     static = Series(Text("static"), dwsp__)
     _namespace = Alternative(virtual_enum, namespace)
     qualifiers = Interleave(readonly, static, repetitions=[(0, 1), (0, 1)])
+    special = Series(Series(Drop(Text("[")), dwsp__), name, Series(Drop(Text("]")), dwsp__), Series(Drop(Text("(")), dwsp__), Option(arg_list), Series(Drop(Text(")")), dwsp__), Option(Series(Series(Drop(Text(":")), dwsp__), types)), mandatory=4)
     argument = Series(identifier, Option(optional), Option(Series(Series(Drop(Text(":")), dwsp__), types)))
-    arg_tail = Series(Series(Drop(Text("...")), dwsp__), identifier, Option(Series(Series(Drop(Text(":")), dwsp__), array_of)))
+    arg_tail = Series(Series(Drop(Text("...")), dwsp__), identifier, Option(Series(Series(Drop(Text(":")), dwsp__), Alternative(array_of, generic_type))))
     symbol = Alternative(identifier, Series(wildcard, Option(Series(Series(Drop(Text("as")), dwsp__), alias))))
     symlist = Series(Series(Drop(Text("{")), dwsp__), symbol, ZeroOrMore(Series(Series(Drop(Text(",")), dwsp__), symbol)), Series(Drop(Text("}")), dwsp__))
     Import = Series(Series(Drop(Text("import")), dwsp__), Option(Series(Alternative(symlist, symbol), Series(Drop(Text("from")), dwsp__))), string)
@@ -217,7 +218,7 @@ class ts2pythonGrammar(Grammar):
     type.set(Alternative(array_of, basic_type, generic_type, indexed_type, Series(type_name, NegativeLookahead(Text("("))), Series(Series(Drop(Text("(")), dwsp__), types, Series(Drop(Text(")")), dwsp__)), mapped_type, declarations_block, type_tuple, literal, func_type))
     types.set(Series(Option(Series(Drop(Text("|")), dwsp__)), Alternative(intersection, type), ZeroOrMore(Series(Series(Drop(Text("|")), dwsp__), Alternative(intersection, type)))))
     arg_list.set(Alternative(Series(argument, ZeroOrMore(Series(Series(Drop(Text(",")), dwsp__), argument)), Option(Series(Series(Drop(Text(",")), dwsp__), arg_tail))), arg_tail))
-    function.set(Series(Option(Series(Option(Series(Drop(Text("export")), dwsp__)), Option(static), Option(Series(Drop(Text("function")), dwsp__)), identifier, Option(optional), Option(type_parameters))), Series(Drop(Text("(")), dwsp__), Option(arg_list), Series(Drop(Text(")")), dwsp__), Option(Series(Series(Drop(Text(":")), dwsp__), types)), mandatory=2))
+    function.set(Alternative(Series(Option(Series(Option(Series(Drop(Text("export")), dwsp__)), Option(static), Option(Series(Drop(Text("function")), dwsp__)), identifier, Option(optional), Option(type_parameters))), Series(Drop(Text("(")), dwsp__), Option(arg_list), Series(Drop(Text(")")), dwsp__), Option(Series(Series(Drop(Text(":")), dwsp__), types)), mandatory=2), special))
     declaration.set(Series(qualifiers, Option(SmartRE(f'(?:let)(?P<comment__>{WSP_RE__})|(?:var)(?P<comment__>{WSP_RE__})', '"let"|"var"')), identifier, Option(optional), NegativeLookahead(Text("(")), Option(Series(Series(Drop(Text(":")), dwsp__), types))))
     declarations_block.set(Series(Series(Drop(Text("{")), dwsp__), Option(Series(Alternative(function, declaration), ZeroOrMore(Series(Option(SmartRE(f'(?:;)(?P<comment__>{WSP_RE__})|(?:,)(?P<comment__>{WSP_RE__})', '";"|","')), Alternative(function, declaration))), Option(Series(Series(Drop(Text(";")), dwsp__), map_signature)), Option(SmartRE(f'(?:;)(?P<comment__>{WSP_RE__})|(?:,)(?P<comment__>{WSP_RE__})', '";"|","')))), Series(Drop(Text("}")), dwsp__)))
     document.set(Series(dwsp__, ZeroOrMore(Alternative(interface, type_alias, _namespace, enum, const, module, _top_level_assignment, _array_ellipsis, _top_level_literal, Series(Option(Series(Drop(Text("export")), dwsp__)), declaration, Series(Drop(Text(";")), dwsp__)), Series(Option(Series(Drop(Text("export")), dwsp__)), function, Series(Drop(Text(";")), dwsp__)), Series(Import, Series(Drop(Text(";")), dwsp__))))))
@@ -242,6 +243,15 @@ get_grammar = parsing.factory # for backwards compatibility, only
 #
 #######################################################################
 
+SPECIAL_FUNCTIONS = {"Symbol.iterator": "__iter__"}
+
+def convert_special_function(p: Path):
+    node = p[-1]
+    assert node.name == "special"
+    identifier = node['name']
+    identifier.name = "identifier"
+    identifier.result = SPECIAL_FUNCTIONS.get(identifier.content, "__unknown__")
+
 def add_flags(p: Path):
     p[0].attr['keep_comments'] = get_config_value('ts2python.KeepMultilineComments', False)
 
@@ -255,6 +265,10 @@ ts2python_AST_transformation_table = {
     ":Text": change_name('TEXT'),
     "comment__": remove_if(lambda p: p[-1].content.rfind('\n') < 0 \
                                      or not p[0].get_attr('keep_comments', True)),
+    "special": [apply_if(add_error("Unknown special function"),
+                         lambda p: p[-1]['name'].content not in SPECIAL_FUNCTIONS),
+                convert_special_function],
+    "function": apply_if(reduce_single_child, has_child('special')),
     "*": move_fringes(lambda p: p[-1].name == "comment__"),
     ">>>": clear_flags
 }
@@ -876,6 +890,7 @@ class ts2pythonCompiler(Compiler):
     def on_types(self, node) -> str:
         union = []
         i = 0
+
         for nd in node.children:
             obj_name_stub = self.obj_name[-1]
             n = obj_name_stub.rfind('_')

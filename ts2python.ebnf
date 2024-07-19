@@ -10,7 +10,7 @@
 #######################################################################
 
 @ optimizations = all
-@ whitespace  = /\s*/           # implicit whitespace, includes linefeeds
+@ whitespace  = /\s*/           # insignificant whitespace, includes linefeeds
 @ literalws   = right           # literals have implicit whitespace on the right hand side
 @ comment     = /(?:\/\/.*)\n?|(?:\/\*(?:.|\n)*?\*\/) *\n?/   # /* ... */ or // to EOL
 @ ignorecase  = False           # literals and regular expressions are case-sensitive
@@ -66,7 +66,8 @@ wildcard    =   "*"
 
 interface   = ["export"] ["declare"] ("interface"|"class") §identifier [type_parameters]
               [extends] declarations_block [";"]
-extends     = "extends" (generic_type|type_name) { "," (generic_type|type_name)}
+extends     = ("extends" | "implements")
+              (generic_type|type_name) { "," (generic_type|type_name)}
 
 declarations_block = "{" [(function|declaration) { [";"|","] (function|declaration) }
                           [";" map_signature] [";"|","]] "}"
@@ -78,9 +79,12 @@ declaration = qualifiers ["let"|"var"] identifier [optional] !`(` [":" types]
 function    = [["export"] [static]
                ["function"] identifier [optional] [type_parameters]]
               "(" §[arg_list] ")" [":" types]
+            | special
   arg_list  = argument { "," argument } ["," arg_tail] | arg_tail
-  arg_tail  = "..." identifier [":" array_of]
+  arg_tail  = "..." identifier [":" (array_of | generic_type)]
   argument  = identifier [optional] [":" types]  # same as declaration ?
+special     = "[" name "]" "(" §[arg_list] ")" [":" types]
+
 
 qualifiers  = [readonly] ° [static]
 readonly    = "readonly"
@@ -203,7 +207,7 @@ basic_type   = (`object` | `array` | `string` | `number` | `boolean` | `null`
 
 variable   = name
 _quoted_identifier = identifier | '"' identifier §'"' | "'" identifier §"'"
-name       = !(`true`|`false`) _part {'.' _part} ~
+name       = !(`true`|`false`) _part {`.` _part} ~
 identifier = !(`true`|`false`) _part ~
   _part    = /(?!\d)\w+/
 INT         = [NEG] ( /[1-9][0-9]+/ | /[0-9]/ )

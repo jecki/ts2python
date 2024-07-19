@@ -449,10 +449,11 @@ class ts2pythonCompiler(Compiler):
         self.keep_comments = get_config_value('ts2python.KeepMultilineComments', False)
 
         self.overloaded_type_names: Set[str] = set()
-        self.known_types: List[Set[str]] = [
-            {'Union', 'List', 'Tuple', 'Optional', 'Dict', 'Set', 'Any',
-             'Generic', 'Coroutine', 'list', 'tuple', 'dict', 'set',
-             'frozenset', 'int', 'float'}]
+        self.known_types: List[Dict[str]] = [
+            {'Union': 'Union', 'List': 'List', 'Tuple': 'Tuple', 'Optional': 'Optional',
+             'Dict': 'Dict', 'Set': 'Set', 'Any': 'Any', 'Generic': 'Generic',
+             'Coroutine': 'Coroutine', 'list': 'list', 'tuple': 'tuple', 'dict': 'dict',
+             'set': 'set', 'frozenset': 'frozenset', 'int': 'int', 'float': 'float'}]
         self.local_classes: List[List[str]] = [[]]
         self.base_classes: Dict[str, List[str]] = {}
         self.typed_dicts: Set[str] = {'TypedDict'}  # names of classes that are TypedDicts
@@ -482,6 +483,13 @@ class ts2pythonCompiler(Compiler):
                 return True
         return False
 
+    def add_to_known_types(self, node, typename: str, kind: str):
+        if typename in self.known_types[-1]:
+            self.tree.new_error(
+                node, f'{node.name} {typename} has already been defined earlier as '
+                f'{self.known_types[-1][typename]}!', WARNING)
+        self.known_types[-1][typename] = kind
+
     def prepare(self, root: Node) -> None:
         type_aliases = {nd['identifier'].content for nd in root.select_children('type_alias')}
         namespaces = {nd['identifier'].content for nd in root.select_children('namespace')}
@@ -504,7 +512,7 @@ class ts2pythonCompiler(Compiler):
         else:
             code_blocks = []
         code_blocks.append(python_code)
-        if self.tree.name == 'document':
+        if self.tree.name == 'root':
             code_blocks.append('\n##### END OF LSP SPECS\n')
         cooked = '\n\n'.join(code_blocks)
         cooked = re.sub(' +(?=\n)', '', cooked)
@@ -609,7 +617,7 @@ class ts2pythonCompiler(Compiler):
             # tps = '[' + tp + ']'
             preface = ''.join(f"{p} = TypeVar('{p}')\n"
                               for p in tpl if not self.is_known_type(p))
-            for p in tpl:  self.known_types[-1].add(p)
+            for p in tpl:  self.add_to_known_types(node, p, '?')
         except KeyError:
             pass
         return tps, preface
@@ -625,7 +633,7 @@ class ts2pythonCompiler(Compiler):
         # else:  tps =''
         preface += '\n'
         preface += node.get_attr('preface', '')
-        self.known_types.append(set())
+        self.known_types.append(dict())
         base_class_list = []
         try:
             base_class_list = self.bases(node['extends'])
@@ -651,7 +659,7 @@ class ts2pythonCompiler(Compiler):
         self.optional_keys.pop()
         self.local_classes.pop()
         self.known_types.pop()
-        self.known_types[-1].add(name)
+        self.add_to_known_types(node, name, 'interface')
         self.scope_type.pop()
         self.obj_name.pop()
         return preface + interface + '    ' + decls.replace('\n', '\n    ')
@@ -676,9 +684,12 @@ class ts2pythonCompiler(Compiler):
         self.obj_name.append(alias)
         if alias not in self.overloaded_type_names:
             _, preface = self.process_type_parameters(node)
-            if alias in self.known_types[-1]:
-                pass # TODO: Resolve type name conflict, here!!!
-            self.known_types[-1].add(alias)
+            if self.known_types[-1].get(alias, '') \
+                    in ('namespace', 'enum', 'virtual_enum'):
+                preface = ('# commented out, because there is already an '
+                           'enumeration with the same name\n# ' + preface)
+            else:
+                self.add_to_known_types(node, alias, 'type_alias')
             self.local_classes.append([])
             self.optional_keys.append([])
             types = self.compile(node['types'])
@@ -995,11 +1006,11 @@ class ts2pythonCompiler(Compiler):
 
     def on_virtual_enum(self, node) -> str:
         name = self.compile(node['identifier'])
-        if self.is_known_type(name):
-            # self.tree.new_error(node,
-            #     f'Name {name} has already been defined earlier!', WARNING)
-            return ''
-        self.known_types[-1].add(name)
+        if self.known_types[-1].get(name, '') == 'type_alias':
+            # silently overwrite type_alias
+            self.known_types[-1][name] = 'virtual_enum'
+        else:
+            self.add_to_known_types(node, name, 'virtual_enum')
         save = self.strip_type_from_const
         if all(child.name == 'const' for child in node.children[1:]):
             if all(nd['literal'][0].name == 'integer'
@@ -1026,7 +1037,7 @@ class ts2pythonCompiler(Compiler):
         # self.tree.new_error(node, errmsg, NOT_YET_IMPLEMENTED_WARNING)
         # return "# " + errmsg
         name = self.compile(node['identifier'])
-        self.known_types[-1].add(name)
+        self.add_to_known_types(node, name, 'namespace')
         declarations = [f'class {name}:']
         assert len(node.children) >= 2
         self.mark_overloaded_functions(node)
@@ -1034,7 +1045,7 @@ class ts2pythonCompiler(Compiler):
         self.scope_type.append('namespace')
         self.local_classes.append([])
         self.optional_keys.append([])
-        self.known_types.append(set())
+        self.known_types.append(dict())
         self.mark_overloaded_functions(node)
         declaration = self.compile(node[1])
         declaration = declaration.lstrip('\n')
@@ -1046,7 +1057,7 @@ class ts2pythonCompiler(Compiler):
         if local_classes:
             declarations.insert(1, local_classes)
         self.known_types.pop()
-        self.known_types[-1].add(name)
+        self.add_to_known_types(node, name, 'namespace')
         self.local_classes.pop()
         self.optional_keys.pop()
         self.scope_type.pop()
@@ -1063,7 +1074,7 @@ class ts2pythonCompiler(Compiler):
         else:
             base_class = ''
         name = self.compile(node['identifier'])
-        self.known_types[-1].add(name)
+        self.add_to_known_types(node, name, 'enum')
         enum = ['class ' + name + base_class + ':']
         for item in node.select_children('item'):
             enum.append(self.compile(item))

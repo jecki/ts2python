@@ -131,7 +131,6 @@ dmypy.json
 # PyCharm
 .idea/
 
-
 # DHParser-stuff
 REPORT
 **/REPORT/*

@@ -138,9 +138,9 @@ class ts2pythonGrammar(Grammar):
     literal = Forward()
     type = Forward()
     types = Forward()
-    source_hash__ = "0feabdb03caf60f46c3778ef810d4415"
+    source_hash__ = "6f5af29911dbd640d3d093d214b6da50"
     early_tree_reduction__ = CombinedParser.MERGE_TREETOPS
-    disposable__ = re.compile('(?:DOT$|INT$|NEG$|_part$|FRAC$|_namespace$|EXP$|_array_ellipsis$|_top_level_assignment$|_quoted_identifier$|EOF$|_top_level_literal$)')
+    disposable__ = re.compile('(?:DOT$|_array_ellipsis$|_top_level_assignment$|NEG$|_part$|_top_level_literal$|INT$|EXP$|EOF$|FRAC$|_quoted_identifier$|_namespace$)')
     static_analysis_pending__ = []  # type: List[bool]
     parser_initialization__ = ["upon instantiation"]
     COMMENT__ = r'(?://.*)\n?|(?:/\*(?:.|\n)*?\*/) *\n?'
@@ -186,13 +186,14 @@ class ts2pythonGrammar(Grammar):
     map_signature = Series(index_signature, Series(Drop(Text(":")), dwsp__), types)
     mapped_type = Series(Series(Drop(Text("{")), dwsp__), map_signature, Option(Series(Drop(Text(";")), dwsp__)), Series(Drop(Text("}")), dwsp__))
     extends_type = Series(Series(Drop(Text("extends")), dwsp__), Option(keyof), Alternative(basic_type, type_name, mapped_type))
+    declarations_tuple = Series(Series(Drop(Text("[")), dwsp__), declaration, ZeroOrMore(Series(Series(Drop(Text(",")), dwsp__), declaration)), Series(Drop(Text("]")), dwsp__))
     type_tuple = Series(Series(Drop(Text("[")), dwsp__), types, ZeroOrMore(Series(Series(Drop(Text(",")), dwsp__), types)), Series(Drop(Text("]")), dwsp__))
     indexed_type = Series(type_name, Series(Drop(Text("[")), dwsp__), Alternative(type_name, literal), Series(Drop(Text("]")), dwsp__))
     array_type = Alternative(basic_type, generic_type, type_name, Series(Series(Drop(Text("(")), dwsp__), types, Series(Drop(Text(")")), dwsp__)), type_tuple, declarations_block)
     array_types = Synonym(array_type)
     array_of = Series(Option(Series(Drop(Text("readonly")), dwsp__)), array_types, Series(Drop(Text("[]")), dwsp__))
     equals_type = Series(Series(Drop(Text("=")), dwsp__), Alternative(basic_type, type_name))
-    parameter_type = Alternative(array_of, basic_type, generic_type, indexed_type, Series(type_name, Option(extends_type), Option(equals_type)), declarations_block, type_tuple)
+    parameter_type = Alternative(array_of, basic_type, generic_type, indexed_type, Series(type_name, Option(extends_type), Option(equals_type)), declarations_block, type_tuple, declarations_tuple)
     parameter_types = Series(Option(Series(Drop(Text("|")), dwsp__)), parameter_type, ZeroOrMore(Series(Series(Drop(Text("|")), dwsp__), parameter_type)))
     type_parameters = Series(Series(Drop(Text("<")), dwsp__), parameter_types, ZeroOrMore(Series(Series(Drop(Text(",")), dwsp__), parameter_types)), Series(Drop(Text(">")), dwsp__), mandatory=1)
     interface = Series(Option(Series(Drop(Text("export")), dwsp__)), Option(Series(Drop(Text("declare")), dwsp__)), SmartRE(f'(?:interface)(?P<comment__>{WSP_RE__})|(?:class)(?P<comment__>{WSP_RE__})', '"interface"|"class"'), identifier, Option(type_parameters), Option(extends), declarations_block, Option(Series(Drop(Text(";")), dwsp__)), mandatory=3)
@@ -721,6 +722,9 @@ class ts2pythonCompiler(Compiler):
                     first_use[name] = func_decl
         except KeyError:
             pass  # no functions in declarations block
+
+    def on_declarations_tuple(self, node) -> str:
+        return self.on_declarations_block(node)
 
     def on_declarations_block(self, node) -> str:
         self.mark_overloaded_functions(node)

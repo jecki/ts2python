@@ -70,7 +70,6 @@ extends     = "extends" (generic_type|type_name) { "," (generic_type|type_name)}
 
 declarations_block = "{" [(function|declaration) { [";"|","] (function|declaration) }
                           [";" map_signature] [";"|","]] "}"
-
 declaration = qualifiers ["let"|"var"] identifier [optional] !`(` [":" types]
 
 
@@ -108,7 +107,7 @@ generic_type = type_name type_parameters
   parameter_types = ["|"] parameter_type  { "|" parameter_type }
   parameter_type  = array_of | basic_type | generic_type     # actually, only a subset of array_of
                   | indexed_type | type_name [extends_type] [equals_type]
-                  | declarations_block | type_tuple
+                  | declarations_block | type_tuple | declarations_tuple
   extends_type = "extends" [keyof] (basic_type | type_name | mapped_type)
   equals_type  = "=" (basic_type|type_name)
 
@@ -119,6 +118,7 @@ array_of    = [ "readonly" ] array_types "[]"
 
 type_name   = name
 type_tuple  = "[" types {"," types} "]"
+declarations_tuple = "[" declaration { "," declaration } "]"
 
 mapped_type = "{" map_signature [";"] "}"
 map_signature = index_signature ":" types

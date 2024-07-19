@@ -130,6 +130,7 @@ dmypy.json
 
 # PyCharm
 .idea/
+.idea/misc.xml
 
 # DHParser-stuff
 REPORT

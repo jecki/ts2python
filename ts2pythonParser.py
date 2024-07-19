@@ -638,7 +638,10 @@ class ts2pythonCompiler(Compiler):
         base_class_list = []
         try:
             base_class_list = self.bases(node['extends'])
-            base_classes = self.compile(node['extends'])
+            base_classes = ', '.join(base_class_list)  # self.compile(node['extends'])
+            if self.local_classes[-1]:
+                preface += self.render_local_classes() + '\n'
+                self.local_classes[-1] = []
             if tps and not self.use_variadic_generics:
                 base_classes += f", Generic{tps}"
         except KeyError:
@@ -937,7 +940,7 @@ class ts2pythonCompiler(Compiler):
     def on_type(self, node) -> str:
         assert len(node.children) == 1
         typ = node[0]
-        if typ.name == 'declarations_block':
+        if typ.name in ('declarations_block', 'declarations_tuple'):
             self.local_classes.append([])
             self.optional_keys.append([])
             decls = self.compile(typ)

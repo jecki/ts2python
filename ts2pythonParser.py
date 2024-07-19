@@ -656,7 +656,7 @@ class ts2pythonCompiler(Compiler):
         if self.base_class_name == "TypedDict" and self.render_anonymous == "toplevel":
             interface = self.render_local_classes() + '\n' + interface
         else:
-            interface += ('    '+self.render_local_classes().replace('\n', '\n    ')).rstrip(' ')
+            interface += ('    ' + self.render_local_classes().replace('\n', '\n    ')).rstrip(' ')
         self.optional_keys.pop()
         self.local_classes.pop()
         self.known_types.pop()

@@ -73,7 +73,7 @@ interface ResponseMessage extends Message {
 	 * The result of a request. This member is REQUIRED on success.
 	 * This member MUST NOT exist if there was an error invoking the method.
 	 */
-	result?: string | number | boolean | array | object | null;
+	result?: LSPAny;
 
 	/**
 	 * The error object in case a request fails.
@@ -96,27 +96,98 @@ interface ResponseError {
 	 * A primitive or structured value that contains additional
 	 * information about the error. Can be omitted.
 	 */
-	data?: string | number | boolean | array | object | null;
+	data?: LSPAny;
 }
 
 export namespace ErrorCodes {
+	// Defined by JSON-RPC
 	export const ParseError: integer = -32700;
 	export const InvalidRequest: integer = -32600;
 	export const MethodNotFound: integer = -32601;
 	export const InvalidParams: integer = -32602;
 	export const InternalError: integer = -32603;
+
+	/**
+	 * This is the start range of JSON-RPC reserved error codes.
+	 * It doesn't denote a real error code. No LSP error codes should
+	 * be defined between the start and end range. For backwards
+	 * compatibility the `ServerNotInitialized` and the `UnknownErrorCode`
+	 * are left in the range.
+	 *
+	 * @since 3.16.0
+	 */
 	export const jsonrpcReservedErrorRangeStart: integer = -32099;
+	/** @deprecated use jsonrpcReservedErrorRangeStart */
 	export const serverErrorStart: integer = jsonrpcReservedErrorRangeStart;
+
+	/**
+	 * Error code indicating that a server received a notification or
+	 * request before the server has received the `initialize` request.
+	 */
 	export const ServerNotInitialized: integer = -32002;
 	export const UnknownErrorCode: integer = -32001;
+
+	/**
+	 * This is the end range of JSON-RPC reserved error codes.
+	 * It doesn't denote a real error code.
+	 *
+	 * @since 3.16.0
+	 */
 	export const jsonrpcReservedErrorRangeEnd = -32000;
 	/** @deprecated use jsonrpcReservedErrorRangeEnd */
 	export const serverErrorEnd: integer = jsonrpcReservedErrorRangeEnd;
+
+	/**
+	 * This is the start range of LSP reserved error codes.
+	 * It doesn't denote a real error code.
+	 *
+	 * @since 3.16.0
+	 */
 	export const lspReservedErrorRangeStart: integer = -32899;
+
+	/**
+	 * A request failed but it was syntactically correct, e.g the
+	 * method name was known and the parameters were valid. The error
+	 * message should contain human readable information about why
+	 * the request failed.
+	 *
+	 * @since 3.17.0
+	 */
 	export const RequestFailed: integer = -32803;
+
+	/**
+	 * The server cancelled the request. This error code should
+	 * only be used for requests that explicitly support being
+	 * server cancellable.
+	 *
+	 * @since 3.17.0
+	 */
 	export const ServerCancelled: integer = -32802;
+
+	/**
+	 * The server detected that the content of a document got
+	 * modified outside normal conditions. A server should
+	 * NOT send this error code if it detects a content change
+	 * in its unprocessed messages. The result even computed
+	 * on an older state might still be useful for the client.
+	 *
+	 * If a client decides that a result is not of any use anymore
+	 * the client should cancel the request.
+	 */
 	export const ContentModified: integer = -32801;
+
+	/**
+	 * The client has canceled a request and a server has detected
+	 * the cancel.
+	 */
 	export const RequestCancelled: integer = -32800;
+
+	/**
+	 * This is the end range of LSP reserved error codes.
+	 * It doesn't denote a real error code.
+	 *
+	 * @since 3.16.0
+	 */
 	export const lspReservedErrorRangeEnd: integer = -32800;
 }
 
@@ -362,7 +433,7 @@ export interface DocumentFilter {
 	language?: string;
 
 	/**
-	 * A Uri [scheme](#Uri.scheme), like `file` or `untitled`.
+	 * A Uri scheme, like `file` or `untitled`.
 	 */
 	scheme?: string;
 
@@ -572,8 +643,10 @@ export interface Diagnostic {
 	range: Range;
 
 	/**
-	 * The diagnostic's severity. Can be omitted. If omitted it is up to the
-	 * client to interpret diagnostics as error, warning, info or hint.
+	 * The diagnostic's severity. To avoid interpretation mismatches when a
+	 * server is used with different clients it is highly recommended that
+	 * servers always provide a severity value. If omitted, it’s recommended
+	 * for the client to interpret it as an Error severity.
 	 */
 	severity?: DiagnosticSeverity;
 
@@ -597,7 +670,7 @@ export interface Diagnostic {
 
 	/**
 	 * The diagnostic's message.
-	 * 
+	 *
 	 * @since 3.18.0 - support for MarkupContent. This is guarded by the client
 	 * capability `textDocument.diagnostic.markupMessageSupport`.
 	 */
@@ -623,7 +696,7 @@ export interface Diagnostic {
 	 *
 	 * @since 3.16.0
 	 */
-	data?: unknown;
+	data?: LSPAny;
 }
 
 export namespace DiagnosticSeverity {
@@ -2664,7 +2737,7 @@ export type NotebookDocumentFilter = {
 	notebookType: string;
 
 	/**
-	 * A Uri [scheme](#Uri.scheme), like `file` or `untitled`.
+	 * A Uri scheme, like `file` or `untitled`.
     */
 	scheme?: string;
 
@@ -2679,7 +2752,7 @@ export type NotebookDocumentFilter = {
 	notebookType?: string;
 
 	/**
-	 * A Uri [scheme](#Uri.scheme), like `file` or `untitled`.
+	 * A Uri scheme, like `file` or `untitled`.
 	 */
 	scheme: string;
 
@@ -2694,7 +2767,7 @@ export type NotebookDocumentFilter = {
 	notebookType?: string;
 
 	/**
-	 * A Uri [scheme](#Uri.scheme), like `file` or `untitled`.
+	 * A Uri scheme, like `file` or `untitled`.
 	 */
 	scheme?: string;
 
@@ -3189,7 +3262,7 @@ export interface CallHierarchyItem {
 	 * A data entry field that is preserved between a call hierarchy prepare and
 	 * incoming calls or outgoing calls requests.
 	 */
-	data?: unknown;
+	data?: LSPAny;
 }
 
 export interface CallHierarchyIncomingCallsParams extends
@@ -3514,7 +3587,25 @@ export interface CodeLensClientCapabilities {
 	 * Whether code lens supports dynamic registration.
 	 */
 	dynamicRegistration?: boolean;
+
+	/**
+	 * Whether the client supports resolving additional code lens
+	 * properties via a separate `codeLens/resolve` request.
+	 *
+	 * @since 3.18.0
+	 */
+	resolveSupport?: ClientCodeLensResolveOptions;
 }
+
+/**
+ * @since 3.18.0
+ */
+export type ClientCodeLensResolveOptions = {
+	/**
+	 * The properties that a client can resolve lazily.
+	 */
+	properties: string[];
+};
 
 export interface CodeLensOptions extends WorkDoneProgressOptions {
 	/**
@@ -7288,6 +7379,12 @@ interface WorkspaceSymbolParams extends WorkDoneProgressParams,
 	/**
 	 * A query string to filter symbols by. Clients may send an empty
 	 * string here to request all symbols.
+	 *
+	 * The `query`-parameter should be interpreted in a *relaxed way* as editors
+	 * will apply their own highlighting and scoring on the results. A good rule
+	 * of thumb is to match case-insensitive and to simply check that the
+	 * characters of *query* appear in their order in a candidate symbol.
+	 * Servers shouldn't use prefix, substring, or similar strict matching.
 	 */
 	query: string;
 }

@@ -9,7 +9,7 @@
 #
 #######################################################################
 
-@ optimizations = all
+# @ optimizations = all
 @ whitespace  = /\s*/           # insignificant whitespace, includes linefeeds
 @ literalws   = right           # literals have implicit whitespace on the right hand side
 @ comment     = /(?:\/\/.*)\n?|(?:\/\*(?:.|\n)*?\*\/) *\n?/   # /* ... */ or // to EOL
@@ -102,20 +102,22 @@ type_alias  = ["export"] "type" §identifier [type_parameters] "=" types ";"
 
 types       = ["|"] (intersection | type) { "|" (intersection | type) }
 intersection = type { "&" §type }+
-type        = array_of | basic_type | generic_type | indexed_type
+type        = ["readonly"]
+            ( array_of | basic_type | generic_type | indexed_type
             | type_name !`(` | "(" types ")" | mapped_type
-            | declarations_block | type_tuple | literal | func_type
+            | declarations_block | type_tuple | literal | func_type )
 
 generic_type = type_name type_parameters
   type_parameters = "<" §parameter_types { "," parameter_types } ">"
   parameter_types = ["|"] parameter_type  { "|" parameter_type }
-  parameter_type  = array_of | basic_type | generic_type     # actually, only a subset of array_of
+  parameter_type  = [ "readonly" ]
+                  ( array_of | basic_type | generic_type     # actually, only a subset of array_of
                   | indexed_type | type_name [extends_type] [equals_type]
-                  | declarations_block | type_tuple | declarations_tuple
-  extends_type = "extends" [keyof] (basic_type | type_name | mapped_type)
+                  | declarations_block | type_tuple | declarations_tuple )
+  extends_type = "extends" [keyof] (basic_type | type_name | mapped_type )
   equals_type  = "=" (basic_type|type_name)
 
-array_of    = [ "readonly" ] array_types "[]"
+array_of    = array_types "[]"
   array_types = array_type
   array_type = basic_type | generic_type | type_name | "(" types ")"
               | type_tuple | declarations_block

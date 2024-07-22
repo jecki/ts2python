@@ -42,7 +42,7 @@ except (ImportError, ModuleNotFoundError):
         ClassVar, Final, Protocol, NoReturn, Literal
 
 try:
-    from typing import ForwardRef, _GenericAlias, _SpecialForm
+    from typing import ForwardRef, _GenericAlias, _SpecialForm, Iterable, Iterator
 except (ImportError, ModuleNotFoundError):
     from typing import _ForwardRef  # Python 3.6 compatibility
     ForwardRef = _ForwardRef

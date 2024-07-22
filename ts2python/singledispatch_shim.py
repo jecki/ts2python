@@ -159,7 +159,11 @@ def singledispatch(func):
                     raise NameError
             except NameError:
                 if cls != func:
-                    cls.__forward_value__ = func
+                    try:
+                        cls.__forward_value__ = func
+                    except AttributeError as e:
+                        pass  # TODO: Is this risky?
+                        # raise(e)
                 registry.setdefault('postponed', []).append(cls)
                 return func
             except StopIteration:

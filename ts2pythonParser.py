@@ -325,18 +325,18 @@ else:
 """
 
 TYPEDDICT_IMPORTS = """
-from typing import TypedDict, NotRequired, Literal
+from typing import TypedDict, NotRequired, Literal, Iterable, Iterator
 """
 
 TYPEDDICT_IMPORTS_LEGACY = """
 try:
-    from ts2python.typeddict_shim import TypedDict, GenericTypedDict, NotRequired, Literal
+    from ts2python.typeddict_shim import TypedDict, GenericTypedDict, NotRequired, Literal, Iterable, Iterator
     # Override typing.TypedDict for Runtime-Validation
 except ImportError:
     print("Module ts2python.typeddict_shim not found. Only coarse-grained " 
           "runtime type-validation of TypedDicts possible")
     try:
-        from typing import TypedDict, Literal
+        from typing import TypedDict, Literal, Iterable, Iterator
     except ImportError:
         try:
             from ts2python.typing_extensions import TypedDict, Literal
@@ -423,6 +423,7 @@ TYPE_NAME_SUBSTITUTION = {
     'void': 'None',
 
     'Thenable': 'Coroutine',
+    'IterableIterator': 'Iterator',
     'Array': 'List',
     'ReadonlyArray': 'List',
     'Uint32Array': 'List[int]',

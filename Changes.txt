@@ -2,7 +2,7 @@ Version 0.7.5
 -------------
 - bugfixes related to comments
 - bugs #21, #19
-- slightly faster Parsing with upcoming DHParser 1.8.0
+- several changes to make ts2python digest the current vscode.d.ts
 
 Version 0.7.4
 -------------

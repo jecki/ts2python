@@ -80,7 +80,7 @@ function    = [["export"] [static]
                ["function"] identifier [optional] [type_parameters]]
               "(" §[arg_list] ")" [":" types]
             | special
-  arg_list  = argument { "," argument } ["," arg_tail] | arg_tail
+  arg_list  = (argument { "," argument } ["," arg_tail] | arg_tail) [","]
   arg_tail  = "..." identifier [":" (array_of | generic_type)]
   argument  = identifier [optional] [":" types]  # same as declaration ?
 special     = "[" name "]" "(" §[arg_list] ")" [":" types]
@@ -105,7 +105,8 @@ intersection = type { "&" §type }+
 type        = ["readonly"]
             ( array_of | basic_type | generic_type | indexed_type
             | type_name !`(` | "(" types ")" | mapped_type
-            | declarations_block | type_tuple | literal | func_type )
+            | declarations_block | type_tuple | declarations_tuple
+            | literal | func_type )
 
 generic_type = type_name type_parameters
   type_parameters = "<" §parameter_types { "," parameter_types } ">"

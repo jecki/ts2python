@@ -343,7 +343,7 @@ except ImportError:
         except ImportError:
             print(f'Please install the "typing_extensions" module via the shell '
                   f'command "# pip install typing_extensions" before running '
-                  f'{__file__} with Python-versions <= 3.7!')
+                  f'{__file__} with Python-versions <= 3.8!')
     try:
         from typing_extensions import NotRequired
     except ImportError:

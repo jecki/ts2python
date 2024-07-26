@@ -34,14 +34,14 @@ except (ImportError, ModuleNotFoundError):
 
 try:
     from ts2python.typeddict_shim import TypedDict, _TypedDictMeta, get_origin, \
-        get_args, ForwardRef, _GenericAlias, is_typeddict
+        get_args, ForwardRef, _GenericAlias, is_typeddict, NotRequired
 except (ImportError, ModuleNotFoundError):
     try:
         from typeddict_shim import TypedDict, _TypedDictMeta, get_origin, \
-            get_args, ForwardRef, _GenericAlias, is_typeddict
+            get_args, ForwardRef, _GenericAlias, is_typeddict, NotRequired
     except (ImportError, ModuleNotFoundError):
         from .typeddict_shim import TypedDict, _TypedDictMeta, get_origin, \
-            get_args, ForwardRef, _GenericAlias, is_typeddict
+            get_args, ForwardRef, _GenericAlias, is_typeddict, NotRequired
 
 if sys.version_info >= (3, 11):
     from typing import _GenericAlias, TypedDict, _TypedDictMeta, get_origin, get_args, ForwardRef

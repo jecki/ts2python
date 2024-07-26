@@ -18,8 +18,10 @@ def run_tests_in_class(cls_name, namespace, methods=()):
         returns the instance."""
         exec("instance = " + cls + "()", nspace)
         instance = nspace["instance"]
-        setup = instance.setup if "setup" in dir(instance) else lambda : 0
-        teardown = instance.teardown if "teardown" in dir(instance) else lambda : 0
+        setup = instance.setup_class if "setup_class" in dir(instance) \
+            else (instance.setup if "setup" in dir(instance) else lambda : 0)
+        teardown = instance.teardown_class if "tear_down_class" in dir(instance) \
+            else (instance.teardown if "teardown" in dir(instance) else lambda : 0)
         return instance, setup, teardown
 
     obj = None
@@ -193,6 +195,11 @@ def run_doctests():
     import json_validation
     print('Running doctests of ts2python.json_validation')
     doctest.testmod(json_validation)
+    import typeddict_shim
+    print('Running doctests of ts2python.typeddict_shim')
+    doctest.testmod(typeddict_shim)
+    print('Running doctests of docs/Validation.rst')
+    doctest.testfile(os.path.join('..', 'docs', 'Validation.rst'))
 
 
 if __name__ == "__main__":

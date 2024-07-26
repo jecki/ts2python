@@ -12,8 +12,8 @@ ts2python_ is a transpiler that converts `TypeScript interfaces`_ to Python_
 records like TypedDict_ and provides runtime json_-validation against those
 interfaces/TypedDicts. 
 
-(In the future also other record structures like
-pydantic_ or attr_ might be supported by ts2python as well.)
+(As of now, other record structures like pydantic_ or attr_ are not
+supported by ts2python.)
 
 ts2python_ is licensed under the `Apache-2.0`_ open source license.
 The source code can be cloned freely from:
@@ -23,16 +23,10 @@ ts2python_ can be installed as usual with Python's package-manager "pip"::
 
     $ pip install ts2python
 
-ts2python requires at least Python_ Version 3.6. The only dependency of
-ts2python is the parser-generator DHParser_. For Python versions below 3.8
-installing the `typing_extensions`_ is highly recommended, though.
-
-Alternatively, you can just download the script `ts2PythonParser.py`_ for converting
-Typescript source code consisting to interface definitions to Python modules from the
-git-repository which runs without installing ts2python as long as DHParser_ has been installed.
-Or, if you just interested in runtime type validation, you can just copy the module
-`json_validation`_ from the git repository, which merely requires the `typing_extensions`_ to
-be present.
+The ts2python-transpiler requires at least Python_ Version 3.8 to run.
+However, the output ts2python-Produces is backwards compatible
+with Python 3.7, unless otherwise spcified (see below). The only
+dependency of ts2python is the parser-generator DHParser_.
 
 Generating Python pendants for typescript interfaces is as simple as calling:
 
@@ -73,7 +67,7 @@ than locally defined classes, which is not allowed for Python's TypedDict, altho
 it should be (in my IMHO) and works perfectly well - except for the complaints of
 the type checkers.
 
-WIth compatibility level 3.11 and above, the generated code does not need to
+With compatibility level 3.11 and above, the generated code does not need to
 use ts2python's "typeddict_shim"-compatibility layer, any more, which greatly
 simplifies the import-block at the beginning of the generated code and thus
 eliminates on of two dependencies of the generated code on the ts2pytho-package.
@@ -97,16 +91,16 @@ Hacking ts2python
 -----------------
 
 Hacking ts2python is not easy. (Sorry!) The reason is that ts2python
-was primarily designed for a relatively limeted application case, i.e.
+was primarily designed for a relatively limited application case, i.e.
 transpiling interface dfinitions. In order to keep things simple, the
 abstract syntax tree (AST) from the TypeScript source is directly converted
 to Python code, rather than transforming the TypeScript-AST to a Python-AST
 first.
 
-Adding such a tree to tree transoformation before the Pyhton code
+Adding such a tree to tree transformation before the Python code
 generation stage makes sense, among other things, because some components
 need to be re-ordered, since Python does not know anonymous classes/interfaces.
-However, for the above mentioned restriced purpose this appeared to me like
+However, for the above mentioned restricted purpose this appeared to me like
 overengineering. Though, now I regret it, because it makes adding more features
 harder.
 

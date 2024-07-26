@@ -310,7 +310,7 @@ becomes::
 Alternative Representations for Anonymous Interfaces
 ----------------------------------------------------
 
-As of Version 0.6.9, anonymous interfaces can also be mapped with
+Starting with version 0.6.9, anonymous interfaces can also be mapped with
 functional syntax::
 
     interface InitializeResult {

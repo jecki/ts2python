@@ -31,7 +31,7 @@
 root        = document EOF
 document    = ~ { interface | type_alias | _namespace | enum | const | module
                 | _top_level_assignment | _array_ellipsis | _top_level_literal
-                | ["export"] declaration ";" | ["export"] function ";"
+                | declaration ";" | function ";"
                 | Import ";" }
 
 @interface_resume = /(?=export|$)/
@@ -71,7 +71,7 @@ extends     = ("extends" | "implements")
 
 declarations_block = "{" [(function|declaration) { [";"|","] (function|declaration) }
                           [";" map_signature] [";"|","]] "}"
-declaration = qualifiers ["let"|"var"] identifier [optional] !`(` [":" types]
+declaration = ["export"] qualifiers ["let"|"var"] identifier [optional] !`(` [":" types]
 
 
 # @function_resume = /(?=;)/
@@ -152,8 +152,7 @@ virtual_enum = ["export"] "namespace" identifier "{"
 
 namespace    = ["export"] "namespace" §identifier "{"
                { interface | type_alias | enum | const
-               | ["export"] declaration ";"
-               | ["export"] function ";" }  "}"
+               | declaration ";" | function ";" }  "}"
 
 #######################################################################
 #

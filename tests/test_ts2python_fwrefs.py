@@ -159,6 +159,28 @@ class TestValidation:
             pass
 
 
+DEFINITION_AFTERT_USAGE_TS = '''
+class Range {
+    start: Position;
+    end: Position;
+}
+
+class Position {
+    line: number;
+    column: number;
+}
+'''
+
+
+class TestClassDefinitionOrder:
+    def test_class_definition_order(self):
+        pycode, err = compile_src(DEFINITION_AFTERT_USAGE_TS)
+        exec(pycode)
+
+    def test_recursive_definition(self):
+        pass
+
+
 if __name__ == "__main__":
     from runner import runner
     runner("", globals())

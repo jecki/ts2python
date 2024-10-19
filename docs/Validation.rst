@@ -28,6 +28,8 @@ against which values are
 checked at runtime do not derive from
 :py:class:`ts2python.json_validation.TypedDict`!
 
+Validation with decorators
+--------------------------
 
 The easiest way to use runtime type checking is by adding the
 :py:func:`json_validation.type_check`-annotation to a function
@@ -61,6 +63,9 @@ both the arguments of a function and its return value. (This behaviour
 can be configured with the ``check_return_type``-parameter of the annotation.)
 Type validation will not take place on arguments or return values for which
 no type annotation is given.
+
+validata_type-function
+----------------------
 
 Alternatively, types can be validated by the calling
 :py:func:`json_validation.validate_type`. ``validate_type``
@@ -117,5 +122,11 @@ Type validation works its way up from the root type down to any nested
 object. Type unions, e.g. ``int|str`` are evaluated by trying all
 alternatives on the data until one alternative matches. Enums and
 uniform sequences (e.g. List[str]) are properly taken care of.
+
+Reference
+---------
+
+.. automodule:: json_validation
+   :members:
 
 .. _PEP 655: https://www.python.org/dev/peps/pep-0655/

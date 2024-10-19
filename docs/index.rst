@@ -19,6 +19,9 @@ ts2python_ is licensed under the `Apache-2.0`_ open source license.
 The source code can be cloned freely from:
 `https://github.com/jecki/ts2python <https://github.com/jecki/ts2python/>`_
 
+Installation
+------------
+
 ts2python_ can be installed as usual with Python's package-manager "pip"::
 
     $ pip install ts2python
@@ -28,11 +31,11 @@ However, the output ts2python-Produces is backwards compatible
 with Python 3.7, unless otherwise spcified (see below). The only
 dependency of ts2python is the parser-generator DHParser_.
 
-Generating Python pendants for typescript interfaces is as simple as calling:
+Generating Python pendants for typescript interfaces is as simple as calling::
 
    $ ts2python interfaces.ts
 
-and then importing the generated ``interfaces.py`` by:
+and then importing the generated ``interfaces.py`` by::
 
    from interfaces import *
 
@@ -56,7 +59,7 @@ need at least Python version 3.8. The code ts2python generates is backwards
 compatible down to version 3.7. If you do not need to be compatible with older
 version, you can use the --compatibility [VERSION] switch to generate code
 for newer versions only. Usually, this code is a bit cleaner than the fully
-compatible code, e.g.:
+compatible code, e.g.::
 
    $ ts2python --compatibility 3.11 [FILENAME.ts]
 

@@ -1,8 +1,7 @@
-"""json_validation.py - provides validation functions and decorators
-                        for those types that can occur in a
-                        JSON-dataset, in particular TypedDicts.
+"""Module json_validation.py - provides validation functions and decorators
+for those types that can occur in a JSON-dataset, in particular TypedDicts.
 
-Copyright 2021  by Eckhart Arnold (arnold@badw.de)
+Copyright 2021  by Eckhart Arnold (Eckhart.Arnold@badw.de)
                 Bavarian Academy of Sciences an Humanities (badw.de)
 
 Licensed under the Apache License, Version 2.0 (the "License");
@@ -136,12 +135,12 @@ def validate_uniform_sequence(sequence: Iterable, item_type):
     """Ensures that every item in a given sequence is of the same particular
     type. Example::
 
-    >>> validate_uniform_sequence((1, 5, 3), int)
-    >>> try:
-    ...     validate_uniform_sequence(['a', 'b', 3], str)
-    ... except TypeError as e:
-    ...     print(e)
-    3 is not of type <class 'str'>
+        >>> validate_uniform_sequence((1, 5, 3), int)
+        >>> try:
+        ...     validate_uniform_sequence(['a', 'b', 3], str)
+        ... except TypeError as e:
+        ...     print(e)
+        3 is not of type <class 'str'>
 
     :param sequence: An iterable to be validated
     :param item_type: The expected type of all items the iterable `sequence` yields.
@@ -306,36 +305,34 @@ def type_check(func: Callable, check_return_type: bool = True) -> Callable:
     """Decorator that validates the type of the parameters as well as the
     return value of a function against its type annotations during runtime.
     Parameters that have no type annotation will be silently ignored by
-    the type check. Likewise, the return type.
+    the type check. Likewise, the return type. Example::
 
-    Example::
-
-    >>> class Position(TypedDict, total=True):
-    ...     line: int
-    ...     character: int
-    >>> class Range(TypedDict, total=True):
-    ...     start: Position
-    ...     end: Position
-    >>> # just a fix for doctest stumbling over ForwardRef:
-    >>> Range.__annotations__ = {'start': Position, 'end': Position}
-    >>> @type_check
-    ... def middle_line(rng: Range) -> Position:
-    ...     line = (rng['start']['line'] + rng['end']['line']) // 2
-    ...     character = 0
-    ...     return Position(line=line, character=character)
-    >>> rng = {'start': {'line': 1, 'character': 1},
-    ...        'end': {'line': 8, 'character': 17}}
-    >>> middle_line(rng)
-    {'line': 4, 'character': 0}
-    >>> malformed_rng = {'start': 1, 'end': 8}
-    >>> try:
-    ...     middle_line(malformed_rng)
-    ... except TypeError as e:
-    ...     print(e)
-    Parameter "rng" of function "middle_line" failed the type-check, because:
-    Type error(s) in dictionary of type <class 'json_validation.Range'>:
-    Field start: '1' is not of <class 'json_validation.Position'>, but of type <class 'int'>
-    Field end: '8' is not of <class 'json_validation.Position'>, but of type <class 'int'>
+        >>> class Position(TypedDict, total=True):
+        ...     line: int
+        ...     character: int
+        >>> class Range(TypedDict, total=True):
+        ...     start: Position
+        ...     end: Position
+        >>> # just a fix for doctest stumbling over ForwardRef:
+        >>> Range.__annotations__ = {'start': Position, 'end': Position}
+        >>> @type_check
+        ... def middle_line(rng: Range) -> Position:
+        ...     line = (rng['start']['line'] + rng['end']['line']) // 2
+        ...     character = 0
+        ...     return Position(line=line, character=character)
+        >>> rng = {'start': {'line': 1, 'character': 1},
+        ...        'end': {'line': 8, 'character': 17}}
+        >>> middle_line(rng)
+        {'line': 4, 'character': 0}
+        >>> malformed_rng = {'start': 1, 'end': 8}
+        >>> try:
+        ...     middle_line(malformed_rng)
+        ... except TypeError as e:
+        ...     print(e)
+        Parameter "rng" of function "middle_line" failed the type-check, because:
+        Type error(s) in dictionary of type <class 'json_validation.Range'>:
+        Field start: '1' is not of <class 'json_validation.Position'>, but of type <class 'int'>
+        Field end: '8' is not of <class 'json_validation.Position'>, but of type <class 'int'>
 
     :param func: The function, the parameters and return value of which shall
         be type-checked during runtime.

@@ -24,7 +24,7 @@ becomes::
         jsonrpc: str
 
 ts2python uses `TypedDict`_ as base class per default and sets the
-TypedDict total-paramter to ``True``, if no fields are optional
+TypedDict total-parameter to ``True``, if no fields are optional
 and to ``False`` otherwise.
 
 Optional fields of a TypeScript-Interface are mapped to ``Optional``-types
@@ -42,7 +42,7 @@ becomes::
     class RequestMessage(Message, TypedDict, total=False):
         id: Union[int, str]
         method: str
-        params: Union[List, Dict, None]
+        params: Optional[Union[List, Dict]]
 
 Here ``Optional``-types are understood as attributes that need
 not be present in the dictionary. This runs contrary
@@ -65,7 +65,7 @@ used instead of optional. The above Message-interface will then read as::
     class RequestMessage(Message, TypedDict, total=True):
         id: Union[int, str]
         method: str
-        params: NoRequired[Union[List, Dict]
+        params: NoRequired[Union[List, Dict]]
 
 Since static validation relies on the ``total``-parameter it will not
 capture missing required attributes in TypedDicts that contain
@@ -314,11 +314,11 @@ Starting with version 0.6.9, anonymous interfaces can also be mapped with
 functional syntax::
 
     interface InitializeResult {
-		capabilities: ServerCapabilities;
-		serverInfo?: {
-			name: string;
-			version?: string;
-		};
+        capabilities: ServerCapabilities;
+        serverInfo?: {
+            name: string;
+            version?: string;
+        };
     }
 
 becomes::

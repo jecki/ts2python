@@ -87,7 +87,7 @@ special     = "[" name "]" "(" §[arg_list] ")" [":" types]
 
 _keyword    = (`readonly` | `function` | `const` | `public` | `private` | `protected`) !/\w/
 
-qualifiers  = [readonly] ° [static]
+qualifiers  = [readonly] ° [static] ° ['public'] ° ['protected'] ° ['private']
 readonly    = "readonly"
 static      = "static"
 

@@ -138,9 +138,9 @@ class ts2pythonGrammar(Grammar):
     literal = Forward()
     type = Forward()
     types = Forward()
-    source_hash__ = "74f59ecf83d9ffae3c209ab82f88918e"
+    source_hash__ = "36bef0cd493e156064eb1ebd4d7d82d4"
     early_tree_reduction__ = CombinedParser.MERGE_TREETOPS
-    disposable__ = re.compile('(?:INT$|FRAC$|_quoted_identifier$|_array_ellipsis$|EXP$|NEG$|_part$|_reserved$|DOT$|EOF$|_keyword$|_namespace$|_top_level_assignment$|_top_level_literal$)')
+    disposable__ = re.compile('(?:_part$|DOT$|INT$|EXP$|_top_level_assignment$|_quoted_identifier$|EOF$|_keyword$|_namespace$|_reserved$|NEG$|_top_level_literal$|_array_ellipsis$|FRAC$)')
     static_analysis_pending__ = []  # type: List[bool]
     parser_initialization__ = ["upon instantiation"]
     COMMENT__ = r'(?://.*)\n?|(?:/\*(?:.|\n)*?\*/) *\n?'
@@ -206,8 +206,8 @@ class ts2pythonGrammar(Grammar):
     virtual_enum = Series(Option(Series(Drop(Text("export")), dwsp__)), Series(Drop(Text("namespace")), dwsp__), identifier, Series(Drop(Text("{")), dwsp__), ZeroOrMore(Alternative(interface, type_alias, enum, const, Series(declaration, Option(Series(Drop(Text(";")), dwsp__))))), Series(Drop(Text("}")), dwsp__))
     static = Series(Text("static"), dwsp__)
     _namespace = Alternative(virtual_enum, namespace)
-    qualifiers = Interleave(readonly, static, repetitions=[(0, 1), (0, 1)])
-    _keyword = Drop(SmartRE(f'(?P<:Text>readonly|function|const)(?!\\w)', '`readonly`|`function`|`const` !/\\w/'))
+    qualifiers = Interleave(readonly, static, Series(Drop(Text('public')), dwsp__), Series(Drop(Text('protected')), dwsp__), Series(Drop(Text('private')), dwsp__), repetitions=[(0, 1), (0, 1), (0, 1), (0, 1), (0, 1)])
+    _keyword = Drop(SmartRE(f'(?P<:Text>readonly|function|const|public|private|protected)(?!\\w)', '`readonly`|`function`|`const`|`public`|`private`|`protected` !/\\w/'))
     special = Series(Series(Drop(Text("[")), dwsp__), name, Series(Drop(Text("]")), dwsp__), Series(Drop(Text("(")), dwsp__), Option(arg_list), Series(Drop(Text(")")), dwsp__), Option(Series(Series(Drop(Text(":")), dwsp__), types)), mandatory=4)
     argument = Series(identifier, Option(optional), Option(Series(Series(Drop(Text(":")), dwsp__), types)))
     arg_tail = Series(Series(Drop(Text("...")), dwsp__), identifier, Option(Series(Series(Drop(Text(":")), dwsp__), Alternative(array_of, generic_type))))

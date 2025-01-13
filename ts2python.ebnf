@@ -17,9 +17,10 @@
 @ reduction   = merge_treetops  # anonymous nodes are being reduced where possible
 @ disposable  = INT, NEG, FRAC, DOT, EXP, EOF,
                 _array_ellipsis, _top_level_assignment, _top_level_literal,
-                _quoted_identifier, _namespace, _part
+                _quoted_identifier, _namespace, _part, _reserved, _keyword
 @ drop        = whitespace, no_comments, strings, EOF,
-                _array_ellipsis, _top_level_assignment, _top_level_literal
+                _array_ellipsis, _top_level_assignment, _top_level_literal,
+                _reserved, _keyword
 
 
 #######################################################################
@@ -31,8 +32,7 @@
 root        = document EOF
 document    = ~ { interface | type_alias | _namespace | enum | const | module
                 | _top_level_assignment | _array_ellipsis | _top_level_literal
-                | declaration ";" | function ";"
-                | Import ";" }
+                | Import [";"] | function [";"] | declaration [";"] }
 
 @interface_resume = /(?=export|$)/
 @type_alias_resume = /(?=export|$)/
@@ -71,13 +71,13 @@ extends     = ("extends" | "implements")
 
 declarations_block = "{" [(function|declaration) { [";"|","] (function|declaration) }
                           [";" map_signature] [";"|","]] "}"
-declaration = ["export"] qualifiers ["let"|"var"] identifier [optional] !`(` [":" types]
+declaration = ["export"] qualifiers ["let"|"var"] !_keyword identifier [optional] !`(` [":" types]
 
 
 # @function_resume = /(?=;)/
 
 function    = [["export"] [static]
-               ["function"] identifier [optional] [type_parameters]]
+               ["function"] !_keyword identifier [optional] [type_parameters]]
               "(" §[arg_list] ")" [":" types]
             | special
   arg_list  = (argument { "," argument } ["," arg_tail] | arg_tail) [","]
@@ -85,6 +85,7 @@ function    = [["export"] [static]
   argument  = identifier [optional] [":" types]  # same as declaration ?
 special     = "[" name "]" "(" §[arg_list] ")" [":" types]
 
+_keyword    = (`readonly` | `function` | `const` | `public` | `private` | `protected`) !/\w/
 
 qualifiers  = [readonly] ° [static]
 readonly    = "readonly"
@@ -98,7 +99,7 @@ optional    = "?"
 #
 #######################################################################
 
-type_alias  = ["export"] "type" §identifier [type_parameters] "=" types ";"
+type_alias  = ["export"] "type" §identifier [type_parameters] "=" types [";"]
 
 types       = ["|"] (intersection | type) { "|" (intersection | type) }
 intersection = type { "&" §type }+
@@ -148,11 +149,11 @@ _namespace   = virtual_enum | namespace
 
 virtual_enum = ["export"] "namespace" identifier "{"
               { interface | type_alias | enum | const
-              | declaration ";" }  "}"
+              | declaration [";"] }  "}"
 
 namespace    = ["export"] "namespace" §identifier "{"
                { interface | type_alias | enum | const
-               | declaration ";" | function ";" }  "}"
+               | declaration [";"] | function [";"] }  "}"
 
 #######################################################################
 #
@@ -169,9 +170,9 @@ enum        = ["export"] "enum" identifier §"{" item { "," item } [","] "}"
 #
 #######################################################################
 
-const       = ["export"] "const" §declaration ["=" (literal | identifier)] ";"
+const       = ["export"] "const" §declaration ["=" (literal | identifier)] [";"]
 _top_level_assignment = assignment
-assignment  = variable "=" (literal | variable) ";"  # no expressions, yet
+assignment  = variable "=" (literal | variable) [";"]  # no expressions, yet
 
 #######################################################################
 #
@@ -207,15 +208,16 @@ basic_type   = (`object` | `array` | `string` | `number` | `boolean` | `null`
 #
 #######################################################################
 
-variable   = name
+variable     = name
 _quoted_identifier = identifier | '"' identifier §'"' | "'" identifier §"'"
-name       = !(`true`|`false`) _part {`.` _part} ~
-identifier = !(`true`|`false`) _part ~
-  _part    = /(?!\d)\w+/
-INT         = [NEG] ( /[1-9][0-9]+/ | /[0-9]/ )
-NEG         = `-`
-FRAC        = [ DOT /[0-9]+/ ]
-DOT         = `.`
-EXP         = [ (`E`|`e`) [`+`|`-`] /[0-9]+/ ]
+name         = !_reserved _part {`.` _part} ~
+identifier   = !_reserved _part ~
+  _part      = /(?!\d)\w+/
+  _reserved  = `true` | `false`
+INT          = [NEG] ( /[1-9][0-9]+/ | /[0-9]/ )
+NEG          = `-`
+FRAC         = [ DOT /[0-9]+/ ]
+DOT          = `.`
+EXP          = [ (`E`|`e`) [`+`|`-`] /[0-9]+/ ]
 
-EOF        =  !/./        # no more characters ahead, end of file reached
+EOF         =  !/./        # no more characters ahead, end of file reached

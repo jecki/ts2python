@@ -7,7 +7,7 @@ import os
 import sys
 
 LOGGING = 'LOGS'
-DEBUG = True
+DEBUG = False
 TEST_DIRNAME = 'tests_grammar'
 
 scriptpath = os.path.abspath(os.path.dirname(__file__))
@@ -65,7 +65,7 @@ if __name__ == '__main__':
     read_local_config(os.path.join(scriptpath, 'ts2python/ts2pythonParser.ini'))
 
     access_presets()
-    set_preset_value('test_parallelization', False)
+    set_preset_value('test_parallelization', True)
     if DEBUG:  set_preset_value('history_tracking', True)
     finalize_presets()
 

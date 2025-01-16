@@ -1287,7 +1287,7 @@ serializations = expand_table(dict([('*', ['sxpr'])]))
 #
 #######################################################################
 
-RESULT_FILE_EXTENSION = ".sxpr"  # Change this according to your needs!
+RESULT_FILE_EXTENSION = ".py"  # Change this according to your needs!
 
 
 def compile_src(source: str, target: str = "py") -> Tuple[Any, List[Error]]:

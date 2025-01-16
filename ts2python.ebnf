@@ -76,7 +76,7 @@ declaration = ["export"] qualifiers ["let"|"var"] !_keyword identifier [optional
 
 # @function_resume = /(?=;)/
 
-function    = [["export"] [static]
+function    = [["export"] qualifiers
                ["function"] !_keyword identifier [optional] [type_parameters]]
               "(" §[arg_list] ")" [":" types]
             | special

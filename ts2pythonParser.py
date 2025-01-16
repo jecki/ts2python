@@ -138,9 +138,9 @@ class ts2pythonGrammar(Grammar):
     literal = Forward()
     type = Forward()
     types = Forward()
-    source_hash__ = "36bef0cd493e156064eb1ebd4d7d82d4"
+    source_hash__ = "af962637640843702288bbb62ab1bb01"
     early_tree_reduction__ = CombinedParser.MERGE_TREETOPS
-    disposable__ = re.compile('(?:_part$|DOT$|INT$|EXP$|_top_level_assignment$|_quoted_identifier$|EOF$|_keyword$|_namespace$|_reserved$|NEG$|_top_level_literal$|_array_ellipsis$|FRAC$)')
+    disposable__ = re.compile('(?:INT$|EXP$|_top_level_literal$|_keyword$|_top_level_assignment$|_reserved$|_array_ellipsis$|_quoted_identifier$|DOT$|_namespace$|_part$|NEG$|EOF$|FRAC$)')
     static_analysis_pending__ = []  # type: List[bool]
     parser_initialization__ = ["upon instantiation"]
     COMMENT__ = r'(?://.*)\n?|(?:/\*(?:.|\n)*?\*/) *\n?'
@@ -220,7 +220,7 @@ class ts2pythonGrammar(Grammar):
     type.set(Series(Option(Series(Drop(Text("readonly")), dwsp__)), Alternative(array_of, basic_type, generic_type, indexed_type, Series(type_name, NegativeLookahead(Text("("))), Series(Series(Drop(Text("(")), dwsp__), types, Series(Drop(Text(")")), dwsp__)), mapped_type, declarations_block, type_tuple, declarations_tuple, literal, func_type)))
     types.set(Series(Option(Series(Drop(Text("|")), dwsp__)), Alternative(intersection, type), ZeroOrMore(Series(Series(Drop(Text("|")), dwsp__), Alternative(intersection, type)))))
     arg_list.set(Series(Alternative(Series(argument, ZeroOrMore(Series(Series(Drop(Text(",")), dwsp__), argument)), Option(Series(Series(Drop(Text(",")), dwsp__), arg_tail))), arg_tail), Option(Series(Drop(Text(",")), dwsp__))))
-    function.set(Alternative(Series(Option(Series(Option(Series(Drop(Text("export")), dwsp__)), Option(static), Option(Series(Drop(Text("function")), dwsp__)), NegativeLookahead(_keyword), identifier, Option(optional), Option(type_parameters))), Series(Drop(Text("(")), dwsp__), Option(arg_list), Series(Drop(Text(")")), dwsp__), Option(Series(Series(Drop(Text(":")), dwsp__), types)), mandatory=2), special))
+    function.set(Alternative(Series(Option(Series(Option(Series(Drop(Text("export")), dwsp__)), qualifiers, Option(Series(Drop(Text("function")), dwsp__)), NegativeLookahead(_keyword), identifier, Option(optional), Option(type_parameters))), Series(Drop(Text("(")), dwsp__), Option(arg_list), Series(Drop(Text(")")), dwsp__), Option(Series(Series(Drop(Text(":")), dwsp__), types)), mandatory=2), special))
     declaration.set(Series(Option(Series(Drop(Text("export")), dwsp__)), qualifiers, Option(SmartRE(f'(?:let)(?P<comment__>{WSP_RE__})|(?:var)(?P<comment__>{WSP_RE__})', '"let"|"var"')), NegativeLookahead(_keyword), identifier, Option(optional), NegativeLookahead(Text("(")), Option(Series(Series(Drop(Text(":")), dwsp__), types))))
     declarations_block.set(Series(Series(Drop(Text("{")), dwsp__), Option(Series(Alternative(function, declaration), ZeroOrMore(Series(Option(SmartRE(f'(?:;)(?P<comment__>{WSP_RE__})|(?:,)(?P<comment__>{WSP_RE__})', '";"|","')), Alternative(function, declaration))), Option(Series(Series(Drop(Text(";")), dwsp__), map_signature)), Option(SmartRE(f'(?:;)(?P<comment__>{WSP_RE__})|(?:,)(?P<comment__>{WSP_RE__})', '";"|","')))), Series(Drop(Text("}")), dwsp__)))
     document.set(Series(dwsp__, ZeroOrMore(Alternative(interface, type_alias, _namespace, enum, const, module, _top_level_assignment, _array_ellipsis, _top_level_literal, Series(Import, Option(Series(Drop(Text(";")), dwsp__))), Series(function, Option(Series(Drop(Text(";")), dwsp__))), Series(declaration, Option(Series(Drop(Text(";")), dwsp__)))))))

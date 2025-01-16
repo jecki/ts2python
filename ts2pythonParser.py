@@ -1174,6 +1174,8 @@ class ts2pythonCompiler(Compiler):
 
     def on_generic_type(self, node) -> str:
         base_type = self.compile(node['type_name'])
+        if base_type == 'Record':
+            base_type = "Dict"
         parameters = self.compile(node['type_parameters'])
         if parameters == 'None':
             return base_type

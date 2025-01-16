@@ -208,6 +208,23 @@ Python::
         documentation: Union[str, 'MarkupContent', None]
 
 
+Mapping of Records
+------------------
+
+Typescript `Records`_ are simply mapped to parameterized dictionaries.
+
+Typescript::
+
+    export interface Test {
+      t: Record<string, number>
+    }
+
+Python::
+
+    class Test(TypedDict, total=True):
+        t: Dict[str, float]
+
+
 Mapping of Anonymous Interfaces
 -------------------------------
 
@@ -434,3 +451,4 @@ these constructs can be added in the future, if required.
 .. _Enums: https://docs.python.org/3/library/enum.html
 .. _inline TypedDict definitions: https://discuss.python.org/t/allow-local-class-type-definitions-inside-typeddict/41611/3
 .. _Creating Types from Types: https://www.typescriptlang.org/docs/handbook/2/types-from-types.html
+.. _Records: https://www.typescriptlang.org/docs/handbook/utility-types.html#recordkeys-type

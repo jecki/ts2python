@@ -1,3 +1,9 @@
+Verison 0.7.6
+-------------
+- Typescript Records are not translated to Dict[]-types
+- Omitted semicolons do not cause the parser to fail, anymore
+
+
 Version 0.7.5
 -------------
 - bugfixes related to comments

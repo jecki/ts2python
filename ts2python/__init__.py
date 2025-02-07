@@ -20,7 +20,7 @@ import sys
 assert sys.version_info >= (3, 6, 0), "ts2python requires at least Python-Version 3.6!"
 
 __title__ = "ts2python"
-__version__ = "0.7.5"
+__version__ = "0.7.6"
 __version_info__ = tuple(int(part) for part in __version__.split('.'))
 __description__ = "Python-Interoperability for Typescript-Interfaces"
 __author__ = "Eckhart Arnold"

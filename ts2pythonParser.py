@@ -467,7 +467,7 @@ class ts2pythonCompiler(Compiler):
         self.keep_comments = get_config_value('ts2python.KeepMultilineComments', False)
 
         self.overloaded_type_names: Set[str] = set()
-        self.known_types: List[Dict[str]] = [
+        self.known_types: List[Dict[str, str]] = [
             {'Union': 'Union', 'List': 'List', 'Tuple': 'Tuple', 'Optional': 'Optional',
              'Dict': 'Dict', 'Set': 'Set', 'Any': 'Any', 'Generic': 'Generic',
              'Coroutine': 'Coroutine', 'list': 'list', 'tuple': 'tuple', 'dict': 'dict',

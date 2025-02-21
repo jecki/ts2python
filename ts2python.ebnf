@@ -1,5 +1,6 @@
-# interfaces subset of typescript-grammar
-# for typescript see: https://www.typescriptlang.org/docs/
+# a grammar for a subset of the Typescript programming language
+
+# for Typescript see: https://www.typescriptlang.org/docs/
 # for examples of typescript-interfaces
 # see: https://microsoft.github.io/language-server-protocol/specifications/specification-current/
 

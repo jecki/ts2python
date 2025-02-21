@@ -1,4 +1,11 @@
-Verison 0.7.6
+Version 0.7.7
+-------------
+- bugfix: configuration-flag UseTypeParameters (for Python version 3.12 and above)
+  is not ignored, anymore
+- typo-corrections and sma updates to the documentation
+
+
+Version 0.7.6
 -------------
 - Typescript Records are not translated to Dict[]-types
 - Omitted semicolons do not cause the parser to fail, anymore

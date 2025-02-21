@@ -97,8 +97,8 @@ def is_TypedDictClass(typ) -> bool:
 
 def validate_type(val: Any, typ):
     """Raises a TypeError if value `val` is not of type `typ`.
-    In particualr, `validate_type()` can be used to validate
-    dictionaries against TypedDict-types and, more general,
+    In particular, `validate_type()` can be used to validate
+    dictionaries against TypedDict-types and, more generally,
     to validate JSON-data.
     Examples::
     >>> validate_type(1, int)

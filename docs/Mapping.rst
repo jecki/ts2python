@@ -1,8 +1,8 @@
 Type Mapping Explained
 ======================
 
-The following explains, how ``ts2python`` maps Typescript-types,
-in particular, `Typescript interfaces`_, to Python types, in particular,
+The following explains, how ``ts2python`` maps Typescript-types and
+in particular `Typescript-interfaces`_, to Python types, in particular,
 `TypedDicts`_. The mapping is, so far, rich enough to cover all
 interfaces from the `Language Server Protocol`_.
 
@@ -23,13 +23,20 @@ becomes::
     class Message(TypedDict, total=True):
         jsonrpc: str
 
-ts2python uses `TypedDict`_ as base class per default and sets the
-TypedDict total-parameter to ``True``, if no fields are optional
-and to ``False`` otherwise.
+ts2python uses `TypedDict`_ as base class per default. Unless a Python-version
+greater or equal than 3.11 is specified by passing the ``--compatibility 3.11``-parameter
+when calling ts2python, optional fields of a TypeScript-Interface
+are mapped to ``Optional``-types in Python or, what amounts to the same, to
+``Union``-types that include ``None`` as one of the alternative types of the union.
+Also, if there are any optional fields, the
+total-parameter of the TypedDict-class will be set to to ``False`` in the
+compatibility-mode. Since before Python version 3.11 static validation relies
+on the ``total``-parameter it will not
+capture missing required attributes in TypedDicts that contain
+both required and optional fields. Runtime-Validation by ts2python
+will still catch such errors (see :ref:`runtime_validation`).
 
-Optional fields of a TypeScript-Interface are mapped to ``Optional``-types
-in Python or, what amounts to the same to ``Union``-types that include
-``None`` as one of the alternative types of the union. Thus,::
+ Thus,::
 
     interface RequestMessage extends Message {
         id: integer | string;
@@ -44,7 +51,7 @@ becomes::
         method: str
         params: Optional[Union[List, Dict]]
 
-Here ``Optional``-types are understood as attributes that need
+In the compatibility-mode ``Optional``-types are understood as attributes that need
 not be present in the dictionary. This runs contrary
 the standard semantics of ``Optional``-types in Python, which
 requires attributes annotated with ``Optional`` to always be present
@@ -52,25 +59,26 @@ although they may contain the value ``None``. In fact, this non-standard
 interpretation of ``Optional`` implements one of the rejected ways of
 marking individual TypedDict items as not required in `PEP 655`_.
 
-However, since as of Python version 3.10 `PEP 655`_ has not yet been
-implemented, abusing ``Optional`` for this purpose appears to be
+However, since up to Python version 3.10 `PEP 655`_ had not been
+implemented, abusing ``Optional`` for this purpose appeared to be
 a pragmatic solution that in connection with setting the parameter
 ``total=False`` plays well-enough with static type-checkers. Unless
 your code using ts2python-transpiled TypedDicts does not assume
 attributes with ``Optional`` type to be present, there won't be a problem.
-(Still, it is possible, to enforce `PEP 655`_ by calling ``ts2python``
-with the parameter ``--p 655``, in which case ``NotRequired`` will be
-used instead of optional. The above Message-interface will then read as::
+
+For the case that the transpiled code does not need to run with Python-versions
+below 3.11, it is possible, to enforce `PEP 655`_ by calling ``ts2python``
+with the parameter ``-p 655`` or with ``-c 3.11``, in which case ``NotRequired`` will be
+used instead of ``Optional``. Also, the ``total``-parameter of the TypedDict-class will
+be set to "True", which means that all other fields are required.
+The above Message-interface will then read as::
 
     class RequestMessage(Message, TypedDict, total=True):
         id: Union[int, str]
         method: str
-        params: NoRequired[Union[List, Dict]]
+        params: NotRequired[Union[List, Dict]]
 
-Since static validation relies on the ``total``-parameter it will not
-capture missing required attributes in TypedDicts that contain
-both required and optional fields. Runtime-Validation by ts2python
-will still catch such errors (see Validation, below)
+
 
 
 Mapping of Field Types
@@ -138,8 +146,8 @@ Thus, the Typescript enum::
     }
 
 will not be converted to a Python Enum. (Rather, ts2python will complain
-about an expected closing quote.) However, in those cases, where the string
-content happens to be a valid identifier, ts2python will consider those
+about an expected closing quote.) However, in those cases, where the
+string-content happens to be a valid identifier, ts2python will consider those
 strings as identifiers. The Typescript enum ``enum MilkyWay { 'earth', 'moon', 'stars' }``
 will be converted to::
 
@@ -192,7 +200,7 @@ becomes::
 Mapping of Tuple Types
 ----------------------
 
-Likewise, tuple types are transpiled to tuple-types.
+Likewise, Typescript-tuple-types are transpiled to Python-tuple-types.
 
 Typescript::
 
@@ -246,9 +254,14 @@ in TypeScript::
         workspaceFolders?: WorkspaceFolder[] | null;
     }
 
-In order to transfer this to Python a local class is defined
-and the fields name with a capitalized first letter and
-appended underscore is used as name for the local class::
+In order to transfer this to Python, a local class is defined
+and the fields' name with a capitalized first letter and
+appended underscore is used as name for the local class. Although,
+this use of local-classes within TypedDict-classes is not in "legal"
+conformance with the specification of TypedDict-classes (see `PEP 589`_),
+it is technically sound and works perfectly well in practice
+(see :ref:`toplevel_switch` for how to
+enforce "legal" conformance, if needed) ::
 
     class InitializeParams(WorkDoneProgressParams, TypedDict, total=False):
         class ClientInfo_(TypedDict, total=False):
@@ -348,7 +361,7 @@ becomes::
 The "functional" representation can be selected by assigning the
 value "functional" to the configuration key "ts2python.RenderAnonymous".
 Alternatively, it can be selected with the command line option
-"--anonymous functional" or "-a functional".
+``--anonymous functional`` or ``-a functional``.
 
 There is also an experimental "type"-syntax, which renders the
 anonymous interface in the above example as::
@@ -356,10 +369,13 @@ anonymous interface in the above example as::
     TypedDict[{"name": str, "version": NotRequired[str]}]
 
 However, this is not (yet) in conformance with the Python-Standard.
-(See this post on `inline TypedDict definitions`_). It can be turned
-on with "-a type"
+(See this post on `inline TypedDict definitions`_). Still, it can be turned
+on with ``-a type``.
 
-Finally, with "-a toplevel", the definition of classes inside classes
+.. _toplevel_switch:
+
+Finally, with ``--anonymous toplevel`` or ``-a toplevel``,
+the definition of classes inside classes
 can be avoided completely. This helps to avoid complaints by type-checkers
 like mypy or pylance. The result look like this::
 
@@ -395,25 +411,39 @@ Resulting Python Enum::
         Information = 3
         Hint = 4
 
-For some reason, which I do not know, ``typing.TypeDict`` does not work
-in combination with ``typing.Generic``. Thus, interfaces containing
-generic types will, for the time being, be transpiled to plain classes::
+Thus, generic interfaces containing type-parameters will be transpiled to generic typed dicts,
+which in the most backward-compatible form (back to Python 3.7) look like this::
 
     interface ProgressParams<T> {
         token: ProgressToken;
         value: T;
     }
 
+
 becomes::
 
     T = TypeVar('T')
-    class ProgressParams(Generic[T]):
-        token: ProgressToken
-        value: 'T'
 
-(``TypedDict`` can be added to the list of base classes manually,
-however, if the ``TypedDict``-Shim from the
-``ts2typeddict.json_validation``-module is used.)
+    class ProgressParams(Generic[T], GenericTypedDict, total=True):
+        token: 'ProgressToken'
+        value: T
+
+
+If the compatibility-level is set to 3.11 or above, TypeVars will be used instead::
+
+    T = TypeVar('T')
+
+    class ProgressParams(TypedDict):
+        token: 'ProgressToken'
+        value: T
+
+
+For Python versions higher than 3.12 only the result will be a generic TypedDict-class::
+
+    class ProgressParams[T](TypedDict):
+        token: 'ProgressToken'
+        value: T
+
 
 Imports
 -------
@@ -433,20 +463,20 @@ cases types derived from other tpes will - for the lack of a deeper semantic
 analysis of Typescript-input by ts2python - simply be represented as type
 ``Any`` on the Python-side.
 
-Because
-Python's type system isn't as elaborated as that of Typescript, a translation
+Because Python's type system isn't as elaborated as that of Typescript, a translation
 that keeps all information will often not be possible, anyway. The main
 reason, however, why this is not done is that it would require ts2python to
-actually reason about the types it parses, which something which ts2python
+actually reason about the types it parses, which is something which ts2python
 has not been designed for. However, more purely syntactic support for
 these constructs can be added in the future, if required.
 
 
-.. _Typescript interfaces: https://www.typescriptlang.org/docs/handbook/2/objects.html
+.. _Typescript-interfaces: https://www.typescriptlang.org/docs/handbook/2/objects.html
 .. _TypedDicts: https://www.python.org/dev/peps/pep-0589/
 .. _TypedDict: https://www.python.org/dev/peps/pep-0589/
 .. _Language Server Protocol: https://microsoft.github.io/language-server-protocol/
 .. _PEP 655: https://www.python.org/dev/peps/pep-0655/
+.. _PEP 589: https://peps.python.org/pep-0589/
 .. _Index signatures: https://www.typescriptlang.org/docs/handbook/2/objects.html#index-signatures
 .. _Enums: https://docs.python.org/3/library/enum.html
 .. _inline TypedDict definitions: https://discuss.python.org/t/allow-local-class-type-definitions-inside-typeddict/41611/3

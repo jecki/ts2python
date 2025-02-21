@@ -1,3 +1,5 @@
+.. _runtime_validation:
+
 Runtime Validation
 ==================
 
@@ -14,7 +16,7 @@ Also, up to Python 3.10 ``TypedDict`` does not allow marking
 individual items as required or not required. (See
 `PEP 655`_ for the details.) Static type checkers
 that do not evaluate the ``Required`` and ``NotRequired`` annotation
-will produce false results for TypedDicts that contain not required
+will produce false results for TypedDicts that contain not-required
 fields.
 
 Module :py:mod:`ts2python.json_validation` provides functions
@@ -58,20 +60,19 @@ receiving or returning a TypedDict::
     Type error(s) in dictionary of type <class '__main__.Range'>:
     Field end: '256' is not of <class '__main__.Position'>, but of type <class 'int'>
 
-By default :py:func:`json_validation.type_check`-annotation validates
+By default the :py:func:`json_validation.type_check`-annotation validates
 both the arguments of a function and its return value. (This behaviour
 can be configured with the ``check_return_type``-parameter of the annotation.)
 Type validation will not take place on arguments or return values for which
 no type annotation is given.
 
-validata_type-function
+validate_type-function
 ----------------------
 
 Alternatively, types can be validated by the calling
-:py:func:`json_validation.validate_type`. ``validate_type``
+:py:func:`json_validation.validate_type`. ``validate_type()``
 does not return anything but either raises a TypeError if
-the given value does not have the expected type or does
-not raise any error if the type is correct::
+the given value does not have the expected type::
 
     >>> from ts2python.json_validation import validate_type
     >>> validate_type({'line': 42, 'character': 11}, Position)
@@ -82,8 +83,8 @@ not raise any error if the type is correct::
     Type error(s) in dictionary of type <class '__main__.Position'>:
     Field character: 'bad mistak...' is not a <class 'int'>, but a <class 'str'>
 
-``validate_type`` and the ``type_check``-annotation will likewise complain about missing
-required fields and superfluous fields::
+The ``validate_type``- and the ``type_check``-annotation will likewise
+complain about missing required fields and superfluous fields::
 
     >>> from ts2python.json_validation import NotRequired
     >>> class Car(TypedDict, total=True):

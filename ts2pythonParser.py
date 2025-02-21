@@ -85,7 +85,7 @@ from DHParser.transform import is_empty, remove_if, TransformationDict, Transfor
 from DHParser import parse as parse_namespace__
 
 
-version = "0.7.6"
+version = "0.7.7"
 
 
 #######################################################################
@@ -138,9 +138,9 @@ class ts2pythonGrammar(Grammar):
     literal = Forward()
     type = Forward()
     types = Forward()
-    source_hash__ = "af962637640843702288bbb62ab1bb01"
+    source_hash__ = "85c5d56f669696e9f7218aea6c2d031c"
     early_tree_reduction__ = CombinedParser.MERGE_TREETOPS
-    disposable__ = re.compile('(?:INT$|EXP$|_top_level_literal$|_keyword$|_top_level_assignment$|_reserved$|_array_ellipsis$|_quoted_identifier$|DOT$|_namespace$|_part$|NEG$|EOF$|FRAC$)')
+    disposable__ = re.compile('(?:_array_ellipsis$|_keyword$|FRAC$|DOT$|INT$|_top_level_literal$|_namespace$|_reserved$|_part$|_quoted_identifier$|EOF$|_top_level_assignment$|EXP$|NEG$)')
     static_analysis_pending__ = []  # type: List[bool]
     parser_initialization__ = ["upon instantiation"]
     COMMENT__ = r'(?://.*)\n?|(?:/\*(?:.|\n)*?\*/) *\n?'
@@ -460,7 +460,7 @@ class ts2pythonCompiler(Compiler):
             self.class_decorator += '\n'
         self.use_enums = get_config_value('ts2python.UseEnum', True)
         self.use_type_union = get_config_value('ts2python.UseTypeUnion', False)
-        self.use_type_parameters = get_config_value('ts2Python.UseTypeParameters', False)
+        self.use_type_parameters = get_config_value('ts2python.UseTypeParameters', False)
         self.use_literal_type = get_config_value('ts2python.UseLiteralType', False)
         self.use_variadic_generics = get_config_value('ts2python.UseVariadicGenerics', False)
         self.use_not_required = get_config_value('ts2python.UseNotRequired', False)
@@ -585,7 +585,8 @@ class ts2pythonCompiler(Compiler):
 
     def render_class_header(self, name: str,
                             base_classes: str,
-                            force_base_class: str = '') -> str:
+                            force_base_class: str = '',
+                            generic_types: str = '') -> str:
         optional_key_list = self.optional_keys[-1]
         decorator = self.class_decorator
         base_class_name = (force_base_class or self.base_class_name).strip()
@@ -602,11 +603,12 @@ class ts2pythonCompiler(Compiler):
                     return decorator + f"class {name}({base_classes}, "\
                            f"{td_name}, total={total}):\n"
             else:
+                tps = generic_types if self.use_type_parameters else ''
                 if self.use_not_required:
-                    return decorator + f"class {name}(TypedDict):\n"
+                    return decorator + f"class {name}{tps}(TypedDict):\n"
                 else:
                     return decorator + \
-                           f"class {name}(TypedDict, total={total}):\n"
+                           f"class {name}{tps}(TypedDict, total={total}):\n"
         else:
             if base_classes:
                 if base_class_name:
@@ -648,7 +650,6 @@ class ts2pythonCompiler(Compiler):
         self.optional_keys.append([])
         tps, preface = self.process_type_parameters(node)
         if self.use_type_parameters:  preface = ''
-        # else:  tps =''
         preface += '\n'
         preface += node.get_attr('preface', '')
         self.known_types.append(dict())
@@ -674,7 +675,7 @@ class ts2pythonCompiler(Compiler):
             force_base_class = ''
             self.typed_dicts.add(name)
         decls = self.compile(node['declarations_block'])
-        interface = self.render_class_header(name, base_classes, force_base_class)
+        interface = self.render_class_header(name, base_classes, force_base_class, tps)
         self.base_classes[name] = base_class_list
         if self.base_class_name == "TypedDict" and self.render_anonymous == "toplevel":
             interface = self.render_local_classes() + '\n' + interface

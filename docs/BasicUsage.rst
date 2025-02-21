@@ -10,13 +10,14 @@ the Typescript-Interface definitions::
 
     $ ts2python interfaces.ts
 
-This generates a .py-file in same directory as the source
+This generates a .py-file with the same name (safe for the extension)
+in same directory as the source
 file that contains the TypedDict-classes and can simpy be
 imported in Python-Code::
 
     from interfaces import *
 
-Typescript Interfaces are transformed to Python TypedDicts
+Typescript-interfaces are transformed to Python-TypedDicts
 in a straight-forward way. The following Typescript-code::
 
     interface Message {
@@ -52,8 +53,8 @@ will become::
 Type-checking Input and Return-Values
 -------------------------------------
 
-In order to allow static type-checking with `mypy`_ or another
-Python type-checker, `type-annotations`_ should be used in the source
+In order to allow static type-checking with `mypy`_ or other
+Python type-checkers, `type-annotations`_ should be used in the source
 code, e.g.::
 
     def process_request(request: RequestMessage) -> ResponseMessage:
@@ -67,7 +68,7 @@ stems from a JSON-RPC call and is de-serialized via::
     import json
     request_msg: RequestMessage = json.loads(input_data)
 
-Type-conformance can now be checked at runtime with:
+Type-conformance must then be checked at runtime with:
 
     from ts2python.json_validation import validate_type
     validate_type(request_msg, RequestMessage)

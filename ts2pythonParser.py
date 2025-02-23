@@ -590,6 +590,7 @@ class ts2pythonCompiler(Compiler):
         optional_key_list = self.optional_keys[-1]
         decorator = self.class_decorator
         base_class_name = (force_base_class or self.base_class_name).strip()
+        tps = generic_types if self.use_type_parameters else ''
         if base_class_name == 'TypedDict':
             total = not bool(optional_key_list) or self.use_not_required
             if base_classes:
@@ -598,9 +599,9 @@ class ts2pythonCompiler(Compiler):
                                       else 'GenericTypedDict'
                 if self.use_not_required:
                     return decorator + \
-                           f"class {name}({base_classes}, {td_name}):\n"
+                           f"class {name}{tps}({base_classes}, {td_name}):\n"
                 else:
-                    return decorator + f"class {name}({base_classes}, "\
+                    return decorator + f"class {name}{tps}({base_classes}, "\
                            f"{td_name}, total={total}):\n"
             else:
                 tps = generic_types if self.use_type_parameters else ''
@@ -613,14 +614,14 @@ class ts2pythonCompiler(Compiler):
             if base_classes:
                 if base_class_name:
                     return decorator + \
-                        f"class {name}({base_classes}, {base_class_name}):\n"
+                        f"class {name}{tps}({base_classes}, {base_class_name}):\n"
                 else:
-                    return decorator + f"class {name}({base_classes}):\n"
+                    return decorator + f"class {name}{tps}({base_classes}):\n"
             else:
                 if base_class_name:
-                    return decorator + f"class {name}({base_class_name}):\n"
+                    return decorator + f"class {name}{tps}({base_class_name}):\n"
                 else:
-                    return decorator + f"class {name}:\n"
+                    return decorator + f"class {name}{tps}:\n"
 
     def render_local_classes(self) -> str:
         self.func_name = ''
@@ -664,8 +665,9 @@ class ts2pythonCompiler(Compiler):
                 base_classes += f", Generic{tps}"
         except KeyError:
             base_classes = f"Generic{tps}" \
-                if tps and (not self.use_variadic_generics
-                            or 'function' in node['declarations_block'])\
+                if (tps and not self.use_type_parameters
+                    and (not self.use_variadic_generics
+                         or 'function' in node['declarations_block']))\
                 else ''
         if any(bc not in self.typed_dicts for bc in base_class_list):
             force_base_class = ' '

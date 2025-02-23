@@ -374,6 +374,20 @@ class TestScriptCall:
         assert result.returncode == 0
 
 
+class TestPromiseLike:
+    """
+    // https://witch.work/en/posts/typescript-promise-type
+
+    interface PromiseLike<T> {
+      then<TResult1 = T, TResult2 = never>(
+        onfulfilled?: ((value: T) => TResult1 | PromiseLike<TResult1>) | undefined | null,
+        onrejected?: ((reason: any) => TResult2 | PromiseLike<TResult2>) | undefined | null
+      ): PromiseLike<TResult1 | TResult2>;
+    }
+    """
+    pass
+
+
 if __name__ == "__main__":
     from runner import runner
     runner("", globals())

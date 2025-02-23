@@ -465,6 +465,10 @@ class ts2pythonCompiler(Compiler):
         self.use_variadic_generics = get_config_value('ts2python.UseVariadicGenerics', False)
         self.use_not_required = get_config_value('ts2python.UseNotRequired', False)
         self.keep_comments = get_config_value('ts2python.KeepMultilineComments', False)
+        if self.use_type_parameters and not self.use_variadic_generics:
+            raise ValueError(
+                'Configuration flag UseTypeParameters can only be set to True '
+                'if UseVariadicGenerics is also set to True!')
 
         self.overloaded_type_names: Set[str] = set()
         self.known_types: List[Dict[str, str]] = [

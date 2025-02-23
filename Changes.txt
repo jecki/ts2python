@@ -17,10 +17,12 @@ Version 0.7.5
 - bugs #21, #19
 - several changes to make ts2python digest the current vscode.d.ts
 
+
 Version 0.7.4
 -------------
 - comments can be preserved: option "-k" or "--comments". Exception:
   Inline comments, e.g. "dog /* my little dog */: int", will not be preserved
+
 
 Version 0.7.3
 -------------
@@ -33,6 +35,7 @@ Version 0.7.2
 - more advanced types supported (by the parser only! which
   means they are read but may not be translated to Python
   very well)
+
 
 Version 0.7.1
 -------------

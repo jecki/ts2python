@@ -251,7 +251,7 @@ Both the unit and the doctests can be run by changing to the
     $ python runner.py
 
 It is also possible to run the tests with [pytest](https://docs.pytest.org/) 
-or [nose](https://nose.readthedocs.io), in case you have
+or [nose](https://github.com/nose-devs/nose2), in case you have
 either of theses testing-frameworks installed.
 
 For a demonstration how the TypeScript-Interfaces are transpiled

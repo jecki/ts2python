@@ -1507,7 +1507,6 @@ def main():
     args = parser.parse_args()
     file_names, out, log_dir = args.files, args.out[0], ''
 
-    workdir = file_names[0] if os.path.isdir(file_names[0]) else os.path.dirname(file_names[0])
     from DHParser.configuration import read_local_config
     read_local_config(os.path.join(scriptpath, 'ts2python/ts2pythonParser.ini'))
 

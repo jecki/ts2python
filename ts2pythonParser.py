@@ -1318,7 +1318,7 @@ def serialize_result(result: Any) -> Union[str, bytes]:
         return repr(result)
 
 
-def process_file(source: str, result_filename: str = '') -> str:
+def process_file(source: str, out_dir: str = '') -> str:
     """Compiles the source and writes the serialized results back to disk,
     unless any fatal errors have occurred. Error and Warning messages are
     written to a file with the same name as `result_filename` with an
@@ -1327,11 +1327,12 @@ def process_file(source: str, result_filename: str = '') -> str:
     string, if no errors of warnings occurred.
     """
     source_filename = source if is_filename(source) else ''
-    if not result_filename:
-        if source_filename:
-            result_filename = source_filename[:result_filename.rfind('.')] + '.py'
-        else:
-            result_filename = "out.py"
+    if source_filename:
+        result_filename = os.path.join(out_dir,
+            os.path.splitext(os.path.basename(source_filename))[0]
+            + RESULT_FILE_EXTENSION)
+    else:
+        result_filename = os.path.join(outdir, "out.py")
     if os.path.isfile(result_filename):
         with open(result_filename, 'r', encoding='utf-8') as f:
             result = f.read()
@@ -1358,41 +1359,20 @@ def process_file(source: str, result_filename: str = '') -> str:
     return ''
 
 
+def _process_file(args: Tuple[str, str]) -> str:
+    return process_file(*args)
+
+
 def batch_process(file_names: List[str], out_dir: str,
                   *, submit_func: Callable = None,
-                  log_func: Callable = None) -> List[str]:
+                  log_func: Callable = None,
+                  cancel_func: Callable = never_cancel) -> List[str]:
     """Compiles all files listed in filenames and writes the results and/or
     error messages to the directory `our_dir`. Returns a list of error
     messages files.
     """
-    error_list =  []
-
-    def gen_dest_name(name):
-        return os.path.join(out_dir, os.path.splitext(os.path.basename(name))[0] \
-                                     + RESULT_FILE_EXTENSION)
-
-    def run_batch(submit_func: Callable):
-        nonlocal error_list
-        err_futures = []
-        for name in file_names:
-            dest_name = gen_dest_name(name)
-            err_futures.append(submit_func(process_file, name, dest_name))
-        for file_name, err_future in zip(file_names, err_futures):
-            error_filename = err_future.result()
-            if log_func:
-                log_func('Compiling "%s"' % file_name)
-            if error_filename:
-                error_list.append(error_filename)
-
-    if submit_func is None:
-        import concurrent.futures
-        from DHParser.toolkit import instantiate_executor
-        with instantiate_executor(get_config_value('batch_processing_parallelization'),
-                                  concurrent.futures.ProcessPoolExecutor) as pool:
-            run_batch(pool.submit)
-    else:
-        run_batch(submit_func)
-    return error_list
+    return dsl.batch_process(file_names, out_dir, _process_file,
+        submit_func=submit_func, log_func=log_func, cancel_func=cancel_func)
 
 
 INSPECT_TEMPLATE = """<h2>{testname}</h2>
@@ -1449,7 +1429,7 @@ def inspect(test_file_path: str):
     webbrowser.open('file://' + destpath if sys.platform == "darwin" else destpath)
 
 
-def main():
+def main(called_from_app=False):
     # recompile grammar if needed
     script_path = os.path.abspath(__file__)
     script_name = os.path.basename(script_path)
@@ -1481,10 +1461,10 @@ def main():
 
     from argparse import ArgumentParser
     parser = ArgumentParser(description="Parses a ts2python-file and shows its syntax-tree.")
-    parser.add_argument('files', nargs='+')
+    parser.add_argument('files', nargs='*' if called_from_app else '+')
     parser.add_argument('-D', '--debug', action='store_const', const='debug',
                         help='Store debug information in LOGS subdirectory')
-    parser.add_argument('-o', '--out', nargs=1, default=['out'],
+    parser.add_argument('-o', '--out', nargs=1, default=['ts2python_output'],
                         help='Output directory for batch processing')
     parser.add_argument('-v', '--verbose', action='store_const', const='verbose',
                         help='Verbose output')
@@ -1566,6 +1546,8 @@ def main():
         if args.verbose:
             print(message)
 
+    if called_from_app and not file_names:  return False
+
     batch_processing = True
     if len(file_names) == 1:
         if os.path.isdir(file_names[0]):
@@ -1596,7 +1578,7 @@ def main():
 
     else:
         assert file_names[0].lower().endswith('.ts')
-        error_file = process_file(file_names[0], file_names[0][:-3] + '.py')
+        error_file = process_file(file_names[0], '.')
         if error_file:
             with open(error_file, 'r', encoding='utf-8') as f:
                 print(f.read())

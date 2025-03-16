@@ -67,7 +67,7 @@ from DHParser.preprocess import nil_preprocessor, PreprocessorFunc, Preprocessor
     gen_find_include_func, preprocess_includes, make_preprocessor, chain_preprocessors
 from DHParser.stringview import StringView
 from DHParser.toolkit import is_filename, load_if_file, cpu_count, RX_NEVER_MATCH, \
-    ThreadLocalSingletonFactory, expand_table, md5, as_list
+    ThreadLocalSingletonFactory, expand_table, md5, as_list, static
 from DHParser.trace import set_tracer, resume_notices_on, trace_history
 from DHParser.transform import is_empty, remove_if, TransformationDict, TransformerFunc, \
     transformation_factory, remove_children_if, move_fringes, normalize_whitespace, \
@@ -279,9 +279,9 @@ ts2python_AST_transformation_table = {
 def ts2pythonTransformer() -> TransformerCallable:
     """Creates a transformation function that does not share state with other
     threads or processes."""
-    return partial(transformer,
-                   transformation_table=ts2python_AST_transformation_table.copy(),
-                   src_stage='cst', dst_stage='ast')
+    return static(partial(transformer,
+        transformation_table=ts2python_AST_transformation_table.copy(),
+        src_stage='cst', dst_stage='ast'))
 
 ASTTransformation: Junction = Junction(
     'cst', ThreadLocalSingletonFactory(ts2pythonTransformer), 'ast')

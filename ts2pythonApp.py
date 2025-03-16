@@ -185,7 +185,11 @@ class ts2pythonApp(tkinter.Tk):
 
 
 if __name__ == '__main__':
-    # # Uncomment the following 3 lines before bundling this script with pyinstaller
+    # # Either use
+    # import multiprocesing
+    # multiprocessing.freeze_support()
+    #
+    # # or uncomment the following 3 lines before bundling this script with pyinstaller
     # access_presets()
     # set_preset_value('batch_processing_parallelization', False)
     # finalize_presets()

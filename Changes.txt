@@ -3,6 +3,7 @@ Version 0.7.7
 - bugfix: configuration-flag UseTypeParameters (for Python version 3.12 and above)
   is not ignored, anymore
 - typo-corrections and some updates to the documentation
+- Python 3.14 compatibility
 
 
 Version 0.7.6

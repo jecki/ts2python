@@ -131,6 +131,8 @@ dmypy.json
 # PyCharm
 .idea/
 .idea/misc.xml
+.idea/*
+.idea/**
 
 # DHParser-stuff
 REPORT
@@ -142,5 +144,4 @@ LOGS
 
 # Other
 scratch/
-.idea/
 

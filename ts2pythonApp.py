@@ -120,6 +120,17 @@ class ts2pythonApp(tkinter.Tk):
             else:
                 self.result.insert(tkinter.END, "Compilation finished.\n")
                 self.result.insert(tkinter.END, f"Results written to {self.outdir}.\n")
+                if len(self.names) == 1:
+                    basename = os.path.splitext(os.path.basename(self.names[0]))[0]
+                    for msgtype in ('_ERRORS.txt', '_WARNINGS.txt'):
+                        msgfile = os.path.join(self.outdir, basename + msgtype)
+                        if os.path.exists(msgfile):
+                            with open(msgfile, 'r', encoding='utf-8') as f:  msg = f.read()
+                            lines = msg.split('\n')
+                            leadout = '...\n' if len(lines) > 20 else '\n'
+                            msg = '\n'.join([msgtype[1:-4] ] + lines[:20] + [leadout])
+                            self.result.insert(tkinter.END, msg)
+                            break
                 if self.target == 'html':
                     html_name = os.path.splitext(os.path.basename(self.names[0]))[0] + '.html'
                     html_name = os.path.join(self.outdir, html_name)
@@ -185,14 +196,8 @@ class ts2pythonApp(tkinter.Tk):
 
 
 if __name__ == '__main__':
-    # # Either use
-    # import multiprocesing
-    # multiprocessing.freeze_support()
-    #
-    # # or uncomment the following 3 lines before bundling this script with pyinstaller
-    # access_presets()
-    # set_preset_value('batch_processing_parallelization', False)
-    # finalize_presets()
+    import multiprocessing
+    multiprocessing.freeze_support()
 
     if not ts2pythonParser.main(called_from_app=True):
         app = ts2pythonApp()

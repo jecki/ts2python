@@ -53,11 +53,12 @@ module      = "declare" "module" _quoted_identifier "{" document "}"
 #
 #######################################################################
 
-Import      = "import" [( symlist | symbol ) "from"] string
-symlist     = "{" symbol { "," symbol } "}"
-symbol      = identifier | wildcard [ "as" alias ]
+Import      = "import" [(wildcard | importList ) "from"] string
+importList  = (symList | identifier) { "," (symList | identifier) }
+symList     = "{" symbol { "," symbol } "}"
+symbol      = ["type"] identifier [ "as" alias ]
+wildcard    = "*" "as" alias
 alias       = identifier
-wildcard    =   "*"
 
 #######################################################################
 #

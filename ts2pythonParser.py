@@ -138,9 +138,9 @@ class ts2pythonGrammar(Grammar):
     literal = Forward()
     type = Forward()
     types = Forward()
-    source_hash__ = "6d226bae877320da27b8bdcc9c13463f"
+    source_hash__ = "175bec0aa26f36bbf0f02321486f0a0c"
     early_tree_reduction__ = CombinedParser.MERGE_TREETOPS
-    disposable__ = re.compile('(?:_top_level_literal$|INT$|_top_level_assignment$|DOT$|EOF$|_array_ellipsis$|_keyword$|_namespace$|NEG$|EXP$|_reserved$|_quoted_identifier$|_part$|FRAC$)')
+    disposable__ = re.compile('(?:DOT$|EXP$|NEG$|_keyword$|_part$|_top_level_assignment$|INT$|EOF$|_top_level_literal$|_reserved$|_namespace$|_array_ellipsis$|FRAC$|_quoted_identifier$)')
     static_analysis_pending__ = []  # type: List[bool]
     parser_initialization__ = ["upon instantiation"]
     COMMENT__ = r'(?://.*)\n?|(?:/\*(?:.|\n)*?\*/) *\n?'
@@ -197,24 +197,25 @@ class ts2pythonGrammar(Grammar):
     parameter_type = Series(Option(Series(Drop(Text("readonly")), dwsp__)), Alternative(array_of, basic_type, generic_type, indexed_type, Series(type_name, Option(extends_type), Option(equals_type)), declarations_block, type_tuple, declarations_tuple))
     parameter_types = Series(Option(Series(Drop(Text("|")), dwsp__)), parameter_type, ZeroOrMore(Series(Series(Drop(Text("|")), dwsp__), parameter_type)))
     type_parameters = Series(Series(Drop(Text("<")), dwsp__), parameter_types, ZeroOrMore(Series(Series(Drop(Text(",")), dwsp__), parameter_types)), Series(Drop(Text(">")), dwsp__), mandatory=1)
-    interface = Series(Option(Series(Drop(Text("export")), dwsp__)), Option(Series(Drop(Text("declare")), dwsp__)), SmartRE(f'(?:interface)(?P<comment__>{WSP_RE__})|(?:class)(?P<comment__>{WSP_RE__})', '"interface"|"class"'), identifier, Option(type_parameters), Option(extends), declarations_block, Option(Series(Drop(Text(";")), dwsp__)), mandatory=3)
     type_alias = Series(Option(Series(Drop(Text("export")), dwsp__)), Series(Drop(Text("type")), dwsp__), identifier, Option(type_parameters), Series(Drop(Text("=")), dwsp__), types, Option(Series(Drop(Text(";")), dwsp__)), mandatory=2)
-    wildcard = Series(Text("*"), dwsp__)
-    intersection = Series(type, OneOrMore(Series(Series(Drop(Text("&")), dwsp__), type, mandatory=1)))
     alias = Synonym(identifier)
+    wildcard = Series(Series(Drop(Text("*")), dwsp__), Series(Drop(Text("as")), dwsp__), alias)
+    intersection = Series(type, OneOrMore(Series(Series(Drop(Text("&")), dwsp__), type, mandatory=1)))
+    symbol = Series(Option(Series(Drop(Text("type")), dwsp__)), identifier, Option(Series(Series(Drop(Text("as")), dwsp__), alias)))
+    interface = Series(Option(Series(Drop(Text("export")), dwsp__)), Option(Series(Drop(Text("declare")), dwsp__)), SmartRE(f'(?:interface)(?P<comment__>{WSP_RE__})|(?:class)(?P<comment__>{WSP_RE__})', '"interface"|"class"'), identifier, Option(type_parameters), Option(extends), declarations_block, Option(Series(Drop(Text(";")), dwsp__)), mandatory=3)
     namespace = Series(Option(Series(Drop(Text("export")), dwsp__)), Series(Drop(Text("namespace")), dwsp__), identifier, Series(Drop(Text("{")), dwsp__), ZeroOrMore(Alternative(interface, type_alias, enum, const, Series(declaration, Option(Series(Drop(Text(";")), dwsp__))), Series(function, Option(Series(Drop(Text(";")), dwsp__))))), Series(Drop(Text("}")), dwsp__), mandatory=2)
-    virtual_enum = Series(Option(Series(Drop(Text("export")), dwsp__)), Series(Drop(Text("namespace")), dwsp__), identifier, Series(Drop(Text("{")), dwsp__), ZeroOrMore(Alternative(interface, type_alias, enum, const, Series(declaration, Option(Series(Drop(Text(";")), dwsp__))))), Series(Drop(Text("}")), dwsp__))
     static = Series(Text("static"), dwsp__)
-    _namespace = Alternative(virtual_enum, namespace)
+    virtual_enum = Series(Option(Series(Drop(Text("export")), dwsp__)), Series(Drop(Text("namespace")), dwsp__), identifier, Series(Drop(Text("{")), dwsp__), ZeroOrMore(Alternative(interface, type_alias, enum, const, Series(declaration, Option(Series(Drop(Text(";")), dwsp__))))), Series(Drop(Text("}")), dwsp__))
     qualifiers = Interleave(readonly, static, Series(Drop(Text('public')), dwsp__), Series(Drop(Text('protected')), dwsp__), Series(Drop(Text('private')), dwsp__), repetitions=[(0, 1), (0, 1), (0, 1), (0, 1), (0, 1)])
     _keyword = Drop(SmartRE(f'(?P<:Text>readonly|function|const|public|private|protected)(?!\\w)', '`readonly`|`function`|`const`|`public`|`private`|`protected` !/\\w/'))
     special = Series(Series(Drop(Text("[")), dwsp__), name, Series(Drop(Text("]")), dwsp__), Series(Drop(Text("(")), dwsp__), Option(arg_list), Series(Drop(Text(")")), dwsp__), Option(Series(Series(Drop(Text(":")), dwsp__), types)), mandatory=4)
     argument = Series(identifier, Option(optional), Option(Series(Series(Drop(Text(":")), dwsp__), types)))
     arg_tail = Series(Series(Drop(Text("...")), dwsp__), identifier, Option(Series(Series(Drop(Text(":")), dwsp__), Alternative(array_of, generic_type))))
-    symbol = Alternative(identifier, Series(wildcard, Option(Series(Series(Drop(Text("as")), dwsp__), alias))))
-    symlist = Series(Series(Drop(Text("{")), dwsp__), symbol, ZeroOrMore(Series(Series(Drop(Text(",")), dwsp__), symbol)), Series(Drop(Text("}")), dwsp__))
-    Import = Series(Series(Drop(Text("import")), dwsp__), Option(Series(Alternative(symlist, symbol), Series(Drop(Text("from")), dwsp__))), string)
+    symList = Series(Series(Drop(Text("{")), dwsp__), symbol, ZeroOrMore(Series(Series(Drop(Text(",")), dwsp__), symbol)), Series(Drop(Text("}")), dwsp__))
+    importList = Series(Alternative(symList, identifier), ZeroOrMore(Series(Series(Drop(Text(",")), dwsp__), Alternative(symList, identifier))))
+    Import = Series(Series(Drop(Text("import")), dwsp__), Option(Series(Alternative(wildcard, importList), Series(Drop(Text("from")), dwsp__))), string)
     module = Series(Series(Drop(Text("declare")), dwsp__), Series(Drop(Text("module")), dwsp__), _quoted_identifier, Series(Drop(Text("{")), dwsp__), document, Series(Drop(Text("}")), dwsp__))
+    _namespace = Alternative(virtual_enum, namespace)
     literal.set(Alternative(integer, number, boolean, string, array, object))
     generic_type.set(Series(type_name, type_parameters))
     type.set(Series(Option(Series(Drop(Text("readonly")), dwsp__)), Alternative(array_of, basic_type, generic_type, indexed_type, Series(type_name, NegativeLookahead(Text("("))), Series(Series(Drop(Text("(")), dwsp__), types, Series(Drop(Text(")")), dwsp__)), mapped_type, declarations_block, type_tuple, declarations_tuple, literal, func_type)))
@@ -271,6 +272,7 @@ ts2python_AST_transformation_table = {
                          lambda p: p[-1]['name'].content not in SPECIAL_FUNCTIONS),
                 convert_special_function],
     "function": apply_if(reduce_single_child, has_child('special')),
+    "alias": reduce_single_child,
     "*": move_fringes(lambda p: p[-1].name == "comment__"),
     ">>>": clear_flags
 }
@@ -586,6 +588,9 @@ class ts2pythonCompiler(Compiler):
 
     def on_Import(self, node) -> str:
         return ""  # For now, ignore imports
+
+    def on_symbol(self, node) -> str:
+        return ""  # For the time being
 
     def render_class_header(self, name: str,
                             base_classes: str,

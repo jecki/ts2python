@@ -73,8 +73,15 @@ def resolve_forward_refs(T: type, Ur_T: type = None,) -> type:
         return T
     elif str(T).find('ForwardRef') >= 0:
         if Ur_T is None:  Ur_T = T
-        T.__args__ = tuple(resolve_forward_refs(arg, Ur_T)
-                           for arg in get_args(T))
+        args = tuple(resolve_forward_refs(arg, Ur_T) for arg in get_args(T))
+        try:
+            T.__args__ = args
+        except AttributeError:
+            try:
+                T = T.copy_with(args)
+            except AttributeError:
+                if isinstance(T, Union):
+                    return Union[*args]
     return T
 
 
@@ -237,8 +244,6 @@ def validate_TypedDict(D: Dict, T: _TypedDictMeta):
     assert isinstance(D, Dict), str(D)
     assert is_TypedDictClass(T), str(T)
     type_errors = []
-    x = T.__required_keys__
-    y = T.__optional_keys__
     missing = T.__required_keys__ - D.keys()
     if missing:
         type_errors.append(f"Missing required keys: {missing}")

@@ -12,7 +12,7 @@ interpreted as allowing to leave a field out. Thins runs
 contrary the standard semantics of "Optional" as well as PEP 655,
 but should - most of the time - not lead to any problems in
 practice.". Once Python 3.11 contains support for "NotRequired"
-this TypedDict shim will fall back the standard solution for
+this TypedDict shim will fall back to the standard solution for
 all versions of Python from 3.11 onward.
 
 Copyright 2022  by Eckhart Arnold (arnold@badw.de)

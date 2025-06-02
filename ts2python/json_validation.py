@@ -237,6 +237,8 @@ def validate_TypedDict(D: Dict, T: _TypedDictMeta):
     assert isinstance(D, Dict), str(D)
     assert is_TypedDictClass(T), str(T)
     type_errors = []
+    x = T.__required_keys__
+    y = T.__optional_keys__
     missing = T.__required_keys__ - D.keys()
     if missing:
         type_errors.append(f"Missing required keys: {missing}")

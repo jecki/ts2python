@@ -81,7 +81,11 @@ def resolve_forward_refs(T: type, Ur_T: type = None,) -> type:
                 T = T.copy_with(args)
             except AttributeError:
                 if isinstance(T, Union):
-                    return Union[*args]
+                    # Union[*args] is a SyntaxError in older Python versions
+                    # that, however, will never reach this branch in the first
+                    # place. eval() is needed so that these older Python-versions
+                    # don't throw a SyntaxError when loading this module!
+                    return eval('Union[*args]')
     return T
 
 
@@ -244,6 +248,7 @@ def validate_TypedDict(D: Dict, T: _TypedDictMeta):
     assert isinstance(D, Dict), str(D)
     assert is_TypedDictClass(T), str(T)
     type_errors = []
+    X = T.__required_keys__
     missing = T.__required_keys__ - D.keys()
     if missing:
         type_errors.append(f"Missing required keys: {missing}")
@@ -341,7 +346,7 @@ def type_check(func: Callable, check_return_type: bool = True) -> Callable:
         Field start: '1' is not of <class 'json_validation.Position'>, but of type <class 'int'>
         Field end: '8' is not of <class 'json_validation.Position'>, but of type <class 'int'>
 
-    :param func: The function, the parameters and return value of which shall
+    :param func: The function, the parameters and the return value of which shall
         be type-checked during runtime.
     :return: The decorated function that will raise TypeErrors, if either
         at least one of the parameter's or the return value does not

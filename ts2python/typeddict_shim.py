@@ -142,7 +142,7 @@ if sys.version_info < (3,14):
             return None
 
 
-    def _new_typed_dict(meta, name, bases, ns) -> dict:
+    def _new_typed_dict(meta, name, bases, ns, total=True) -> dict:
         for base in bases:
             if base is not dict and type(base) is not meta \
                     and get_origin(base) is not Generic:
@@ -170,7 +170,6 @@ if sys.version_info < (3,14):
 
         annotations.update(own_annotations)
 
-        total = True
         for field, field_type in own_annotations.items():
             field_type_origin = get_origin(field_type)
             if (field_type_origin is NotRequired
@@ -183,8 +182,10 @@ if sys.version_info < (3,14):
                              and field_type.__forward_arg__.endswith(', None]'))))):
                 optional_keys.add(field)
                 total = False
-            else:
+            elif total:
                 required_keys.add(field)
+            else:
+                optional_keys.add(field)
 
         tp_dict.__annotations__ = annotations
         tp_dict.__required_keys__ = frozenset(required_keys)
@@ -202,7 +203,7 @@ if sys.version_info < (3,14):
             TypedDict supports all three syntax forms described in its docstring.
             Subclasses and instances of TypedDict return actual dictionaries.
             """
-            return _new_typed_dict(_TypedDictMeta, name, bases, ns)
+            return _new_typed_dict(_TypedDictMeta, name, bases, ns, total)
 
         __call__ = dict  # static method
 
@@ -294,7 +295,7 @@ if sys.version_info < (3,14):
         TypedDict.__module__ = __name__
         class _GenericTypedDictMeta(GenericMeta):
             def __new__(cls, name, bases, ns, total=True):
-                return _new_typed_dict(_GenericTypedDictMeta, name, bases, ns)
+                return _new_typed_dict(_GenericTypedDictMeta, name, bases, ns, total)
             __call__ = dict
             def __subclasscheck__(cls, other):
                 return False  # hack to support Python 3.6

@@ -203,9 +203,11 @@ if fix2 not in sys.path:  sys.path.append(fix2)
 class TestValidation:
     def setup_class(self):
         # Use this, to test with non-legacy code, i.e. Python >= 3.11
-        # from DHParser.configuration import set_config_value
-        # set_config_value('ts2python.UseNotRequired', True, allow_new_key=True)
+        from DHParser.configuration import set_config_value, get_config_value
+        not_required = get_config_value('ts2python.UseNotRequired', False)
+        set_config_value('ts2python.UseNotRequired', True, allow_new_key=True)
         self.test_code, err = compile_src(TEST_DATA)
+        set_config_value('ts2python.UseNotRequired', not_required, allow_new_key=True)
         self.test_code = PATH_FIX + self.test_code
         assert not err
         code = compile(self.test_code, '<string>', 'exec')
@@ -261,7 +263,7 @@ class TestValidation:
         except TypeError:
             pass
         try:
-            _ = type_checked_func(0, {'jsonrpc': '2.0', 'method': 'check'},
+            _ = type_checked_func(0, {'id': 21, 'method': 'check'},
                                      Position(line=21, character=15))
             assert False, "Type Error in parameter not detected"
         except KeyError:

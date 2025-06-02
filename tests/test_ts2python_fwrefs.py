@@ -10,7 +10,6 @@ import os
 import sys
 from typing import TypeVar, Generic, Union, Dict, List, Optional
 
-
 scriptdir = os.path.dirname(os.path.abspath(__file__))
 scriptdir_parent = os.path.abspath(os.path.join(scriptdir, '..'))
 
@@ -21,7 +20,7 @@ try:
     from ts2python.json_validation import validate_type, type_check, \
         validate_uniform_sequence
     from ts2python import typeddict_shim
-    from ts2python.typeddict_shim import TypedDict
+    from ts2python.typeddict_shim import TypedDict, NotRequired
 except ImportError:
     if scriptdir_parent not in sys.path:
         sys.path.append(scriptdir_parent)
@@ -31,7 +30,7 @@ except ImportError:
     from ts2python.json_validation import validate_type, type_check, \
         validate_uniform_sequence
     from ts2python import typeddict_shim
-    from ts2python.typeddict_shim import TypedDict
+    from ts2python.typeddict_shim import TypedDict, NotRequired
 
 
 ## TEST CLASSES
@@ -61,14 +60,14 @@ class RequestMessage(Message, TypedDict, total=False):
 
 class ResponseMessage(Message, TypedDict, total=False):
     id: Union[int, str, None]
-    result: Optional[LSPAny]
-    error: Optional['ResponseError']
+    result: NotRequired[LSPAny]
+    error: NotRequired['ResponseError']
 
 
-class ResponseError(TypedDict, total=False):
+class ResponseError(TypedDict, total=True):
     code: int
     message: str
-    data: Optional[LSPAny]
+    data: NotRequired[LSPAny]
 
 class ErrorCodes(IntEnum):
     ParseError = -32700
@@ -142,13 +141,13 @@ class TestValidation:
         except TypeError:
             pass
         try:
-            _ = type_checked_func(0, {'jsonrpc': '2.0', 'method': 'check'},
+            _ = type_checked_func(0, {'id': 21, 'method': 'check'},
                                      Position(line=21, character=15))
             assert False, "Type Error in parameter not detected"
         except KeyError:
             if sys.version_info >= (3, 8):
                 assert False, "Type Error in parameter not detected"
-        except TypeError:
+        except TypeError as e:
             pass
         try:
             _ = type_checked_func(2, {'jsonrpc': '2.0', 'id': 21, 'method': 'check'},

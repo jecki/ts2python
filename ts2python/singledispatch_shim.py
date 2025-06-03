@@ -40,14 +40,14 @@ except ImportError:
         from .typing_extensions import get_args, get_origin, get_type_hints
 
 
-if sys.version_info >= (3, 14):
+try:
     import annotationlib
     def get_annotations(cls):
         try:
             return annotationlib.get_annotations(cls)
         except NameError:
             return True
-else:
+except (ImportError, ModuleNotFoundError):
     def get_annotations(cls):
         return getattr(cls, '__annotations__', {})
 

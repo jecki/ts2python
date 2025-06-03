@@ -11,9 +11,8 @@ is implemented as just another name for "Optional" and
 interpreted as allowing to leave a field out. Thins runs
 contrary the standard semantics of "Optional" as well as PEP 655,
 but should - most of the time - not lead to any problems in
-practice.". Once Python 3.11 contains support for "NotRequired"
-this TypedDict shim will fall back to the standard solution for
-all versions of Python from 3.11 onward.
+practice.". Starting with Python 3.11 the NotRequired-marker
+provided by the typing-module of the STL will be used.
 
 Copyright 2022  by Eckhart Arnold (arnold@badw.de)
                 Bavarian Academy of Sciences an Humanities (badw.de)
@@ -33,10 +32,14 @@ permissions and limitations under the License.
 
 import sys
 
-if sys.version_info >= (3, 14):
-    from typing import (NotRequired, ReadOnly, TypedDict, _TypedDictMeta,
+if sys.version_info >= (3, 11):
+    from typing import (NotRequired, TypedDict, _TypedDictMeta,
                         ForwardRef, _GenericAlias, get_origin, get_args,
-                        Literal, is_typeddict)
+                        Literal, is_typeddict, Union)
+    try:
+        from typing import ReadOnly
+    except ImportError:
+        ReadOnly = Union
     GenericTypedDict = TypedDict
     GenericMeta = type
 
@@ -45,10 +48,10 @@ else:
 
     try:
         from typing_extensions import GenericMeta, \
-            ClassVar, Final, Protocol, NoReturn, Literal
+            ClassVar, Final, Protocol, NoReturn, Literal, NotRequired
     except (ImportError, ModuleNotFoundError):
         from DHParser.externallibs.typing_extensions import GenericMeta, \
-            ClassVar, Final, Protocol, NoReturn, Literal
+            ClassVar, Final, Protocol, NoReturn, Literal, NotRequired
 
     try:
         from typing import ForwardRef, _GenericAlias, _SpecialForm, Iterable, Iterator
@@ -71,11 +74,6 @@ else:
                     return Generic
             def get_args(typ):
                 return typ.__args__
-
-    try:
-        from typing import NotRequired
-    except (ImportError, ModuleNotFoundError):
-        NotRequired = Optional
         
 
 __all__ = ['NotRequired', 'TypedDict', 'GenericTypedDict', '_TypedDictMeta',
@@ -83,7 +81,7 @@ __all__ = ['NotRequired', 'TypedDict', 'GenericTypedDict', '_TypedDictMeta',
            'ForwardRef', '_GenericAlias']
 
 
-if sys.version_info < (3,14):
+if sys.version_info < (3,11):
     # The following functions have been copied from the Python
     # standard libraries typing-module. They have been adapted
     # to support a more flexible version of TypedDict

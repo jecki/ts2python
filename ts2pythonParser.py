@@ -380,9 +380,6 @@ except ImportError:
               f"singledispatchmethod is needed, anywhere!")     
 """
 
-# PEP655_IMPORTS = """
-# """
-
 
 def to_typename(varname: str) -> str:
     # assert varname[-1:] != '_' or keyword.iskeyword(varname[:-1]), varname  # and varname[0].islower()
@@ -468,6 +465,7 @@ class ts2pythonCompiler(Compiler):
         self.use_literal_type = get_config_value('ts2python.UseLiteralType', False)
         self.use_variadic_generics = get_config_value('ts2python.UseVariadicGenerics', False)
         self.use_not_required = get_config_value('ts2python.UseNotRequired', False)
+        self.allow_read_only = get_config_value('ts2python.AllowReadOnly', False)
         self.keep_comments = get_config_value('ts2python.KeepMultilineComments', False)
         if self.use_type_parameters and not self.use_variadic_generics:
             raise ValueError(
@@ -784,20 +782,20 @@ class ts2pythonCompiler(Compiler):
             T = typename  # substitute typename for type
         if 'optional' in node:
             self.optional_keys[-1].append(identifier)
-            if self.use_not_required:
-                T = f"NotRequired[{T}]"
-            else:
-                if T.startswith('Union['):
-                    if T.find('None') < 0:
-                        T = T[:-1] + ', None]'
-                elif T.find('|') >= 0:
-                    if T.find('None') < 0:
-                        if T[0:1] not in ("'", '"'):
-                            T += ' | None'
-                        else:
-                            T = T[:-1] + (" | None" + T[0:1])
-                else:
-                    T = f"Optional[{T}]"
+            # if self.use_not_required:
+            T = f"NotRequired[{T}]"
+            # else:
+            #     if T.startswith('Union['):
+            #         if T.find('None') < 0:
+            #             T = T[:-1] + ', None]'
+            #     elif T.find('|') >= 0:
+            #         if T.find('None') < 0:
+            #             if T[0:1] not in ("'", '"'):
+            #                 T += ' | None'
+            #             else:
+            #                 T = T[:-1] + (" | None" + T[0:1])
+            #     else:
+            #         T = f"Optional[{T}]"
         if self.is_toplevel() and bool(self.local_classes[-1]):
             preface = self.render_local_classes()
             self.local_classes.pop()

@@ -11,8 +11,17 @@ is implemented as just another name for "Optional" and
 interpreted as allowing to leave a field out. Thins runs
 contrary the standard semantics of "Optional" as well as PEP 655,
 but should - most of the time - not lead to any problems in
-practice.". Starting with Python 3.11 the NotRequired-marker
+practice.".
+
+Starting with Python 3.11 the NotRequired-marker
 provided by the typing-module of the STL will be used.
+
+Starting with Python 3.14 "Optional" will not be interpreted
+as a chiffre for NotRequired any more. (This means that
+old code produced by ts2python might behave differently.
+In particular, objects with not required fields might
+consume more memory than necessary, because these fields
+will always be present as optional types.
 
 Copyright 2022  by Eckhart Arnold (arnold@badw.de)
                 Bavarian Academy of Sciences an Humanities (badw.de)
@@ -32,7 +41,7 @@ permissions and limitations under the License.
 
 import sys
 
-if sys.version_info >= (3, 11):
+if sys.version_info >= (3, 14):
     from typing import (NotRequired, TypedDict, _TypedDictMeta,
                         ForwardRef, _GenericAlias, get_origin, get_args,
                         Literal, is_typeddict, Union)
@@ -81,7 +90,7 @@ __all__ = ['NotRequired', 'TypedDict', 'GenericTypedDict', '_TypedDictMeta',
            'ForwardRef', '_GenericAlias']
 
 
-if sys.version_info < (3,11):
+if sys.version_info < (3,14):
     # The following functions have been copied from the Python
     # standard libraries typing-module. They have been adapted
     # to support a more flexible version of TypedDict

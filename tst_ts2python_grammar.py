@@ -111,7 +111,7 @@ if __name__ == '__main__':
 
     if args.files:
         # if called with a single filename that is either an EBNF file or a known
-        # test file type then use the given argument
+        # test file-type then use the given argument
         arg = args.files[0]
     else:
         # otherwise run all tests in the test directory

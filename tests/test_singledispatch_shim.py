@@ -5,7 +5,14 @@
 from __future__ import annotations
 
 # from functools import singledispatch, singledispatchmethod
+import os
+import sys
 from typing import List, Union
+
+scriptpath = os.path.abspath(os.path.dirname(__file__) or '.')
+ts2pythonpath = os.path.normpath(os.path.join(scriptpath, '..'))
+if ts2pythonpath not in sys.path: sys.path.append(ts2pythonpath)
+
 from ts2python.singledispatch_shim import singledispatch, singledispatchmethod
 
 

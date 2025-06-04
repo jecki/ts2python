@@ -308,7 +308,9 @@ UseNotRequired = {get_config_value('ts2python.UseNotRequired', False)}
 KeepMultilineComments = {get_config_value('ts2python.KeepMultilineComments', False)}"""
 
 
-def minimal_required_python_version(ts2python_cfg: Dict[str, bool]) -> Tuple[int, int]:
+def required_python_version(ts2python_cfg: Dict[str, bool],
+                            purpose: str = "compatibility") -> Tuple[int, int]:
+    assert purpose in ("compatibility", "features")
     min_version = (3, 7)
     if ts2python_cfg.get('ts2python.UseLiteralType', False):
         min_version = (3, 8)
@@ -316,8 +318,14 @@ def minimal_required_python_version(ts2python_cfg: Dict[str, bool]) -> Tuple[int
         min_version = (3, 10)
     if ts2python_cfg.get('ts2python.UseVariadicGenerics', False):
         min_version = (3, 11)
+    if ts2python_cfg.get('ts2python.UseNotRequired', False) \
+            and purpose == "features":
+        min_version = (3, 11)
     if ts2python_cfg.get('ts2python.UseTypeParameters', False):
         min_version = (3, 12)
+    if ts2python_cfg.get('ts2python.AllowReadOnly', False) \
+            and purpose == "features":
+        min_version = (3, 13)
     # Neither UseReadOnly nor UseNotRequired place any demand on the
     # Python version, because:
     # ReadOnly can be defined as Union for Python-version < 3.13
@@ -336,7 +344,9 @@ def source_hash(source_text: str) -> str:
 
 GENERAL_IMPORTS = """
 import sys
-from enum import Enum, IntEnum
+from enum import Enum, IntEnum"""
+
+TYPE_IMPORTS_37 = """
 if sys.version_info >= (3, 9, 0):
     from typing import Union, Optional, Any, Generic, TypeVar, Callable, List, \\
         Iterable, Iterator, Tuple, Dict
@@ -347,11 +357,23 @@ else:
         Any, Generic, TypeVar, Callable, Coroutine
 """
 
-TYPEDDICT_IMPORTS = """
-from typing import TypedDict, NotRequired, Literal, Iterable, Iterator
-"""
+TYPE_IMPORTS_39 = """from typing import Union, Optional, Any, Generic, TypeVar, Callable, List, \\
+    Iterable, Iterator, Tuple, Dict
+from collections.abc import Coroutine"""
 
-TYPEDDICT_IMPORTS_LEGACY = """
+TYPE_IMPORTS_311 = """from typing import Union, Optional, Any, Generic, TypeVar, Callable, List, \\
+    Iterable, Iterator, Tuple, Dict, TypedDict, NotRequired, Literal
+from collections.abc import Coroutine
+try:
+    from typing import ReadOnly
+except ImportError:
+    ReadOnly = Union"""
+
+TYPE_IMPORTS_313 = """from typing import Union, Optional, Any, Generic, TypeVar, Callable, List, \\
+    Iterable, Iterator, Tuple, Dict, TypedDict, NotRequired, ReadOnly, Literal
+from collections.abc import Coroutine"""
+
+TYPEDDICT_IMPORTS_37 = """
 try:
     from ts2python.typeddict_shim import TypedDict, GenericTypedDict, NotRequired, Literal
     # Override typing.TypedDict for Runtime-Validation
@@ -368,19 +390,22 @@ except ImportError:
                   f'command "# pip install typing_extensions" before running '
                   f'{__file__} with Python-versions <= 3.8!')
     try:
-        from typing_extensions import NotRequired
+        from typing_extensions import NotRequired, ReadOnly
     except ImportError:
         NotRequired = Optional
-    if sys.version_info >= (3, 7, 0):  GenericMeta = type
-    else:
-        from typing import GenericMeta
+        ReadOnly = Union
+    GenericMeta = type
     class _GenericTypedDictMeta(GenericMeta):
         def __new__(cls, name, bases, ns, total=True):
             return type.__new__(_GenericTypedDictMeta, name, (dict,), ns)
         __call__ = dict
     GenericTypedDict = _GenericTypedDictMeta('TypedDict', (dict,), {})
-    GenericTypedDict.__module__ = __name__
-"""
+    GenericTypedDict.__module__ = __name__"""
+
+TYPE_IMPORTS_MAPPING = {(3, 13): [TYPE_IMPORTS_313],
+                        (3, 11): [TYPE_IMPORTS_311],
+                        (3,  9): [TYPE_IMPORTS_39, TYPEDDICT_IMPORTS_37],
+                        (3,  7): [TYPE_IMPORTS_37, TYPEDDICT_IMPORTS_37]}
 
 FUNCTOOLS_IMPORTS = """
 try:
@@ -465,6 +490,7 @@ class ts2pythonCompiler(Compiler):
         else:
             self.additional_imports = ''
         self.base_class_name = bcn
+        self.require_singledispatch = False
         self.render_anonymous = get_config_value('ts2python.RenderAnonymous', 'local')
         self.class_decorator = get_config_value('ts2python.ClassDecorator', '').strip()
         if self.render_anonymous not in ('type', 'functional', 'local', 'toplevel'):
@@ -485,7 +511,8 @@ class ts2pythonCompiler(Compiler):
         self.use_not_required = ts2python_cfg.get('ts2python.UseNotRequired', False)
         self.allow_read_only = ts2python_cfg.get('ts2python.AllowReadOnly', False)
         self.keep_comments = ts2python_cfg.get('ts2python.KeepMultilineComments', False)
-        self.min_python_version = minimal_required_python_version(ts2python_cfg)
+        self.compatibility_level = required_python_version(ts2python_cfg, "compatibility")
+        self.feature_level = required_python_version(ts2python_cfg, "features")
         if self.use_type_parameters and not self.use_variadic_generics:
             raise ValueError(
                 'Configuration flag UseTypeParameters can only be set to True '
@@ -543,16 +570,21 @@ class ts2pythonCompiler(Compiler):
     def finalize(self, python_code: Any) -> Any:
         chksum = f'source_hash__ = "{source_hash(self.tree.source)}"'
         if self.tree.name == 'root':
-            code_blocks = [
-                f'# Generated by ts2python version {version} on {datetime.datetime.now()}\n',
-                GENERAL_IMPORTS,
-                TYPEDDICT_IMPORTS if (self.use_variadic_generics or
-                                      self.use_type_parameters) else TYPEDDICT_IMPORTS_LEGACY,
-                FUNCTOOLS_IMPORTS,
-                self.additional_imports, chksum, '\n##### BEGIN OF ts2python generated code\n'
-            ]
-            # if self.base_class_name == 'TypedDict':
-            #     code_blocks.append(PEP655_IMPORTS)
+            for py_version, type_imports in TYPE_IMPORTS_MAPPING.items():
+                if self.compatibility_level >= py_version:
+                    break
+            else:
+                raise ValueError(f'Illegal minimal Python version {self.compatibility_level}')
+            c_major, c_minor = self.compatibility_level
+            # f_major, f_minor = self.feature_level
+            code_blocks = [f'# Generated by ts2python version {version} '
+                           f'on {datetime.datetime.now()}\n# compatibility level: '
+                           f'Python {c_major}.{c_minor} and above\n',
+                           # f'# feature level: Python {f_major}.{f_minor}\n',
+                           GENERAL_IMPORTS] \
+                + type_imports \
+                + ([FUNCTOOLS_IMPORTS] if self.require_singledispatch else []) \
+                + [self.additional_imports, chksum, '\n##### BEGIN OF ts2python generated code\n']
         else:
             code_blocks = []
         code_blocks.append(python_code)
@@ -773,6 +805,7 @@ class ts2pythonCompiler(Compiler):
                         '@singledispatchmethod' if is_interface \
                         else '@singledispatch'
                     func_decl.attr['decorator'] = f'@{name}.register'
+                    self.require_singledispatch = True
                 else:
                     first_use[name] = func_decl
         except KeyError:
@@ -1372,7 +1405,7 @@ def process_file(source: str, out_dir: str = '') -> str:
             os.path.splitext(os.path.basename(source_filename))[0]
             + RESULT_FILE_EXTENSION)
     else:
-        result_filename = os.path.join(outdir, "out.py")
+        result_filename = os.path.join(out_dir, "out.py")
     if os.path.isfile(result_filename):
         with open(result_filename, 'r', encoding='utf-8') as f:
             result = f.read()

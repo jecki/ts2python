@@ -46,7 +46,7 @@ except ImportError:
     import re
 
 from DHParser.compile import Compiler, compile_source, Junction, full_compile
-from DHParser.configuration import set_config_value, get_config_value, access_thread_locals, \
+from DHParser.configuration import set_config_value, get_config_value, get_config_values, \
     access_presets, finalize_presets, set_preset_value, get_preset_value, NEVER_MATCH_PATTERN, \
     get_config_values
 from DHParser import dsl
@@ -308,6 +308,23 @@ UseNotRequired = {get_config_value('ts2python.UseNotRequired', False)}
 KeepMultilineComments = {get_config_value('ts2python.KeepMultilineComments', False)}"""
 
 
+def minimal_required_python_version(ts2python_cfg: Dict[str, bool]) -> Tuple[int, int]:
+    min_version = (3, 7)
+    if ts2python_cfg.get('ts2python.UseLiteralType', False):
+        min_version = (3, 8)
+    if ts2python_cfg.get('ts2python.UseTypeUnion', False):
+        min_version = (3, 10)
+    if ts2python_cfg.get('ts2python.UseVariadicGenerics', False):
+        min_version = (3, 11)
+    if ts2python_cfg.get('ts2python.UseTypeParameters', False):
+        min_version = (3, 12)
+    # Neither UseReadOnly nor UseNotRequired place any demand on the
+    # Python version, because:
+    # ReadOnly can be defined as Union for Python-version < 3.13
+    # NotRequired can be defined as Optional for Python-version < 3.11
+    return min_version
+
+
 def source_hash(source_text: str) -> str:
     try:
         with open(__file__, 'r', encoding='utf-8') as f:
@@ -459,14 +476,16 @@ class ts2pythonCompiler(Compiler):
             if self.class_decorator[0] != '@':
                 self.class_decorator = '@' + self.class_decorator
             self.class_decorator += '\n'
-        self.use_enums = get_config_value('ts2python.UseEnum', True)
-        self.use_type_union = get_config_value('ts2python.UseTypeUnion', False)
-        self.use_type_parameters = get_config_value('ts2python.UseTypeParameters', False)
-        self.use_literal_type = get_config_value('ts2python.UseLiteralType', False)
-        self.use_variadic_generics = get_config_value('ts2python.UseVariadicGenerics', False)
-        self.use_not_required = get_config_value('ts2python.UseNotRequired', False)
-        self.allow_read_only = get_config_value('ts2python.AllowReadOnly', False)
-        self.keep_comments = get_config_value('ts2python.KeepMultilineComments', False)
+        ts2python_cfg = get_config_values('ts2python.*')
+        self.use_enums = ts2python_cfg.get('ts2python.UseEnum', True)
+        self.use_type_union = ts2python_cfg.get('ts2python.UseTypeUnion', False)
+        self.use_type_parameters = ts2python_cfg.get('ts2python.UseTypeParameters', False)
+        self.use_literal_type = ts2python_cfg.get('ts2python.UseLiteralType', False)
+        self.use_variadic_generics = ts2python_cfg.get('ts2python.UseVariadicGenerics', False)
+        self.use_not_required = ts2python_cfg.get('ts2python.UseNotRequired', False)
+        self.allow_read_only = ts2python_cfg.get('ts2python.AllowReadOnly', False)
+        self.keep_comments = ts2python_cfg.get('ts2python.KeepMultilineComments', False)
+        self.min_python_version = minimal_required_python_version(ts2python_cfg)
         if self.use_type_parameters and not self.use_variadic_generics:
             raise ValueError(
                 'Configuration flag UseTypeParameters can only be set to True '
@@ -1532,31 +1551,38 @@ def main(called_from_app=False):
                 set_preset_value('ts2python.UseVariadicGenerics', True, allow_new_key=True)
             if version_info >= (3, 12):
                 set_preset_value('ts2python.UseTypeParameters', True, allow_new_key=True)
+            if version_info >= (3, 13):
+                set_preset_value('ts2python.AllowReadOnly', True, allow_new_key=True)
         if args.base:  set_preset_value('ts2python.BaseClassName', args.base[0].strip())
         if args.anonymous:  set_preset_value('ts2python.RenderAnonymous', args.anonymous[0].strip())
         if args.decorator:  set_preset_value('ts2python.ClassDecorator', args.decorator[0].strip())
         if args.peps:
             args_peps = [pep.strip() for pep in args.peps]
-            all_peps = { '435',  '584',  '586',  '604',  '646',  '655',
-                        '~435', '~584', '~586', '~604', '~646', '~655'}
+            all_peps = { '435',  '584',  '586',  '604',  '646',  '655',  '695',  '705',
+                        '~435', '~584', '~586', '~604', '~646', '~655', '~695', '~705'}
             if not all(pep in all_peps for pep in args_peps):
                 print(f'Unsupported PEPs specified: {args_peps}\n'
                       'Allowed PEP arguments are:\n'
                       '  435  - use Enums (Python 3.4)\n'
-                      '  604  - use type union (Python 3.10)\n'
                       '  586  - use Literal type (Python 3.8)\n'
-                      '  655  - use NotRequired instead of Optional (Python3.11)\n')
+                      '  604  - use type union (Python 3.10)\n'
+                      '  646  - use variadic Generics (Python 3.11)\n'
+                      '  655  - use NotRequired instead of Optional (Python3.11)\n'
+                      '  695  - use type parameters (Python 3.12)\n'
+                      '  705  - use ReadOnly (Python 3.13)\n')
                 sys.exit(1)
             for pep in args_peps:
                 kwargs= {'value': pep[0] != '~', 'allow_new_key': True}
                 if pep == '435':  set_preset_value('ts2python.UseEnum', **kwargs)
                 if pep in ('586', '584'):  set_preset_value('ts2python.UseLiteralType', **kwargs)
                 if pep == '604':  set_preset_value('ts2python.TypeUnion', **kwargs)
-                if pep == '646': set_preset_value('tsPython.UseVariadicGenerics', **kwargs)
+                if pep == '646':  set_preset_value('tsPython.UseVariadicGenerics', **kwargs)
                 if pep == '655':  set_preset_value('ts2python.UseNotRequired', **kwargs)
+                if pep == '695':  set_preset_value('ts2python.UseTypeParameters', **kwargs)
+                if pep == '705':  set_preset_value('ts2python.AllowReadOnly', **kwargs)
         if args.comments: set_preset_value('ts2python.KeepMultilineComments', True)
         finalize_presets()
-        _ = get_config_values('ts2python.*')  # fill config value cache
+        # _ = get_config_values('ts2python.*')  # fill config value cache
 
     start_logging(log_dir)
 

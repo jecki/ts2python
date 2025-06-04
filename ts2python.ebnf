@@ -105,7 +105,7 @@ type_alias  = ["export"] "type" §identifier [type_parameters] "=" types [";"]
 
 types       = ["|"] (intersection | type) { "|" (intersection | type) }
 intersection = type { "&" §type }+
-type        = ["readonly"]
+type        = [readonly]
             ( array_of | basic_type | generic_type | indexed_type
             | type_name !`(` | "(" types ")" | mapped_type
             | declarations_block | type_tuple | declarations_tuple
@@ -114,7 +114,7 @@ type        = ["readonly"]
 generic_type = type_name type_parameters
   type_parameters = "<" §parameter_types { "," parameter_types } ">"
   parameter_types = ["|"] parameter_type  { "|" parameter_type }
-  parameter_type  = [ "readonly" ]
+  parameter_type  = [readonly]
                   ( array_of | basic_type | generic_type     # actually, only a subset of array_of
                   | indexed_type | type_name [extends_type] [equals_type]
                   | declarations_block | type_tuple | declarations_tuple )

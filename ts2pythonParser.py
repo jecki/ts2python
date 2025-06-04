@@ -138,9 +138,9 @@ class ts2pythonGrammar(Grammar):
     literal = Forward()
     type = Forward()
     types = Forward()
-    source_hash__ = "175bec0aa26f36bbf0f02321486f0a0c"
+    source_hash__ = "9b66365b76f8cc636cec6f0269f18e58"
     early_tree_reduction__ = CombinedParser.MERGE_TREETOPS
-    disposable__ = re.compile('(?:DOT$|EXP$|NEG$|_keyword$|_part$|_top_level_assignment$|INT$|EOF$|_top_level_literal$|_reserved$|_namespace$|_array_ellipsis$|FRAC$|_quoted_identifier$)')
+    disposable__ = re.compile('(?:INT$|EOF$|NEG$|_top_level_assignment$|_array_ellipsis$|_top_level_literal$|EXP$|_namespace$|_part$|_quoted_identifier$|FRAC$|DOT$|_keyword$|_reserved$)')
     static_analysis_pending__ = []  # type: List[bool]
     parser_initialization__ = ["upon instantiation"]
     COMMENT__ = r'(?://.*)\n?|(?:/\*(?:.|\n)*?\*/) *\n?'
@@ -179,8 +179,8 @@ class ts2pythonGrammar(Grammar):
     item = Series(_quoted_identifier, Option(Series(Series(Drop(Text("=")), dwsp__), literal)))
     enum = Series(Option(Series(Drop(Text("export")), dwsp__)), Series(Drop(Text("enum")), dwsp__), identifier, Series(Drop(Text("{")), dwsp__), item, ZeroOrMore(Series(Series(Drop(Text(",")), dwsp__), item)), Option(Series(Drop(Text(",")), dwsp__)), Series(Drop(Text("}")), dwsp__), mandatory=3)
     keyof = Series(Text("keyof"), dwsp__)
-    readonly = Series(Text("readonly"), dwsp__)
     optional = Series(Text("?"), dwsp__)
+    readonly = Series(Text("readonly"), dwsp__)
     func_type = Series(Option(Series(Drop(Text("new")), dwsp__)), Series(Drop(Text("(")), dwsp__), Option(arg_list), Series(Drop(Text(")")), dwsp__), Series(Drop(Text("=>")), dwsp__), types)
     extends = Series(SmartRE(f'(?:extends)(?P<comment__>{WSP_RE__})|(?:implements)(?P<comment__>{WSP_RE__})', '"extends"|"implements"'), Alternative(generic_type, type_name), ZeroOrMore(Series(Series(Drop(Text(",")), dwsp__), Alternative(generic_type, type_name))))
     index_signature = Series(Option(readonly), Series(Drop(Text("[")), dwsp__), identifier, Alternative(Series(Drop(Text(":")), dwsp__), Series(Option(Series(Drop(Text("in")), dwsp__)), keyof), Series(Drop(Text("in")), dwsp__)), type, Series(Drop(Text("]")), dwsp__), Option(optional))
@@ -194,7 +194,7 @@ class ts2pythonGrammar(Grammar):
     array_types = Synonym(array_type)
     array_of = Series(array_types, Series(Drop(Text("[]")), dwsp__))
     equals_type = Series(Series(Drop(Text("=")), dwsp__), Alternative(basic_type, type_name))
-    parameter_type = Series(Option(Series(Drop(Text("readonly")), dwsp__)), Alternative(array_of, basic_type, generic_type, indexed_type, Series(type_name, Option(extends_type), Option(equals_type)), declarations_block, type_tuple, declarations_tuple))
+    parameter_type = Series(Option(readonly), Alternative(array_of, basic_type, generic_type, indexed_type, Series(type_name, Option(extends_type), Option(equals_type)), declarations_block, type_tuple, declarations_tuple))
     parameter_types = Series(Option(Series(Drop(Text("|")), dwsp__)), parameter_type, ZeroOrMore(Series(Series(Drop(Text("|")), dwsp__), parameter_type)))
     type_parameters = Series(Series(Drop(Text("<")), dwsp__), parameter_types, ZeroOrMore(Series(Series(Drop(Text(",")), dwsp__), parameter_types)), Series(Drop(Text(">")), dwsp__), mandatory=1)
     type_alias = Series(Option(Series(Drop(Text("export")), dwsp__)), Series(Drop(Text("type")), dwsp__), identifier, Option(type_parameters), Series(Drop(Text("=")), dwsp__), types, Option(Series(Drop(Text(";")), dwsp__)), mandatory=2)
@@ -218,7 +218,7 @@ class ts2pythonGrammar(Grammar):
     _namespace = Alternative(virtual_enum, namespace)
     literal.set(Alternative(integer, number, boolean, string, array, object))
     generic_type.set(Series(type_name, type_parameters))
-    type.set(Series(Option(Series(Drop(Text("readonly")), dwsp__)), Alternative(array_of, basic_type, generic_type, indexed_type, Series(type_name, NegativeLookahead(Text("("))), Series(Series(Drop(Text("(")), dwsp__), types, Series(Drop(Text(")")), dwsp__)), mapped_type, declarations_block, type_tuple, declarations_tuple, literal, func_type)))
+    type.set(Series(Option(readonly), Alternative(array_of, basic_type, generic_type, indexed_type, Series(type_name, NegativeLookahead(Text("("))), Series(Series(Drop(Text("(")), dwsp__), types, Series(Drop(Text(")")), dwsp__)), mapped_type, declarations_block, type_tuple, declarations_tuple, literal, func_type)))
     types.set(Series(Option(Series(Drop(Text("|")), dwsp__)), Alternative(intersection, type), ZeroOrMore(Series(Series(Drop(Text("|")), dwsp__), Alternative(intersection, type)))))
     arg_list.set(Series(Alternative(Series(argument, ZeroOrMore(Series(Series(Drop(Text(",")), dwsp__), argument)), Option(Series(Series(Drop(Text(",")), dwsp__), arg_tail))), arg_tail), Option(Series(Drop(Text(",")), dwsp__))))
     function.set(Alternative(Series(Option(Series(Option(Series(Drop(Text("export")), dwsp__)), qualifiers, Option(Series(Drop(Text("function")), dwsp__)), NegativeLookahead(_keyword), identifier, Option(optional), Option(type_parameters))), Series(Drop(Text("(")), dwsp__), Option(arg_list), Series(Drop(Text(")")), dwsp__), Option(Series(Series(Drop(Text(":")), dwsp__), types)), mandatory=2), special))
@@ -977,8 +977,20 @@ class ts2pythonCompiler(Compiler):
             return f'TypedDict[{to_dict(decls)}]'
 
     def on_type(self, node) -> str:
-        assert len(node.children) == 1
-        typ = node[0]
+        def readonly_decl() -> bool:
+            for i in range(len(self.path) - 1, -1, -1):
+                decl = self.path[i]
+                if decl.name == 'declaration':
+                    qualifiers = decl.get('qualifiers', None)
+                    if qualifiers and 'readonly' in qualifiers:
+                        return True
+            return False
+        num_children = len(node.children)
+        assert 1 <= num_children <= 2
+        readonly = node[0].name == 'readonly'
+        assert readonly or num_children == 1
+        typ = node[1] if readonly else node[0]
+        readonly = readonly or readonly_decl()
         if typ.name in ('declarations_block', 'declarations_tuple'):
             self.local_classes.append([])
             self.optional_keys.append([])
@@ -986,30 +998,31 @@ class ts2pythonCompiler(Compiler):
             result = self.render_declarations(decls)
             self.optional_keys.pop()
             self.local_classes.pop()
-            return result
         elif typ.name == 'literal':
             literal_typ = typ[0].name
             if self.use_literal_type:
-                return self.compile(typ)
+                result = self.compile(typ)
             elif literal_typ == 'array':
-                return 'List'
+                result = 'List'
             elif literal_typ == 'object':
-                return 'Dict'
+                result = 'Dict'
             elif literal_typ in ('number', 'integer'):
                 literal = self.compile(typ)
                 try:
                     _ = int(literal)
-                    return 'int'
+                    result = 'int'
                 except ValueError:
-                    return 'str'
+                    result = 'str'
             elif literal_typ == 'boolean':
-                return 'bool'
+                result = 'bool'
             else:
                 assert literal_typ == 'string', literal_typ
                 _ = self.compile(typ)
-                return 'str'
+                result = 'str'
         else:
-            return self.compile(typ)
+            result = self.compile(typ)
+        return f"ReadOnly[{result}]" if readonly and self.allow_read_only \
+            else result
 
     def on_type_tuple(self, node):
         return 'Tuple[' + ', '.join(self.compile(nd) for nd in node) + ']'
@@ -1250,7 +1263,9 @@ class ts2pythonCompiler(Compiler):
         return self.on_type(node)
 
     def on_qualifiers(self, node):
-        assert False, "Qualifiers should be ignored and this method should never be called!"
+        assert False, ('Qualifiers should be ignored and this method should '
+                       'never be called! "readonly" will be taken care by '
+                       'on_type().')
 
     def on_variable(self, node) -> str:
         return self.compile(node['name'])

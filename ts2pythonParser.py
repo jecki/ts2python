@@ -694,7 +694,7 @@ class ts2pythonCompiler(Compiler):
         preface = ''
         try:
             tp = self.compile(node['type_parameters'])
-            tpl = [p.strip("'") for p in tp.split(', ')]
+            tpl = [p.strip("'") for p in tp.split(', ')]  # .replace("'", "") ?
             tps = '[' + ', '.join(p for p in tpl) + ']'
             # tps = '[' + tp + ']'
             preface = ''.join(f"{p} = TypeVar('{p}')\n"
@@ -1272,7 +1272,7 @@ class ts2pythonCompiler(Compiler):
         return self.on_types(node)
 
     def on_parameter_type(self, node) -> str:
-        if len(node.children) > 1:
+        if len(node.children) > 1 and node[0].name != 'readonly':
             node.result = (node[0],)  # ignore extends_type and equals_type for now
         return self.on_type(node)
 

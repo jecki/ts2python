@@ -959,10 +959,20 @@ class ts2pythonCompiler(Compiler):
         else:
             return preface + f"Union[{', '.join(union)}]"
 
+    def readonly_decl(self) -> bool:
+        for i in range(len(self.path) - 2, -1, -1):
+            decl = self.path[i]
+            if decl.name == 'types':
+                break
+            if decl.name == 'declaration':
+                qualifiers = decl.get('qualifiers', None)
+                if qualifiers and 'readonly' in qualifiers:
+                    return True
+        return False
+
     def on_types(self, node) -> str:
         union = []
         i = 0
-
         obj_name_stub = self.obj_name[-1]
         fname = self.func_name[:1].upper() + self.func_name[1:]
         for nd in node.children:
@@ -995,23 +1005,25 @@ class ts2pythonCompiler(Compiler):
         if self.use_literal_type and \
                 any(nd[0].name == 'literal' for nd in node.children):
             if all(nd[0].name == 'literal' for nd in node.children):
-                return f"Literal[{', '.join(typ for typ in union)}]"
-                # return f"Literal[{', '.join(nd.content for nd in node.children)}]"
-            new_union = []
-            literal_package = []
-            for i, nd in enumerate(node.children):
-                if nd[0].name == 'literal':
-                    literal_package.append(union[i])
-                else:
-                    if literal_package:
-                        new_union.append(f"Literal[{', '.join(l for l in literal_package)}]")
-                        literal_package = []
-                    new_union.append(union[i])
-            if literal_package:
-                new_union.append(f"Literal[{', '.join(l for l in literal_package)}]")
-            return self.render_union(preface, new_union)
+                result = f"Literal[{', '.join(typ for typ in union)}]"
+            else:
+                new_union = []
+                literal_package = []
+                for i, nd in enumerate(node.children):
+                    if nd[0].name == 'literal':
+                        literal_package.append(union[i])
+                    else:
+                        if literal_package:
+                            new_union.append(f"Literal[{', '.join(l for l in literal_package)}]")
+                            literal_package = []
+                        new_union.append(union[i])
+                if literal_package:
+                    new_union.append(f"Literal[{', '.join(l for l in literal_package)}]")
+                result = self.render_union(preface, new_union)
         else:
-            return self.render_union(preface, union)
+            result = self.render_union(preface, union)
+        return f"ReadOnly[{result}]" if self.allow_read_only and self.readonly_decl() \
+            else result
 
     def render_declarations(self, decls) -> str:
         if self.base_class_name != "TypedDict" or self.render_anonymous == "local":
@@ -1029,20 +1041,12 @@ class ts2pythonCompiler(Compiler):
             return f'TypedDict[{to_dict(decls)}]'
 
     def on_type(self, node) -> str:
-        def readonly_decl() -> bool:
-            for i in range(len(self.path) - 1, -1, -1):
-                decl = self.path[i]
-                if decl.name == 'declaration':
-                    qualifiers = decl.get('qualifiers', None)
-                    if qualifiers and 'readonly' in qualifiers:
-                        return True
-            return False
         num_children = len(node.children)
         assert 1 <= num_children <= 2
         readonly = node[0].name == 'readonly'
         assert readonly or num_children == 1
         typ = node[1] if readonly else node[0]
-        readonly = readonly or readonly_decl()
+        readonly = readonly or self.readonly_decl()
         if typ.name in ('declarations_block', 'declarations_tuple'):
             self.local_classes.append([])
             self.optional_keys.append([])

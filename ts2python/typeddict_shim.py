@@ -44,11 +44,7 @@ import sys
 if sys.version_info >= (3, 14):
     from typing import (NotRequired, TypedDict, _TypedDictMeta,
                         ForwardRef, _GenericAlias, get_origin, get_args,
-                        Literal, is_typeddict, Union)
-    try:
-        from typing import ReadOnly
-    except ImportError:
-        ReadOnly = Union
+                        Literal, is_typeddict, Union, ReadOnly, TypeAlias)
     GenericTypedDict = TypedDict
     GenericMeta = type
 
@@ -56,11 +52,12 @@ else:
     from typing import Generic, Optional, Union, Any, TypeVar
 
     try:
-        from typing_extensions import GenericMeta, \
+        from typing_extensions import GenericMeta, TypeAlias, \
             ClassVar, Final, Protocol, NoReturn, Literal, NotRequired
     except (ImportError, ModuleNotFoundError):
         from DHParser.externallibs.typing_extensions import GenericMeta, \
-            ClassVar, Final, Protocol, NoReturn, Literal, NotRequired
+            ClassVar, Final, Protocol, NoReturn, Literal, NotRequired, TypeAlias
+    ReadOnly = Union
 
     try:
         from typing import ForwardRef, _GenericAlias, _SpecialForm, Iterable, Iterator
@@ -87,7 +84,7 @@ else:
 
 __all__ = ['NotRequired', 'TypedDict', 'GenericTypedDict', '_TypedDictMeta',
            'GenericMeta', 'get_origin', 'get_args', 'Literal', 'is_typeddict',
-           'ForwardRef', '_GenericAlias']
+           'ForwardRef', '_GenericAlias', 'ReadOnly', 'TypeAlias']
 
 
 if sys.version_info < (3,14):

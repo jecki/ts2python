@@ -139,9 +139,9 @@ class ts2pythonGrammar(Grammar):
     literal = Forward()
     type = Forward()
     types = Forward()
-    source_hash__ = "9b66365b76f8cc636cec6f0269f18e58"
+    source_hash__ = "e4be941365df870eeba2f0e17eb636f3"
     early_tree_reduction__ = CombinedParser.MERGE_TREETOPS
-    disposable__ = re.compile('(?:INT$|EOF$|NEG$|_top_level_assignment$|_array_ellipsis$|_top_level_literal$|EXP$|_namespace$|_part$|_quoted_identifier$|FRAC$|DOT$|_keyword$|_reserved$)')
+    disposable__ = re.compile('(?:_array_ellipsis$|_top_level_assignment$|_quoted_identifier$|DOT$|INT$|_reserved$|NEG$|FRAC$|EXP$|_keyword$|EOF$|_top_level_literal$|_namespace$|_part$)')
     static_analysis_pending__ = []  # type: List[bool]
     parser_initialization__ = ["upon instantiation"]
     COMMENT__ = r'(?://.*)\n?|(?:/\*(?:.|\n)*?\*/) *\n?'
@@ -224,7 +224,7 @@ class ts2pythonGrammar(Grammar):
     arg_list.set(Series(Alternative(Series(argument, ZeroOrMore(Series(Series(Drop(Text(",")), dwsp__), argument)), Option(Series(Series(Drop(Text(",")), dwsp__), arg_tail))), arg_tail), Option(Series(Drop(Text(",")), dwsp__))))
     function.set(Alternative(Series(Option(Series(Option(Series(Drop(Text("export")), dwsp__)), qualifiers, Option(Series(Drop(Text("function")), dwsp__)), NegativeLookahead(_keyword), identifier, Option(optional), Option(type_parameters))), Series(Drop(Text("(")), dwsp__), Option(arg_list), Series(Drop(Text(")")), dwsp__), Option(Series(Series(Drop(Text(":")), dwsp__), types)), mandatory=2), special))
     declaration.set(Series(Option(Series(Drop(Text("export")), dwsp__)), qualifiers, Option(SmartRE(f'(?:let)(?P<comment__>{WSP_RE__})|(?:var)(?P<comment__>{WSP_RE__})', '"let"|"var"')), NegativeLookahead(_keyword), identifier, Option(optional), NegativeLookahead(Text("(")), Option(Series(Series(Drop(Text(":")), dwsp__), types))))
-    declarations_block.set(Series(Series(Drop(Text("{")), dwsp__), Option(Series(Alternative(function, declaration), ZeroOrMore(Series(Option(SmartRE(f'(?:;)(?P<comment__>{WSP_RE__})|(?:,)(?P<comment__>{WSP_RE__})', '";"|","')), Alternative(function, declaration))), Option(Series(Series(Drop(Text(";")), dwsp__), map_signature)), Option(SmartRE(f'(?:;)(?P<comment__>{WSP_RE__})|(?:,)(?P<comment__>{WSP_RE__})', '";"|","')))), Series(Drop(Text("}")), dwsp__)))
+    declarations_block.set(Series(Series(Drop(Text("{")), dwsp__), Option(Series(Alternative(function, declaration), ZeroOrMore(Series(Option(SmartRE(f'(?:;)(?P<comment__>{WSP_RE__})|(?:,)(?P<comment__>{WSP_RE__})', '";"|","')), Alternative(function, declaration))), Option(SmartRE(f'(?:;)(?P<comment__>{WSP_RE__})|(?:,)(?P<comment__>{WSP_RE__})', '";"|","')))), Option(Series(map_signature, Option(SmartRE(f'(?:;)(?P<comment__>{WSP_RE__})|(?:,)(?P<comment__>{WSP_RE__})', '";"|","')))), Series(Drop(Text("}")), dwsp__)))
     document.set(Series(dwsp__, ZeroOrMore(Alternative(interface, type_alias, _namespace, enum, const, module, _top_level_assignment, _array_ellipsis, _top_level_literal, Series(Import, Option(Series(Drop(Text(";")), dwsp__))), Series(function, Option(Series(Drop(Text(";")), dwsp__))), Series(declaration, Option(Series(Drop(Text(";")), dwsp__)))))))
     root = Series(document, EOF)
     resume_rules__ = {'interface': [re.compile(r'(?=export|$)')],
@@ -302,6 +302,7 @@ RenderAnonymous = {get_config_value('ts2python.RenderAnonymous', 'local')}
 ClassDecorator = {get_config_value('ts2python.ClassDecorator', '')} 
 UseEnum = {get_config_value('ts2python.UseEnum', True)}
 UseTypeUnion = {get_config_value('ts2python.UseTypeUnion', False)}
+UseExplicitTypeAlias = {get_config_value('ts2python.UseExplicitTypeAlias', False)}
 UseTypeParameters = {get_config_value('ts2python.UseTypeParameters', False)}
 UseLiteralType = {get_config_value('ts2python.UseLiteralType', False)}
 UseVariadicGenerics = {get_config_value('ts2python.UseVariadicGenerics', False)}
@@ -317,9 +318,11 @@ def required_python_version(ts2python_cfg: Dict[str, bool],
         min_version = (3, 8)
     if ts2python_cfg.get('ts2python.UseTypeUnion', False):
         min_version = (3, 10)
+    elif ts2python_cfg.get('ts2python.UseExplicitTypeAlias', False):
+        min_version = (3, 10)
     if ts2python_cfg.get('ts2python.UseVariadicGenerics', False):
         min_version = (3, 11)
-    if ts2python_cfg.get('ts2python.UseNotRequired', False) \
+    elif ts2python_cfg.get('ts2python.UseNotRequired', False) \
             and purpose == "features":
         min_version = (3, 11)
     if ts2python_cfg.get('ts2python.UseTypeParameters', False):
@@ -359,11 +362,11 @@ else:
 """
 
 TYPE_IMPORTS_39 = """from typing import Union, Optional, Any, Generic, TypeVar, Callable, List, \\
-    Iterable, Iterator, Tuple, Dict
+    Iterable, Iterator, Tuple, Dict, Literal
 from collections.abc import Coroutine"""
 
 TYPE_IMPORTS_311 = """from typing import Union, Optional, Any, Generic, TypeVar, Callable, List, \\
-    Iterable, Iterator, Tuple, Dict, TypedDict, NotRequired, Literal
+    Iterable, Iterator, Tuple, Dict, TypedDict, NotRequired, Literal, TypeAlias
 from collections.abc import Coroutine
 try:
     from typing import ReadOnly
@@ -376,7 +379,8 @@ from collections.abc import Coroutine"""
 
 TYPEDDICT_IMPORTS_37 = """
 try:
-    from ts2python.typeddict_shim import TypedDict, GenericTypedDict, NotRequired, Literal
+    from ts2python.typeddict_shim import TypedDict, GenericTypedDict, NotRequired, Literal, \\
+        ReadOnly, TypeAlias
     # Override typing.TypedDict for Runtime-Validation
 except ImportError:
     print("Module ts2python.typeddict_shim not found. Only coarse-grained " 
@@ -391,10 +395,11 @@ except ImportError:
                   f'command "# pip install typing_extensions" before running '
                   f'{__file__} with Python-versions <= 3.8!')
     try:
-        from typing_extensions import NotRequired, ReadOnly
+        from typing_extensions import NotRequired, ReadOnly, TypeAlias
     except ImportError:
         NotRequired = Optional
         ReadOnly = Union
+        TypeAlias = Any
     GenericMeta = type
     class _GenericTypedDictMeta(GenericMeta):
         def __new__(cls, name, bases, ns, total=True):
@@ -535,7 +540,10 @@ class ts2pythonCompiler(Compiler):
         ts2python_cfg = get_config_values('ts2python.*')
         self.use_enums = ts2python_cfg.get('ts2python.UseEnum', True)
         self.use_type_union = ts2python_cfg.get('ts2python.UseTypeUnion', False)
+        self.use_explicit_type_alias = ts2python_cfg.get('ts2python.UseExplicitTypeAlias', False)
         self.use_type_parameters = ts2python_cfg.get('ts2python.UseTypeParameters', False)
+        if self.use_type_parameters:
+            self.use_explicit_type_alias = False
         self.use_literal_type = ts2python_cfg.get('ts2python.UseLiteralType', False)
         self.use_variadic_generics = ts2python_cfg.get('ts2python.UseVariadicGenerics', False)
         self.use_not_required = ts2python_cfg.get('ts2python.UseNotRequired', False)
@@ -564,6 +572,7 @@ class ts2pythonCompiler(Compiler):
         self.scope_type: List[str] = ['']
         self.optional_keys: List[List[str]] = [[]]
         self.func_name: str = ''  # name of the current functions header or ''
+        self.func_type_parameters: str = ''  # type parameters of the current function header, if any
         self.strip_type_from_const = False
 
 
@@ -724,12 +733,16 @@ class ts2pythonCompiler(Compiler):
         preface = ''
         try:
             tp = self.compile(node['type_parameters'])
-            tpl = [p.replace("'", "") for p in tp.split(', ')]  # formerly: .strip("'")
-            tps = '[' + ', '.join(strip_qualifier(p) for p in tpl) + ']'
-            preface = ''.join(f"{strip_qualifier(p)} = TypeVar('{p}')\n"
-                              for p in tpl if not self.get_known_type(p))
-            for p in tpl:  self.add_to_known_types(node, strip_qualifier(p),
-                                                   p if is_qualified(p) else '[]')
+            tpl_qualified = [p.replace("'", "") for p in tp.split(', ')]  # may contain "ReadOnly[...]"
+            tpl = [strip_qualifier(p) for p in tpl_qualified]
+            tps = '[' + ', '.join(p for p in tpl) + ']'
+            if self.use_type_parameters:
+                preface = ''
+            else:
+                preface = ''.join(f"{p} = TypeVar('{p}')\n"
+                                  for p in tpl if not self.get_known_type(p))
+            for q, p in zip(tpl_qualified, tpl):
+                self.add_to_known_types(node, p, q if is_qualified(q) else '[]')
         except KeyError:
             pass
         return tps, preface
@@ -740,12 +753,11 @@ class ts2pythonCompiler(Compiler):
         self.scope_type.append('interface')
         self.local_classes.append([])
         self.optional_keys.append([])
-        self.known_types.append(dict())
+        if self.use_type_parameters:  self.known_types.append(dict())
         tps, preface = self.process_type_parameters(node)
-        if self.use_type_parameters:  preface = ''
         preface += '\n'
         preface += node.get_attr('preface', '')
-        # self.known_types.append(dict())
+        if not self.use_type_parameters:  self.known_types.append(dict())
         base_class_list = []
         try:
             base_class_list = self.bases(node['extends'])
@@ -802,7 +814,13 @@ class ts2pythonCompiler(Compiler):
             self.basic_type_aliases.add(alias)
         self.obj_name.append(alias)
         if alias not in self.overloaded_type_names:
-            _, preface = self.process_type_parameters(node)
+            if self.use_type_parameters:  self.known_types.append(dict())
+            tps, preface = self.process_type_parameters(node)
+            if not self.use_type_parameters:
+                if self.use_explicit_type_alias:
+                    tps = ": TypeAlias"
+                else:
+                    tps = ''
             if self.known_types[-1].get(alias, '') \
                     in ('namespace', 'enum', 'virtual_enum'):
                 preface = ('# commented out, because there is already an '
@@ -815,7 +833,9 @@ class ts2pythonCompiler(Compiler):
             preface += self.render_local_classes()
             self.optional_keys.pop()
             self.local_classes.pop()
-            code = preface + f"{alias} = {types}"
+            if self.use_type_parameters:  self.known_types.pop()
+            code = preface + ("type " if self.use_type_parameters else "") \
+                   + f"{alias}{tps} = {types}"
         else:
             code = ''
         if node[-1].name == 'comment__':
@@ -896,9 +916,10 @@ class ts2pythonCompiler(Compiler):
                 is_constructor = True
         else:  # anonymous function
             name = "__call__"
+        if self.use_type_parameters:  self.known_types.append(dict())
         tps, preface = self.process_type_parameters(node)
-        if self.use_type_parameters:  preface = ''
-        else:  tps = ''
+        if not self.use_type_parameters:  tps = ''
+        self.func_type_parameters = tps
         try:
             arguments = self.compile(node['arg_list'])
             if self.scope_type[-1] == 'interface':
@@ -909,6 +930,7 @@ class ts2pythonCompiler(Compiler):
             return_type = self.compile(node['types'])
         except KeyError:
             return_type = 'Any'
+        if self.use_type_parameters:  self.known_types.pop()
         decorator = node.get_attr('decorator', '')
         fallback = ""
         type_error = "raise TypeError(f'First argument {arg1} of single-dispatch " \
@@ -1006,12 +1028,13 @@ class ts2pythonCompiler(Compiler):
         i = 0
         obj_name_stub = self.obj_name[-1]
         fname = self.func_name[:1].upper() + self.func_name[1:]
+        ftps = self.func_type_parameters
         for nd in node.children:
             n = obj_name_stub.rfind('_')
             ending = obj_name_stub[n + 1:]
             if n >= 0 and (not ending or ending.isdecimal()):
                 obj_name_stub = obj_name_stub[:n]
-            self.obj_name[-1] = fname + obj_name_stub + '_' + str(i)
+            self.obj_name[-1] = fname + obj_name_stub + '_' + str(i) + ftps
             save = self.func_name
             self.func_name = ""
             typ = self.compile_type_expression(node, nd)
@@ -1024,7 +1047,7 @@ class ts2pythonCompiler(Compiler):
             typ = union[i]
             if typ[0:5] == 'class':
                 k = typ.rfind('\nclass')
-                m = re.match(r"class\s*(\w+)[\w(){},' =]*\s*:", typ[k + 1:])
+                m = re.match(r"class\s*(\w+)(\[\w+(?:,\s*\w+)*\])?[\w(){},' =]*\s*:", typ[k + 1:])
                 assert m, typ
                 cname = m.group(1)
                 self.local_classes[-1].append(typ)
@@ -1618,6 +1641,8 @@ def main(called_from_app=False):
                 set_preset_value('ts2python.UseLiteralType', True, allow_new_key=True)
             if version_info >= (3, 10):
                 set_preset_value('ts2python.UseTypeUnion', True, allow_new_key=True)
+                if version_info < (3, 12):
+                    set_preset_value('ts2python.UseExplicitTypeAlias', True, allow_new_key=True)
             if version_info >= (3, 11):
                 set_preset_value('ts2python.UseNotRequired', True, allow_new_key=True)
                 set_preset_value('ts2python.UseVariadicGenerics', True, allow_new_key=True)
@@ -1630,14 +1655,15 @@ def main(called_from_app=False):
         if args.decorator:  set_preset_value('ts2python.ClassDecorator', args.decorator[0].strip())
         if args.peps:
             args_peps = [pep.strip() for pep in args.peps]
-            all_peps = { '435',  '584',  '586',  '604',  '646',  '655',  '695',  '705',
-                        '~435', '~584', '~586', '~604', '~646', '~655', '~695', '~705'}
+            all_peps = { '435',  '584',  '586',  '604', '613', '646',  '655',  '695',  '705',
+                        '~435', '~584', '~586', '~604', '613', '~646', '~655', '~695', '~705'}
             if not all(pep in all_peps for pep in args_peps):
                 print(f'Unsupported PEPs specified: {args_peps}\n'
                       'Allowed PEP arguments are:\n'
                       '  435  - use Enums (Python 3.4)\n'
                       '  586  - use Literal type (Python 3.8)\n'
                       '  604  - use type union (Python 3.10)\n'
+                      '  613  - use explicit type alias (Python 3.10 - 3.11)\n'
                       '  646  - use variadic Generics (Python 3.11)\n'
                       '  655  - use NotRequired instead of Optional (Python3.11)\n'
                       '  695  - use type parameters (Python 3.12)\n'
@@ -1648,6 +1674,7 @@ def main(called_from_app=False):
                 if pep == '435':  set_preset_value('ts2python.UseEnum', **kwargs)
                 if pep in ('586', '584'):  set_preset_value('ts2python.UseLiteralType', **kwargs)
                 if pep == '604':  set_preset_value('ts2python.TypeUnion', **kwargs)
+                if pep == '613':  set_preset_value('ts2python.UseExplicitTypeAlias', **kwargs)
                 if pep == '646':  set_preset_value('tsPython.UseVariadicGenerics', **kwargs)
                 if pep == '655':  set_preset_value('ts2python.UseNotRequired', **kwargs)
                 if pep == '695':  set_preset_value('ts2python.UseTypeParameters', **kwargs)

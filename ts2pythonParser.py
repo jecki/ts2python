@@ -30,7 +30,8 @@ import keyword
 from functools import partial, lru_cache
 import os
 import sys
-from typing import Tuple, List, Union, Any, Callable, Set, Dict, Sequence, cast
+from typing import Tuple, List, Union, Any, Callable, Set, Dict, Sequence, \
+    Optional
 
 
 try:
@@ -449,6 +450,35 @@ def to_dict(declarations: str) -> str:
     return "".join(["{", ", ".join(entries), "}"])
 
 
+def is_qualified(name: str) -> bool:
+    """Returns True if the given type-name is qualified, e.g.::
+
+        >>> is_qualified("T")
+        False
+        >>> is_qualified("ReadOnly[T]")
+        True
+    """
+    return name[-1:] == ']'
+
+
+def strip_qualifier(qualified_name: str) -> str:
+    """Removes qualifiers from type names, e.g.::
+
+        >>> qualified_name = "ReadOnly[T]"
+        >>> strip_qualifier(qualified_name)
+        'T'
+    """
+    while True:
+        a = qualified_name.find('[')
+        b = qualified_name.rfind(']')
+        if a >= 0:
+            assert b >= 0, f"unmatched brackets in {qualified_name}"
+            qualified_name = qualified_name[a + 1:b]
+        else:
+            assert b < 0, f"unmatched brackets in {qualified_name}"
+            return qualified_name
+
+
 NOT_YET_IMPLEMENTED_WARNING = ErrorCode(310)
 UNSUPPORTED_WARNING = ErrorCode(320)
 
@@ -547,14 +577,14 @@ class ts2pythonCompiler(Compiler):
     def is_toplevel(self) -> bool:
         return self.obj_name == ['TOPLEVEL_']
 
-    def is_known_type(self, typename: str) -> bool:
-        for type_set in self.known_types:
-            if typename in type_set:
-                return True
-        return False
+    def get_known_type(self, typename: str, value: str = "") -> str:
+        for type_dict in self.known_types:
+            if typename in type_dict:
+                return type_dict[typename]
+        return value
 
     def add_to_known_types(self, node, typename: str, kind: str):
-        if typename in self.known_types[-1] and kind != '?':
+        if typename in self.known_types[-1] and not is_qualified(kind):
             self.tree.new_error(
                 node, f'{node.name} {typename} has already been defined earlier as '
                 f'{self.known_types[-1][typename]}!', WARNING)
@@ -694,12 +724,12 @@ class ts2pythonCompiler(Compiler):
         preface = ''
         try:
             tp = self.compile(node['type_parameters'])
-            tpl = [p.strip("'") for p in tp.split(', ')]  # .replace("'", "") ?
-            tps = '[' + ', '.join(p for p in tpl) + ']'
-            # tps = '[' + tp + ']'
-            preface = ''.join(f"{p} = TypeVar('{p}')\n"
-                              for p in tpl if not self.is_known_type(p))
-            for p in tpl:  self.add_to_known_types(node, p, '?')
+            tpl = [p.replace("'", "") for p in tp.split(', ')]  # formerly: .strip("'")
+            tps = '[' + ', '.join(strip_qualifier(p) for p in tpl) + ']'
+            preface = ''.join(f"{strip_qualifier(p)} = TypeVar('{p}')\n"
+                              for p in tpl if not self.get_known_type(p))
+            for p in tpl:  self.add_to_known_types(node, strip_qualifier(p),
+                                                   p if is_qualified(p) else '[]')
         except KeyError:
             pass
         return tps, preface
@@ -710,11 +740,12 @@ class ts2pythonCompiler(Compiler):
         self.scope_type.append('interface')
         self.local_classes.append([])
         self.optional_keys.append([])
+        self.known_types.append(dict())
         tps, preface = self.process_type_parameters(node)
         if self.use_type_parameters:  preface = ''
         preface += '\n'
         preface += node.get_attr('preface', '')
-        self.known_types.append(dict())
+        # self.known_types.append(dict())
         base_class_list = []
         try:
             base_class_list = self.bases(node['extends'])
@@ -1077,8 +1108,12 @@ class ts2pythonCompiler(Compiler):
                 result = 'str'
         else:
             result = self.compile(typ)
-        return f"ReadOnly[{result}]" if readonly and self.allow_read_only \
-            else result
+        if self.allow_read_only and \
+                (readonly or self.get_known_type(result)[:9] == "ReadOnly["):
+            return f"ReadOnly[{result}]"
+        else:
+            return result
+
 
     def on_type_tuple(self, node):
         return 'Tuple[' + ', '.join(self.compile(nd) for nd in node) + ']'
@@ -1294,7 +1329,7 @@ class ts2pythonCompiler(Compiler):
 
     def compile_type_expression(self, node, type_node) -> str:
         unknown_types = set(tn.content for tn in node.select('type_name')
-                            if not self.is_known_type(tn.content))
+                            if not self.get_known_type(tn.content))
         type_expression = self.compile(type_node)
         for typ in unknown_types:
             rx = re.compile(r"(?:(?<=[^\w'])|^)" + typ + r"(?:(?=[^\w'])|$)")

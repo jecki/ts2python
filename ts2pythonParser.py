@@ -687,6 +687,7 @@ class ts2pythonCompiler(Compiler):
                             base_classes: str,
                             force_base_class: str = '',
                             generic_types: str = '') -> str:
+        assert name
         optional_key_list = self.optional_keys[-1]
         decorator = self.class_decorator
         base_class_name = (force_base_class or self.base_class_name).strip()
@@ -1029,7 +1030,7 @@ class ts2pythonCompiler(Compiler):
     def on_types(self, node) -> str:
         union = []
         i = 0
-        obj_name_stub = self.obj_name[-1]
+        obj_name_stub = '' if self.is_toplevel() else self.obj_name[-1]
         fname = self.func_name[:1].upper() + self.func_name[1:]
         ftps = self.func_type_parameters
         for nd in node.children:
@@ -1045,7 +1046,7 @@ class ts2pythonCompiler(Compiler):
             if typ not in union:
                 union.append(typ)
                 i += 1
-            self.obj_name[-1] = obj_name_stub
+            self.obj_name[-1] = obj_name_stub or 'TOPLEVEL_'
         for i in range(len(union)):
             typ = union[i]
             if typ[0:5] == 'class':
@@ -1088,8 +1089,12 @@ class ts2pythonCompiler(Compiler):
                             self.render_local_classes().replace('\n', '\n    '),
                             decls.replace('\n', '\n    ')])
         elif self.render_anonymous == "toplevel":
+            # the magic marker "TOPLEVEL_" should not be part of the class-name,
+            # but make sure that there is always a name, even in a testing-context
+            # that does not start at top-level. Thus, the or-clause in class_name.
+            class_name = '_'.join(self.obj_name[1:]) or self.obj_name[0]
             return ''.join([self.render_local_classes(),
-                            self.render_class_header('_'.join(self.obj_name[1:]), '') + "    ",
+                            self.render_class_header(class_name, '') + "    ",
                             decls.replace('\n', '\n    ')])
         elif self.render_anonymous == "functional":
             return f'TypedDict("{self.obj_name[-1]}", {to_dict(decls)})'

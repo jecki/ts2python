@@ -918,6 +918,9 @@ class ts2pythonCompiler(Compiler):
             name = "__call__"
         if self.use_type_parameters:  self.known_types.append(dict())
         tps, preface = self.process_type_parameters(node)
+        if preface and not self.is_toplevel():
+            self.local_classes[-1].insert(0, preface)
+            preface = ''
         if not self.use_type_parameters:  tps = ''
         self.func_type_parameters = tps
         try:
@@ -1047,7 +1050,7 @@ class ts2pythonCompiler(Compiler):
             typ = union[i]
             if typ[0:5] == 'class':
                 k = typ.rfind('\nclass')
-                m = re.match(r"class\s*(\w+)(\[\w+(?:,\s*\w+)*\])?[\w(){},' =]*\s*:", typ[k + 1:])
+                m = re.match(r"class\s*(\w+)(\[\w+(?:,\s*\w+)*])?[\w(){},' =]*\s*:", typ[k + 1:])
                 assert m, typ
                 cname = m.group(1)
                 self.local_classes[-1].append(typ)

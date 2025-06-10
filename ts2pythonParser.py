@@ -548,6 +548,7 @@ class ts2pythonCompiler(Compiler):
         self.use_variadic_generics = ts2python_cfg.get('ts2python.UseVariadicGenerics', False)
         self.use_not_required = ts2python_cfg.get('ts2python.UseNotRequired', False)
         self.allow_read_only = ts2python_cfg.get('ts2python.AllowReadOnly', False)
+        self.assume_deferred_evaluation = ts2python_cfg.get('ts2python.AssumeDeferredEvaluation', False)
         self.keep_comments = ts2python_cfg.get('ts2python.KeepMultilineComments', False)
         self.compatibility_level = required_python_version(ts2python_cfg, "compatibility")
         self.feature_level = required_python_version(ts2python_cfg, "features")
@@ -1362,15 +1363,18 @@ class ts2pythonCompiler(Compiler):
         unknown_types = set(tn.content for tn in node.select('type_name')
                             if not self.get_known_type(tn.content))
         type_expression = self.compile(type_node)
-        for typ in unknown_types:
-            rx = re.compile(r"(?:(?<=[^\w'])|^)" + typ + r"(?:(?=[^\w'])|$)")
-            segments = type_expression.split("'")
-            for i in range(0, len(segments), 2):
-                segments[i] = rx.sub(f"'{typ}'", segments[i])
-            type_expression = "'".join(segments)
-            # type_expression = rx.sub(f"'{typ}'", type_expression)
-        if type_expression[0:1] == "'":
-            type_expression = ''.join(["'", type_expression.replace("'", ""), "'"])
+        if self.assume_deferred_evaluation:
+            type_expression = type_expression.replace("'", "")
+        else:
+            for typ in unknown_types:
+                rx = re.compile(r"(?:(?<=[^\w'])|^)" + typ + r"(?:(?=[^\w'])|$)")
+                segments = type_expression.split("'")
+                for i in range(0, len(segments), 2):
+                    segments[i] = rx.sub(f"'{typ}'", segments[i])
+                type_expression = "'".join(segments)
+                # type_expression = rx.sub(f"'{typ}'", type_expression)
+            if type_expression[0:1] == "'":
+                type_expression = ''.join(["'", type_expression.replace("'", ""), "'"])
         return type_expression
 
     def on_array_of(self, node) -> str:
@@ -1663,19 +1667,22 @@ def main(called_from_app=False):
         if args.decorator:  set_preset_value('ts2python.ClassDecorator', args.decorator[0].strip())
         if args.peps:
             args_peps = [pep.strip() for pep in args.peps]
-            all_peps = { '435',  '584',  '586',  '604', '613', '646',  '655',  '695',  '705',
-                        '~435', '~584', '~586', '~604', '613', '~646', '~655', '~695', '~705'}
+            all_peps = { '435',  '584',  '586',  '604', '613',  '646',
+                         '649',  '655',  '695',  '705',  '749',
+                        '~435', '~584', '~586', '~604', '~613', '~646',
+                         '~649', '~655', '~695', '~705', '~749'}
             if not all(pep in all_peps for pep in args_peps):
                 print(f'Unsupported PEPs specified: {args_peps}\n'
                       'Allowed PEP arguments are:\n'
                       '  435  - use Enums (Python 3.4)\n'
-                      '  586  - use Literal type (Python 3.8)\n'
+                      '  584 or 586  - use Literal type (Python 3.8)\n'
                       '  604  - use type union (Python 3.10)\n'
                       '  613  - use explicit type alias (Python 3.10 - 3.11)\n'
                       '  646  - use variadic Generics (Python 3.11)\n'
+                      '  649 or 749 - assume deferred type evaluation (Python 3.14)\n'
                       '  655  - use NotRequired instead of Optional (Python3.11)\n'
                       '  695  - use type parameters (Python 3.12)\n'
-                      '  705  - use ReadOnly (Python 3.13)\n')
+                      '  705  - allow ReadOnly (Python 3.13)\n')
                 sys.exit(1)
             for pep in args_peps:
                 kwargs= {'value': pep[0] != '~', 'allow_new_key': True}
@@ -1687,6 +1694,7 @@ def main(called_from_app=False):
                 if pep == '655':  set_preset_value('ts2python.UseNotRequired', **kwargs)
                 if pep == '695':  set_preset_value('ts2python.UseTypeParameters', **kwargs)
                 if pep == '705':  set_preset_value('ts2python.AllowReadOnly', **kwargs)
+                if pep in ('649', '749'):  set_preset_value('ts2python.AssumeDeferredEvaluation', **kwargs)
         if args.comments: set_preset_value('ts2python.KeepMultilineComments', True)
         finalize_presets()
         # _ = get_config_values('ts2python.*')  # fill config value cache

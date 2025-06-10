@@ -307,6 +307,8 @@ UseTypeParameters = {get_config_value('ts2python.UseTypeParameters', False)}
 UseLiteralType = {get_config_value('ts2python.UseLiteralType', False)}
 UseVariadicGenerics = {get_config_value('ts2python.UseVariadicGenerics', False)}
 UseNotRequired = {get_config_value('ts2python.UseNotRequired', False)}
+AllowReadOnly = {get_config_value('ts2python.AllowReadOnly', False)}
+AssumeDeferredEvaluation = {get_config_value('ts2python.AssumeDeferredEvaluation', False)}
 KeepMultilineComments = {get_config_value('ts2python.KeepMultilineComments', False)}"""
 
 
@@ -330,6 +332,8 @@ def required_python_version(ts2python_cfg: Dict[str, bool],
     if ts2python_cfg.get('ts2python.AllowReadOnly', False) \
             and purpose == "features":
         min_version = (3, 13)
+    if ts2python_cfg.get('ts2python.AssumeDeferredEvaluation', False):
+        min_version = (3, 14)
     # Neither UseReadOnly nor UseNotRequired place any demand on the
     # Python version, because:
     # ReadOnly can be defined as Union for Python-version < 3.13

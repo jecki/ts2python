@@ -1666,6 +1666,8 @@ def main(called_from_app=False):
                 set_preset_value('ts2python.UseTypeParameters', True, allow_new_key=True)
             if version_info >= (3, 13):
                 set_preset_value('ts2python.AllowReadOnly', True, allow_new_key=True)
+            if version_info >= (3, 14):
+                set_preset_value('ts2python.AssumeDeferredEvaluation', True, allow_new_key=True)
         if args.base:  set_preset_value('ts2python.BaseClassName', args.base[0].strip())
         if args.anonymous:  set_preset_value('ts2python.RenderAnonymous', args.anonymous[0].strip())
         if args.decorator:  set_preset_value('ts2python.ClassDecorator', args.decorator[0].strip())

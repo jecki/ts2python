@@ -23,7 +23,7 @@ import functools
 import inspect
 import sys
 from typing import Union, List, Tuple, Dict, Set, Any, \
-    TypeVar, Iterable, Callable, get_type_hints
+    TypeVar, Iterable, Callable, get_type_hints, Union
 try:
     from typing_extensions import GenericMeta, \
         ClassVar, Final, Protocol, NoReturn, Literal

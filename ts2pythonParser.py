@@ -301,6 +301,7 @@ BaseClassName = {get_config_value('ts2python.BaseClassName', 'TypedDict')}
 RenderAnonymous = {get_config_value('ts2python.RenderAnonymous', 'local')}
 ClassDecorator = {get_config_value('ts2python.ClassDecorator', '')} 
 UseEnum = {get_config_value('ts2python.UseEnum', True)}
+UsePostponedEvaluation = {get_config_value('ts2python.UsePostponedEvaluation', True)}
 UseTypeUnion = {get_config_value('ts2python.UseTypeUnion', False)}
 UseExplicitTypeAlias = {get_config_value('ts2python.UseExplicitTypeAlias', False)}
 UseTypeParameters = {get_config_value('ts2python.UseTypeParameters', False)}
@@ -543,6 +544,7 @@ class ts2pythonCompiler(Compiler):
             self.class_decorator += '\n'
         ts2python_cfg = get_config_values('ts2python.*')
         self.use_enums = ts2python_cfg.get('ts2python.UseEnum', True)
+        self.use_postponed_evaluations = ts2python_cfg.get('ts2python.UsePostponedEvaluations', False)
         self.use_type_union = ts2python_cfg.get('ts2python.UseTypeUnion', False)
         self.use_explicit_type_alias = ts2python_cfg.get('ts2python.UseExplicitTypeAlias', False)
         self.use_type_parameters = ts2python_cfg.get('ts2python.UseTypeParameters', False)
@@ -1681,6 +1683,7 @@ def main(called_from_app=False):
                 print(f'Unsupported PEPs specified: {args_peps}\n'
                       'Allowed PEP arguments are:\n'
                       '  435  - use Enums (Python 3.4)\n'
+                      '  563  - use postponed evaluation (Python 3.7)\n'
                       '  584 or 586  - use Literal type (Python 3.8)\n'
                       '  604  - use type union (Python 3.10)\n'
                       '  613  - use explicit type alias (Python 3.10 - 3.11)\n'
@@ -1693,6 +1696,7 @@ def main(called_from_app=False):
             for pep in args_peps:
                 kwargs= {'value': pep[0] != '~', 'allow_new_key': True}
                 if pep == '435':  set_preset_value('ts2python.UseEnum', **kwargs)
+                if pep == '563':  set_preset_value('ts2python.UsePostponedEvaluations', **kwargs)
                 if pep in ('586', '584'):  set_preset_value('ts2python.UseLiteralType', **kwargs)
                 if pep == '604':  set_preset_value('ts2python.TypeUnion', **kwargs)
                 if pep == '613':  set_preset_value('ts2python.UseExplicitTypeAlias', **kwargs)

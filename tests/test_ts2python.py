@@ -205,8 +205,12 @@ class TestValidation:
         # Use this, to test with non-legacy code, i.e. Python >= 3.11
         from DHParser.configuration import set_config_value, get_config_value
         not_required = get_config_value('ts2python.UseNotRequired', False)
+        assumeDeferredEvaluation = get_config_value('ts2python.AssumeDeferredEvaluation', False)
         set_config_value('ts2python.UseNotRequired', True, allow_new_key=True)
+        if sys.version_info >= (3, 14, 0):
+            set_config_value('ts2python.AssumeDeferredEvaluation', True, allow_new_key=True)
         self.test_code, err = compile_src(TEST_DATA)
+        set_config_value('ts2python.AssumeDeferredEvaluation', assumeDeferredEvaluation, allow_new_key=True)
         set_config_value('ts2python.UseNotRequired', not_required, allow_new_key=True)
         self.test_code = PATH_FIX + self.test_code
         assert not err

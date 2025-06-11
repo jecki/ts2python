@@ -23,12 +23,10 @@ becomes::
     class Message(TypedDict, total=True):
         jsonrpc: str
 
-ts2python uses `TypedDict`_ as base class per default. Unless a Python-version
-greater or equal than 3.11 is specified by passing the ``--compatibility 3.11``-parameter
-when calling ts2python, optional fields of a TypeScript-Interface
-are mapped to ``Optional``-types in Python or, what amounts to the same, to
-``Union``-types that include ``None`` as one of the alternative types of the union.
-Also, if there are any optional fields, the
+ts2python uses `TypedDict`_ as base class per default. Optional fields of a TypeScript-Interface
+are mapped to ``NonRequired``-types in Python. Since the NotRequired-type-qualifier has
+only been introduced in with Python version 3.11, NotRequired will be defined as an
+alias to ``Optional`` if an older Python version is used. Also, if there are any optional fields, the
 total-parameter of the TypedDict-class will be set to to ``False`` in the
 compatibility-mode. Since before Python version 3.11 static validation relies
 on the ``total``-parameter it will not
@@ -46,12 +44,15 @@ will still catch such errors (see :ref:`runtime_validation`).
 
 becomes::
 
+    NotRequired = Optional
+
     class RequestMessage(Message, TypedDict, total=False):
         id: Union[int, str]
         method: str
-        params: Optional[Union[List, Dict]]
+        params: NotRequired[Union[List, Dict]]
 
-In the compatibility-mode ``Optional``-types are understood as attributes that need
+In the compatibility-mode (for Python versions smaller than 3.11)
+``Optional``-types are understood as attributes that need
 not be present in the dictionary. This runs contrary
 the standard semantics of ``Optional``-types in Python, which
 requires attributes annotated with ``Optional`` to always be present
@@ -59,7 +60,7 @@ although they may contain the value ``None``. In fact, this non-standard
 interpretation of ``Optional`` implements one of the rejected ways of
 marking individual TypedDict items as not required in `PEP 655`_.
 
-However, since up to Python version 3.10 `PEP 655`_ had not been
+However, since up to and including Python version 3.10 `PEP 655`_ had not been
 implemented, abusing ``Optional`` for this purpose appeared to be
 a pragmatic solution that in connection with setting the parameter
 ``total=False`` plays well-enough with static type-checkers. Unless
@@ -69,16 +70,15 @@ attributes with ``Optional`` type to be present, there won't be a problem.
 For the case that the transpiled code does not need to run with Python-versions
 below 3.11, it is possible, to enforce `PEP 655`_ by calling ``ts2python``
 with the parameter ``-p 655`` or with ``-c 3.11``, in which case ``NotRequired`` will be
-used instead of ``Optional``. Also, the ``total``-parameter of the TypedDict-class will
-be set to "True", which means that all other fields are required.
+not be redefined as ``Optional``. Also, the ``total``-parameter of the TypedDict-class will
+not be set to "False" (and thus keep its default value "True),
+which means that all not required fields are required.
 The above Message-interface will then read as::
 
-    class RequestMessage(Message, TypedDict, total=True):
+    class RequestMessage(Message, TypedDict):
         id: Union[int, str]
         method: str
         params: NotRequired[Union[List, Dict]]
-
-
 
 
 Mapping of Field Types
@@ -377,7 +377,7 @@ on with ``-a type``.
 Finally, with ``--anonymous toplevel`` or ``-a toplevel``,
 the definition of classes inside classes
 can be avoided completely. This helps to avoid complaints by type-checkers
-like mypy or pylance. The result look like this::
+like mypy or pylance. The result looks like this::
 
     class InitializeResult_ServerInfo_0(TypedDict):
         name: str
@@ -445,6 +445,37 @@ For Python versions higher than 3.12 only the result will be a generic TypedDict
         value: T
 
 
+TypeAliases
+-----------
+
+The mapping of type aliases depends very much on the compatibility-level.
+If the default compatibility all they way down to Python version 3.7 is
+selected, Typescript type aliases will be mapped to plain type assignments.
+For example,::
+
+    type ProviderResult<T> = T | undefined | null | Thenable<T | undefined | null>;
+
+will become::
+
+    T = TypeVar('T')
+    ProviderResult = Union[T, None, Coroutine[Union[T, None]]]
+
+Observe that ``undefined`` and ``null`` are both mapped to the Python ``None``-value
+and that redundancies like ``None | None`` are automatically resolved to ``None``.
+If the compatibility-level is set to at least Python version 3.10 with the "-c 3.10"
+switch which autoselects PEPs 586, 604, 613,  the type assignment will furthermore be
+annotated with the TypeAlias-type::
+
+    T = TypeVar('T')
+    ProviderResult: TypeAlias = T | None | Coroutine[T | None]
+
+Compatibility levels of 3.12 and above will also include support for PEP 695 and
+ultimately yield the arguably most elegant syntax using the ``type``-statement
+introduced with Python 3.12::
+
+    type ProviderResult[T] = T | None | Coroutine[T | None]
+
+
 Imports
 -------
 
@@ -459,16 +490,16 @@ ts2Python has only rudimentary support for types that are derived
 from other types (see `Creating Types from Types`_ in the Typescript-manual).
 While some of these derived types are accepted by ts2python's parser, they
 are practically never properly matched to similar Python-types. In many
-cases types derived from other tpes will - for the lack of a deeper semantic
+cases types derived from other types will - for the lack of a deeper semantic
 analysis of Typescript-input by ts2python - simply be represented as type
 ``Any`` on the Python-side.
 
 Because Python's type system isn't as elaborated as that of Typescript, a translation
-that keeps all information will often not be possible, anyway. The main
+that keeps all information will often not be feasible, anyway. The main
 reason, however, why this is not done is that it would require ts2python to
 actually reason about the types it parses, which is something which ts2python
 has not been designed for. However, more purely syntactic support for
-these constructs can be added in the future, if required.
+these constructs can be added in the future, if desired.
 
 
 .. _Typescript-interfaces: https://www.typescriptlang.org/docs/handbook/2/objects.html

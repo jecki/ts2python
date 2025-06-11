@@ -627,6 +627,8 @@ class ts2pythonCompiler(Compiler):
                            f'on {datetime.datetime.now()}\n# compatibility level: '
                            f'Python {c_major}.{c_minor} and above\n',
                            # f'# feature level: Python {f_major}.{f_minor}\n',
+                           'from __future__ import annotations' if
+                           self.use_postponed_evaluations else '',
                            GENERAL_IMPORTS] \
                 + type_imports \
                 + ([FUNCTOOLS_IMPORTS] if self.require_singledispatch else []) \
@@ -705,7 +707,7 @@ class ts2pythonCompiler(Compiler):
                 td_name = 'TypedDict' if (self.use_variadic_generics or
                                           base_classes.find('Generic[') < 0) \
                                       else 'GenericTypedDict'
-                if self.use_not_required:
+                if self.use_not_required or total:
                     return decorator + \
                            f"class {name}{tps}({base_classes}, {td_name}):\n"
                 else:
@@ -713,7 +715,7 @@ class ts2pythonCompiler(Compiler):
                            f"{td_name}, total={total}):\n"
             else:
                 tps = generic_types if self.use_type_parameters else ''
-                if self.use_not_required:
+                if self.use_not_required or total:
                     return decorator + f"class {name}{tps}(TypedDict):\n"
                 else:
                     return decorator + \
@@ -1369,7 +1371,7 @@ class ts2pythonCompiler(Compiler):
         unknown_types = set(tn.content for tn in node.select('type_name')
                             if not self.get_known_type(tn.content))
         type_expression = self.compile(type_node)
-        if self.assume_deferred_evaluation:
+        if self.assume_deferred_evaluation or self.use_postponed_evaluations:
             type_expression = type_expression.replace("'", "")
         else:
             for typ in unknown_types:

@@ -1677,10 +1677,10 @@ def main(called_from_app=False):
         if args.decorator:  set_preset_value('ts2python.ClassDecorator', args.decorator[0].strip())
         if args.peps:
             args_peps = [pep.strip() for pep in args.peps]
-            all_peps = { '435',  '584',  '586',  '604', '613',  '646',
-                         '649',  '655',  '695',  '705',  '749',
-                        '~435', '~584', '~586', '~604', '~613', '~646',
-                         '~649', '~655', '~695', '~705', '~749'}
+            all_peps = { '435',  '563',  '584',  '586',  '604', '613',
+                         '646',  '649',  '655',  '695',  '705',  '749',
+                        '~435', '~563', '~584', '~586', '~604', '~613',
+                        '~646', '~649', '~655', '~695', '~705', '~749'}
             if not all(pep in all_peps for pep in args_peps):
                 print(f'Unsupported PEPs specified: {args_peps}\n'
                       'Allowed PEP arguments are:\n'

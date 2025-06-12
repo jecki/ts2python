@@ -871,7 +871,8 @@ class ts2pythonCompiler(Compiler):
                    + f"{alias}{tps} = {types}"
             # there follows a hack to avoid failure on type unions of
             # stringified type aliases and real types
-            if types[-1:] == "'" and alias in self.known_types[-1]:
+            if not self.use_type_parameters \
+                    and types[-1:] == "'" and alias in self.known_types[-1]:
                 del self.known_types[-1][alias]
         else:
             code = ''

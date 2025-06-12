@@ -122,7 +122,7 @@ export namespace ErrorCodes {
 
 	/**
 	 * Error code indicating that a server received a notification or
-	 * request before the server has received the `initialize` request.
+	 * request before the server received the `initialize` request.
 	 */
 	export const ServerNotInitialized: integer = -32002;
 	export const UnknownErrorCode: integer = -32001;
@@ -423,6 +423,54 @@ interface TextDocumentPositionParams {
 }
 
 
+/* source file: "types/patterns.md" */
+
+/**
+ * The pattern to watch relative to the base path. Glob patterns can have
+ * the following syntax:
+ * - `*` to match zero or more characters in a path segment
+ * - `?` to match on one character in a path segment
+ * - `**` to match any number of path segments, including none
+ * - `{}` to group conditions (e.g. `**​/*.{ts,js}` matches all TypeScript
+ *   and JavaScript files)
+ * - `[]` to declare a range of characters to match in a path segment
+ *   (e.g., `example.[0-9]` to match on `example.0`, `example.1`, …)
+ * - `[!...]` to negate a range of characters to match in a path segment
+ *   (e.g., `example.[!0-9]` to match on `example.a`, `example.b`,
+ *   but not `example.0`)
+ *
+ * @since 3.17.0
+ */
+export type Pattern = string;
+
+/**
+ * A relative pattern is a helper to construct glob patterns that are matched
+ * relatively to a base URI. The common value for a `baseUri` is a workspace
+ * folder root, but it can be another absolute URI as well.
+ *
+ * @since 3.17.0
+ */
+export interface RelativePattern {
+	/**
+	 * A workspace folder or a base URI to which this pattern will be matched
+	 * against relatively.
+	 */
+	baseUri: WorkspaceFolder | URI;
+
+	/**
+	 * The actual pattern;
+	 */
+	pattern: Pattern;
+}
+
+/**
+ * The glob pattern. Either a string pattern or a relative pattern.
+ *
+ * @since 3.17.0
+ */
+export type GlobPattern = Pattern | RelativePattern;
+
+
 /* source file: "types/documentFilter.md" */
 
 
@@ -438,21 +486,14 @@ export interface DocumentFilter {
 	scheme?: string;
 
 	/**
-	 * A glob pattern, like `*.{ts,js}`.
+	 * A pattern, like `*.{ts,js}` or a pattern relative to a workspace folders.
 	 *
-	 * Glob patterns can have the following syntax:
-	 * - `*` to match one or more characters in a path segment
-	 * - `?` to match on one character in a path segment
-	 * - `**` to match any number of path segments, including none
-	 * - `{}` to group sub patterns into an OR expression. (e.g. `**​/*.{ts,js}`
-	 *   matches all TypeScript and JavaScript files)
-	 * - `[]` to declare a range of characters to match in a path segment
-	 *   (e.g., `example.[0-9]` to match on `example.0`, `example.1`, …)
-	 * - `[!...]` to negate a range of characters to match in a path segment
-	 *   (e.g., `example.[!0-9]` to match on `example.a`, `example.b`, but
-	 *   not `example.0`)
+	 * See GlobPattern.
+	 *
+	 * Whether clients support relative patterns depends on the client
+	 * capability `textDocuments.filters.relativePatternSupport`.
 	 */
-	pattern?: string;
+	pattern?: GlobPattern;
 }
 
 export type DocumentSelector = DocumentFilter[];
@@ -1217,7 +1258,7 @@ export interface WorkDoneProgressBegin {
 	/**
 	 * Optional progress percentage to display (value 100 is considered 100%).
 	 * If not provided infinite progress is assumed and clients are allowed
-	 * to ignore the `percentage` value in subsequent in report notifications.
+	 * to ignore the `percentage` value in subsequent report notifications.
 	 *
 	 * The value should be steadily rising. Clients are free to ignore values
 	 * that are not following this rule. The value range is [0, 100].
@@ -1250,7 +1291,7 @@ export interface WorkDoneProgressReport {
 	/**
 	 * Optional progress percentage to display (value 100 is considered 100%).
 	 * If not provided infinite progress is assumed and clients are allowed
-	 * to ignore the `percentage` value in subsequent in report notifications.
+	 * to ignore the `percentage` value in subsequent report notifications.
 	 *
 	 * The value should be steadily rising. Clients are free to ignore values
 	 * that are not following this rule. The value range is [0, 100].
@@ -1403,7 +1444,17 @@ interface InitializeParams extends WorkDoneProgressParams {
  */
 export interface TextDocumentClientCapabilities {
 
+	/**
+	 * Defines which synchronization capabilities the client supports.
+	 */
 	synchronization?: TextDocumentSyncClientCapabilities;
+
+	/**
+	 * Defines which filters the client supports.
+	 *
+	 * @since 3.18.0
+	 */
+	filters?: TextDocumentFilterClientCapabilities;
 
 	/**
 	 * Capabilities specific to the `textDocument/completion` request.
@@ -1583,10 +1634,20 @@ export interface TextDocumentClientCapabilities {
 
 	/**
 	 * Capabilities specific to the `textDocument/inlineCompletion` request.
-	 * 
+	 *
 	 * @since 3.18.0
 	 */
 	inlineCompletion?: InlineCompletionClientCapabilities;
+}
+
+export interface TextDocumentFilterClientCapabilities {
+
+	/**
+	 * The client supports Relative Patterns.
+	 *
+	 * @since 3.18.0
+	 */
+	relativePatternSupport?: boolean;
 }
 
 /**
@@ -2130,26 +2191,26 @@ interface ServerCapabilities {
 
 	/**
 	 * The server provides inline completions.
-	 * 
+	 *
 	 * @since 3.18.0
 	 */
 	inlineCompletionProvider?: boolean | InlineCompletionOptions;
 
 	/**
 	 * Text document specific server capabilities.
-	 * 
+	 *
 	 * @since 3.18.0
 	 */
 	textDocument?: {
 		/**
 		 * Capabilities specific to the diagnostic pull model.
-		 * 
+		 *
 		 * @since 3.18.0
 		 */
 		diagnostic?: {
 			/**
 			 * Whether the server supports `MarkupContent` in diagnostic messages.
-			 * 
+			 *
 			 * @since 3.18.0
 			 * @proposed
 			 */
@@ -2744,7 +2805,7 @@ export type NotebookDocumentFilter = {
 	/**
 	 * A glob pattern.
 	 */
-	pattern?: string;
+	pattern?: GlobPattern;
 } | {
 	/**
 	 * The type of the enclosing notebook.
@@ -2759,7 +2820,7 @@ export type NotebookDocumentFilter = {
 	/**
 	 * A glob pattern.
 	 */
-	pattern?: string;
+	pattern?: GlobPattern;
 } | {
 	/**
 	 * The type of the enclosing notebook.
@@ -2774,7 +2835,7 @@ export type NotebookDocumentFilter = {
 	/**
 	 * A glob pattern.
 	 */
-	pattern: string;
+	pattern: GlobPattern;
 };
 
 
@@ -4147,7 +4208,11 @@ export enum SemanticTokenTypes {
 	/**
 	 * @since 3.17.0
 	 */
-	decorator = 'decorator'
+	decorator = 'decorator',
+	/**
+	 * @since 3.18.0
+	 */
+	label = 'label'
 }
 
 export enum SemanticTokenModifiers {
@@ -5052,6 +5117,21 @@ export interface CompletionClientCapabilities {
 		 * @since 3.17.0
 		 */
 		itemDefaults?: string[];
+
+		/**
+		 * Specifies whether the client supports `CompletionList.applyKind` to
+		 * indicate how supported values from `completionList.itemDefaults`
+		 * and `completion` will be combined.
+		 *
+		 * If a client supports `applyKind` it must support it for all fields
+		 * that it supports that are listed in `CompletionList.applyKind`. This
+		 * means when clients add support for new/future fields in completion
+		 * items the MUST also support merge for them if those fields are
+		 * defined in `CompletionList.applyKind`.
+		 *
+		 * @since 3.18.0
+		 */
+		applyKindSupport?: boolean;
 	}
 }
 
@@ -5187,7 +5267,9 @@ export interface CompletionList {
 	 * be used if a completion item itself doesn't specify the value.
 	 *
 	 * If a completion list specifies a default value and a completion item
-	 * also specifies a corresponding value, the one from the item is used.
+	 * also specifies a corresponding value, the rules for combining these are
+	 * defined by `applyKinds` (if the client supports it), defaulting to
+	 * ApplyKind.Replace.
 	 *
 	 * Servers are only allowed to return default values if the client
 	 * signals support for this via the `completionList.itemDefaults`
@@ -5233,6 +5315,73 @@ export interface CompletionList {
 		 * @since 3.17.0
 		 */
 		data?: LSPAny;
+	}
+
+	/**
+	 * Specifies how fields from a completion item should be combined with those
+	 * from `completionList.itemDefaults`.
+	 *
+	 * If unspecified, all fields will be treated as ApplyKind.Replace.
+	 *
+	 * If a field's value is ApplyKind.Replace, the value from a completion item
+	 * (if provided and not `null`) will always be used instead of the value
+	 * from `completionItem.itemDefaults`.
+	 *
+	 * If a field's value is ApplyKind.Merge, the values will be merged using
+	 * the rules defined against each field below.
+	 *
+	 * Servers are only allowed to return `applyKind` if the client
+	 * signals support for this via the `completionList.applyKindSupport`
+	 * capability.
+	 *
+	 * @since 3.18.0
+	 */
+	applyKind?: {
+		/**
+		 * Specifies whether commitCharacters on a completion will replace or be
+		 * merged with those in `completionList.itemDefaults.commitCharacters`.
+		 *
+		 * If ApplyKind.Replace, the commit characters from the completion item
+		 * will always be used unless not provided, in which case those from
+		 * `completionList.itemDefaults.commitCharacters` will be used. An
+		 * empty list can be used if a completion item does not have any commit
+		 * characters and also should not use those from
+		 * `completionList.itemDefaults.commitCharacters`.
+		 *
+		 * If ApplyKind.Merge the commitCharacters for the completion will be
+		 * the union of all values in both
+		 * `completionList.itemDefaults.commitCharacters` and the completion's
+		 * own `commitCharacters`.
+		 *
+		 * @since 3.18.0
+		 */
+		commitCharacters?: ApplyKind;
+
+		/**
+		 * Specifies whether the `data` field on a completion will replace or
+		 * be merged with data from `completionList.itemDefaults.data`.
+		 *
+		 * If ApplyKind.Replace, the data from the completion item will be used
+		 * if provided (and not `null`), otherwise
+		 * `completionList.itemDefaults.data` will be used. An empty object can
+		 * be used if a completion item does not have any data but also should
+		 * not use the value from `completionList.itemDefaults.data`.
+		 *
+		 * If ApplyKind.Merge, a shallow merge will be performed between
+		 * `completionList.itemDefaults.data` and the completion's own data
+		 * using the following rules:
+		 *
+		 * - If a completion's `data` field is not provided (or `null`), the
+		 *   entire `data` field from `completionList.itemDefaults.data` will be
+		 *   used as-is.
+		 * - If a completion's `data` field is provided, each field will
+		 *   overwrite the field of the same name in
+		 *   `completionList.itemDefaults.data` but no merging of nested fields
+		 *   within that value will occur.
+		 *
+		 * @since 3.18.0
+		 */
+		data?: ApplyKind;
 	}
 
 	/**
@@ -5352,6 +5501,36 @@ export interface CompletionItemLabelDetails {
 	 */
 	description?: string;
 }
+
+/**
+ * Defines how values from a set of defaults and an individual item will be
+ * merged.
+ *
+ * @since 3.18.0
+ */
+export namespace ApplyKind {
+	/**
+	 * The value from the individual item (if provided and not `null`) will be
+	 * used instead of the default.
+	 */
+	export const Replace: 1 = 1;
+
+	/**
+	 * The value from the item will be merged with the default.
+	 *
+	 * The specific rules for mergeing values are defined against each field
+	 * that supports merging.
+	 */
+	export const Merge: 2 = 2;
+}
+
+/**
+ * Defines how values from a set of defaults and an individual item will be
+ * merged.
+ *
+ * @since 3.18.0
+ */
+export type ApplyKind = 1 | 2;
 
 export interface CompletionItem {
 
@@ -6358,6 +6537,19 @@ export interface CodeActionClientCapabilities {
 	 * @proposed
 	 */
 	 documentationSupport?: boolean;
+
+	/**
+	 * Client supports the tag property on a code action. Clients
+	 * supporting tags have to handle unknown tags gracefully.
+	 *
+	 * @since 3.18.0 - proposed
+	 */
+	tagSupport?: {
+		/**
+		 * The tags supported by the client.
+		 */
+		valueSet: CodeActionTag[];
+	}; 
 }
 
 /**
@@ -6629,6 +6821,19 @@ export namespace CodeActionTriggerKind {
 export type CodeActionTriggerKind = 1 | 2;
 
 /**
+ * Code action tags are extra annotations that tweak the behavior of a code action.
+ *
+ * @since 3.18.0 - proposed
+ */
+export namespace CodeActionTag {
+	/**
+	 * Marks the code action as LLM-generated.
+	 */
+	export const LLMGenerated = 1;
+}
+export type CodeActionTag = 1;
+
+/**
  * A code action represents a change that can be performed in code, e.g. to fix
  * a problem or to refactor code.
  *
@@ -6715,6 +6920,13 @@ export interface CodeAction {
 	 * @since 3.16.0
 	 */
 	data?: LSPAny;
+
+	/**
+ 	 * Tags for this code action.
+	 *
+	 * @since 3.18.0 - proposed
+	 */
+	tags?: CodeActionTag[];
 }
 
 textDocument.codeAction.resolveSupport = { properties: ['edit'] };
@@ -7590,7 +7802,7 @@ export interface FileOperationPatternOptions {
 interface FileOperationPattern {
 	/**
 	 * The glob pattern to match. Glob patterns can have the following syntax:
-	 * - `*` to match one or more characters in a path segment
+	 * - `*` to match zero or more characters in a path segment
 	 * - `?` to match on one character in a path segment
 	 * - `**` to match any number of path segments, including none
 	 * - `{}` to group sub patterns into an OR expression. (e.g. `**​/*.{ts,js}`
@@ -7767,51 +7979,6 @@ export interface DidChangeWatchedFilesRegistrationOptions {
 	watchers: FileSystemWatcher[];
 }
 
-/**
- * The glob pattern to watch relative to the base path. Glob patterns can have
- * the following syntax:
- * - `*` to match one or more characters in a path segment
- * - `?` to match on one character in a path segment
- * - `**` to match any number of path segments, including none
- * - `{}` to group conditions (e.g. `**​/*.{ts,js}` matches all TypeScript
- *   and JavaScript files)
- * - `[]` to declare a range of characters to match in a path segment
- *   (e.g., `example.[0-9]` to match on `example.0`, `example.1`, …)
- * - `[!...]` to negate a range of characters to match in a path segment
- *   (e.g., `example.[!0-9]` to match on `example.a`, `example.b`,
- *   but not `example.0`)
- *
- * @since 3.17.0
- */
-export type Pattern = string;
-
-/**
- * A relative pattern is a helper to construct glob patterns that are matched
- * relatively to a base URI. The common value for a `baseUri` is a workspace
- * folder root, but it can be another absolute URI as well.
- *
- * @since 3.17.0
- */
-export interface RelativePattern {
-	/**
-	 * A workspace folder or a base URI to which this pattern will be matched
-	 * against relatively.
-	 */
-	baseUri: WorkspaceFolder | URI;
-
-	/**
-	 * The actual glob pattern;
-	 */
-	pattern: Pattern;
-}
-
-/**
- * The glob pattern. Either a string pattern or a relative pattern.
- *
- * @since 3.17.0
- */
-export type GlobPattern = Pattern | RelativePattern;
-
 export interface FileSystemWatcher {
 	/**
 	 * The glob pattern to watch. See {@link GlobPattern glob pattern}
@@ -7982,6 +8149,81 @@ export interface ApplyWorkspaceEditResult {
 	 * in its client capabilities.
 	 */
 	failedChange?: uinteger;
+}
+
+
+/* source file: "workspace/textDocumentContent.md" */
+
+/**
+ * Client capabilities for a text document content provider.
+ *
+ * @since 3.18.0
+ */
+export type TextDocumentContentClientCapabilities = {
+	/**
+	 * Text document content provider supports dynamic registration.
+	 */
+	dynamicRegistration?: boolean;
+};
+
+/**
+ * Text document content provider options.
+ *
+ * @since 3.18.0
+ */
+export type TextDocumentContentOptions = {
+	/**
+	 * The schemes for which the server provides content.
+	 */
+	schemes: string[];
+};
+
+/**
+ * Text document content provider registration options.
+ *
+ * @since 3.18.0
+ */
+export type TextDocumentContentRegistrationOptions = TextDocumentContentOptions &
+	StaticRegistrationOptions;
+
+/**
+ * Parameters for the `workspace/textDocumentContent` request.
+ *
+ * @since 3.18.0
+ */
+export interface TextDocumentContentParams {
+	/**
+	 * The uri of the text document.
+	 */
+	uri: DocumentUri;
+}
+
+/**
+ * Result of the `workspace/textDocumentContent` request.
+ *
+ * @since 3.18.0
+ * @proposed
+ */
+export interface TextDocumentContentResult {
+	/**
+	 * The text content of the text document. Please note, that the content of
+	 * any subsequent open notifications for the text document might differ
+	 * from the returned content due to whitespace and line ending
+	 * normalizations done on the client
+	 */
+	text: string;
+}
+
+/**
+ * Parameters for the `workspace/textDocumentContent/refresh` request.
+ *
+ * @since 3.18.0
+ */
+export interface TextDocumentContentRefreshParams {
+	/**
+	 * The uri of the text document to refresh.
+	 */
+	uri: DocumentUri;
 }
 
 

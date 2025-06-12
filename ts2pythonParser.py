@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 
-"""ts2python.py - compiles typescript dataclasses to Python
+"""ts2python.py - compiles Typescript dataclasses to Python
         TypedDicts <https://www.python.org/dev/peps/pep-0589/>
 
 Copyright 2021  by Eckhart Arnold (arnold@badw.de)
@@ -489,6 +489,26 @@ def strip_qualifier(qualified_name: str) -> str:
             return qualified_name
 
 
+def strip_type_parameters(objname: str) -> str:
+    """Removes Type-Parameters from object name, e.g.::
+
+        >>> strip_type_parameters("Mapping_0[K, V]")
+        'Mapping_0'
+        >>> strip_type_parameters("Mapping_0[K[X, Y], V]")
+        'Mapping_0'
+        >>> strip_type_parameters("Mapping_0[K, V[T[A, B]]]")
+        'Mapping_0'
+    """
+    if objname[-1:] == ']':
+        b = len(objname) - 1
+        a = b
+        while b >= a:
+            a = objname.rfind('[', 0, a)
+            b = objname.rfind(']', 0, b)
+        return objname[:a]
+    return objname
+
+
 NOT_YET_IMPLEMENTED_WARNING = ErrorCode(310)
 UNSUPPORTED_WARNING = ErrorCode(320)
 
@@ -544,7 +564,7 @@ class ts2pythonCompiler(Compiler):
             self.class_decorator += '\n'
         ts2python_cfg = get_config_values('ts2python.*')
         self.use_enums = ts2python_cfg.get('ts2python.UseEnum', True)
-        self.use_postponed_evaluations = ts2python_cfg.get('ts2python.UsePostponedEvaluations', False)
+        self.use_postponed_evaluation = ts2python_cfg.get('ts2python.UsePostponedEvaluation', False)
         self.use_type_union = ts2python_cfg.get('ts2python.UseTypeUnion', False)
         self.use_explicit_type_alias = ts2python_cfg.get('ts2python.UseExplicitTypeAlias', False)
         self.use_type_parameters = ts2python_cfg.get('ts2python.UseTypeParameters', False)
@@ -628,7 +648,7 @@ class ts2pythonCompiler(Compiler):
                            f'Python {c_major}.{c_minor} and above\n',
                            # f'# feature level: Python {f_major}.{f_minor}\n',
                            'from __future__ import annotations' if
-                           self.use_postponed_evaluations else '',
+                           self.use_postponed_evaluation else '',
                            GENERAL_IMPORTS] \
                 + type_imports \
                 + ([FUNCTOOLS_IMPORTS] if self.require_singledispatch else []) \
@@ -1044,7 +1064,7 @@ class ts2pythonCompiler(Compiler):
         ftps = self.func_type_parameters
         for nd in node.children:
             n = obj_name_stub.rfind('_')
-            ending = obj_name_stub[n + 1:]
+            ending = strip_type_parameters(obj_name_stub)[n + 1:]
             if n >= 0 and (not ending or ending.isdecimal()):
                 obj_name_stub = obj_name_stub[:n]
             self.obj_name[-1] = fname + obj_name_stub + '_' + str(i) + ftps
@@ -1101,7 +1121,9 @@ class ts2pythonCompiler(Compiler):
             # the magic marker "TOPLEVEL_" should not be part of the class-name,
             # but make sure that there is always a name, even in a testing-context
             # that does not start at top-level. Thus, the or-clause in class_name.
-            class_name = '_'.join(self.obj_name[1:]) or self.obj_name[0]
+            names = [strip_type_parameters(name) for name in self.obj_name[1:-1]] \
+                    + [self.obj_name[-1]]
+            class_name = '_'.join(names) or self.obj_name[0]
             return ''.join([self.render_local_classes(),
                             self.render_class_header(class_name, '') + "    ",
                             decls.replace('\n', '\n    ')])
@@ -1371,7 +1393,7 @@ class ts2pythonCompiler(Compiler):
         unknown_types = set(tn.content for tn in node.select('type_name')
                             if not self.get_known_type(tn.content))
         type_expression = self.compile(type_node)
-        if self.assume_deferred_evaluation or self.use_postponed_evaluations:
+        if self.assume_deferred_evaluation or self.use_postponed_evaluation:
             type_expression = type_expression.replace("'", "")
         else:
             for typ in unknown_types:
@@ -1698,7 +1720,7 @@ def main(called_from_app=False):
             for pep in args_peps:
                 kwargs= {'value': pep[0] != '~', 'allow_new_key': True}
                 if pep == '435':  set_preset_value('ts2python.UseEnum', **kwargs)
-                if pep == '563':  set_preset_value('ts2python.UsePostponedEvaluations', **kwargs)
+                if pep == '563':  set_preset_value('ts2python.UsePostponedEvaluation', **kwargs)
                 if pep in ('586', '584'):  set_preset_value('ts2python.UseLiteralType', **kwargs)
                 if pep == '604':  set_preset_value('ts2python.TypeUnion', **kwargs)
                 if pep == '613':  set_preset_value('ts2python.UseExplicitTypeAlias', **kwargs)

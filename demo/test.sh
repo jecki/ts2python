@@ -2,6 +2,11 @@
 
 export PYTHONPATH=../:$PYTHONPATH
 
+
+echo "Testing python3.14 compatibility"
+python3.14 ../ts2pythonParser.py --compatibility 3.14 specification.ts
+python3.14 specification.py
+
 echo "Testing python3.13 compatibility"
 python3.13 ../ts2pythonParser.py --compatibility 3.13 specification.ts
 python3.13 specification.py
@@ -31,5 +36,5 @@ python3.8 ../ts2pythonParser.py --compatibility 3.8 specification.ts
 python3.8 specification.py
 
 echo "Testing python3.7 compatibility"
-python3 ../ts2pythonParser.py --compatibility 3.7 specification.ts
+python3.7 ../ts2pythonParser.py --compatibility 3.7 specification.ts
 python3.7 specification.py

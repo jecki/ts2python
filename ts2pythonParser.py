@@ -588,7 +588,8 @@ class ts2pythonCompiler(Compiler):
             {'Union': 'Union', 'List': 'List', 'Tuple': 'Tuple', 'Optional': 'Optional',
              'Dict': 'Dict', 'Set': 'Set', 'Any': 'Any', 'Generic': 'Generic',
              'Coroutine': 'Coroutine', 'list': 'list', 'tuple': 'tuple', 'dict': 'dict',
-             'set': 'set', 'frozenset': 'frozenset', 'int': 'int', 'float': 'float'}]
+             'set': 'set', 'frozenset': 'frozenset', 'int': 'int', 'float': 'float',
+             'str': 'str', 'None': 'None'}]
         self.local_classes: List[List[str]] = [[]]
         self.base_classes: Dict[str, List[str]] = {}
         self.typed_dicts: Set[str] = {'TypedDict'}  # names of classes that are TypedDicts
@@ -614,6 +615,8 @@ class ts2pythonCompiler(Compiler):
         return self.obj_name == ['TOPLEVEL_']
 
     def get_known_type(self, typename: str, value: str = "") -> str:
+        i = typename.find('[')
+        if i >= 0:  typename = typename[:i]  # for example, reduces List[str] to List
         for type_dict in self.known_types:
             if typename in type_dict:
                 return type_dict[typename]
@@ -866,6 +869,10 @@ class ts2pythonCompiler(Compiler):
             if self.use_type_parameters:  self.known_types.pop()
             code = preface + ("type " if self.use_type_parameters else "") \
                    + f"{alias}{tps} = {types}"
+            # there follows a hack to avoid failure on type unions of
+            # stringified type aliases and real types
+            if types[-1:] == "'" and alias in self.known_types[-1]:
+                del self.known_types[-1][alias]
         else:
             code = ''
         if node[-1].name == 'comment__':
@@ -1037,11 +1044,15 @@ class ts2pythonCompiler(Compiler):
 
     def render_union(self, preface, union) -> str:
         if self.use_type_union or len(union) <= 1:
-            if any(typ[0:1] in ('"', "'") for typ in union):
-                # union = [typ.strip("'").strip('"') for typ in union]
+            # if any(typ[0:1] in ('"', "'") for typ in union):
+            if any(typ[0:1] in ('"', "'") for typ in union)\
+                    or (not self.use_type_parameters and
+                        (not all(self.get_known_type(typ) for typ in union) \
+                         and pick_from_path(self.path, 'type_alias'))):
                 union = [typ.replace("'", '').replace('"', '') for typ in union]
                 return f"{preface}'{' | '.join(union)}'"
-            return preface + ' | '.join(union)
+            else:
+                return preface + ' | '.join(union)
         else:
             return preface + f"Union[{', '.join(union)}]"
 

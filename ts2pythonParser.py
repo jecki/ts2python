@@ -86,7 +86,7 @@ from DHParser.transform import is_empty, remove_if, TransformationDict, Transfor
 from DHParser import parse as parse_namespace__
 
 
-version = "0.7.7"
+version = "0.8.0"
 
 
 #######################################################################
@@ -813,13 +813,19 @@ class ts2pythonCompiler(Compiler):
         else:
             force_base_class = ''
             self.typed_dicts.add(name)
-        decls = self.compile(node['declarations_block'])
+        decls_block = node['declarations_block']
+        save_render_anonymous = self.render_anonymous
+        if force_base_class:
+            self.render_anonymous = "local"
+            decls_block.attr['no_typed_dict'] = True
+        decls = self.compile(decls_block)
         interface = self.render_class_header(name, base_classes, force_base_class, tps)
         self.base_classes[name] = base_class_list
         if self.base_class_name == "TypedDict" and self.render_anonymous == "toplevel":
             interface = self.render_local_classes() + '\n' + interface
         else:
             interface += ('    ' + self.render_local_classes().replace('\n', '\n    ')).rstrip(' ')
+        self.render_anonymous = save_render_anonymous
         self.optional_keys.pop()
         self.local_classes.pop()
         self.known_types.pop()
@@ -907,6 +913,10 @@ class ts2pythonCompiler(Compiler):
         self.mark_overloaded_functions(node)
         # declarations = '\n'.join(self.compile(nd) for nd in node
         #                          if nd.name in ('declaration', 'function'))
+        if node.get_attr('no_typed_dict', False):
+            for nd in node.children:
+                if 'optional' in nd:
+                    nd.attr['force_optional'] = True
         raw_decls = [self.compile(nd) for nd in node
                      if nd.name in ('declaration', 'function', 'comment__')]
         declarations = '\n'.join(d for d in raw_decls if d)
@@ -923,20 +933,8 @@ class ts2pythonCompiler(Compiler):
             T = typename  # substitute typename for type
         if 'optional' in node:
             self.optional_keys[-1].append(identifier)
-            # if self.use_not_required:
-            T = f"NotRequired[{T}]"
-            # else:
-            #     if T.startswith('Union['):
-            #         if T.find('None') < 0:
-            #             T = T[:-1] + ', None]'
-            #     elif T.find('|') >= 0:
-            #         if T.find('None') < 0:
-            #             if T[0:1] not in ("'", '"'):
-            #                 T += ' | None'
-            #             else:
-            #                 T = T[:-1] + (" | None" + T[0:1])
-            #     else:
-            #         T = f"Optional[{T}]"
+            T = f"Optional[{T}]" if node.get_attr('force_optional', False) \
+                else f"NotRequired[{T}]"
         if self.is_toplevel() and bool(self.local_classes[-1]):
             preface = self.render_local_classes()
             self.local_classes.pop()
@@ -1124,7 +1122,7 @@ class ts2pythonCompiler(Compiler):
         return f"ReadOnly[{result}]" if self.allow_read_only and self.readonly_decl() \
             else result
 
-    def render_declarations(self, decls) -> str:
+    def render_declarations(self, decls: str) -> str:
         if self.base_class_name != "TypedDict" or self.render_anonymous == "local":
             return ''.join([self.render_class_header(self.obj_name[-1], '') + "    ",
                             self.render_local_classes().replace('\n', '\n    '),
@@ -1277,16 +1275,24 @@ class ts2pythonCompiler(Compiler):
         for nd in node[2:]:
             declaration = self.compile(nd)
             declarations.extend(declaration.split('\n'))
-        local_classes = self.render_local_classes().replace('\n', '\n    ')
-        if local_classes:
-            declarations.insert(1, local_classes)
+        local_classes = self.render_local_classes()
+        if self.render_anonymous != 'toplevel':
+            if local_classes:
+                declarations.insert(1, local_classes.replace('\n', '\n    '))
+            result = '\n    '.join(declarations)
+        else:
+            if local_classes:
+                result = ''.join([local_classes, '\n',
+                                  '\n    '.join(declarations)])
+            else:
+                result = '\n    '.join(declarations)
         self.known_types.pop()
         self.add_to_known_types(node, name, 'namespace')
         self.local_classes.pop()
         self.optional_keys.pop()
         self.scope_type.pop()
         self.obj_name.pop()
-        return '\n    '.join(declarations)
+        return result
 
     def on_enum(self, node) -> str:
         if self.use_enums:

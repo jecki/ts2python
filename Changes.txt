@@ -1,9 +1,16 @@
-Version 0.7.7
+Version 0.8.0
 -------------
-- bugfix: configuration-flag UseTypeParameters (for Python version 3.12 and above)
-  is not ignored, anymore
+- Python 3.14 support (via the "--compatibility 3.14" switch)
+- Postponed evalaution (PEP 563) and deferred evaluation
+  (Python 3.14 and higher) is now supported with the "--peps 563"
+  and "--peps 649" switches, respectively.
+- type-statements are now used instead of TypeAlias for Python
+  compatibility level >= 3.12
+- Typescript's "readonly" is now transpiled to Python's "ReadOnly[...]"
+  for Python compatibility level >= 3.13
+- bugfix: configuration-flag UseTypeParameters (for Python
+  version 3.12 and above) is not ignored, anymore
 - typo-corrections and some updates to the documentation
-- Python 3.14 compatibility
 
 
 Version 0.7.6

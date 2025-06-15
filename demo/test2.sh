@@ -44,6 +44,6 @@ python3.8 patch_vscode_d.py
 python3.8 vscode.d.py
 
 echo "Testing python3.7 compatibility"
-python3.7 ../ts2pythonParser.py --compatibility 3.7 vscode.d.ts
-python3.7 patch_vscode_d.py
+python3.8 ../ts2pythonParser.py --compatibility 3.7 vscode.d.ts
+python3.8 patch_vscode_d.py
 python3.7 vscode.d.py

@@ -36,5 +36,5 @@ python3.8 ../ts2pythonParser.py --compatibility 3.8 specification.ts
 python3.8 specification.py
 
 echo "Testing python3.7 compatibility"
-python3.7 ../ts2pythonParser.py --compatibility 3.7 specification.ts
+python3.8 ../ts2pythonParser.py --compatibility 3.7 specification.ts
 python3.7 specification.py

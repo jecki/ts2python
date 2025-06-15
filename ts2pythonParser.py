@@ -355,23 +355,13 @@ GENERAL_IMPORTS = """
 import sys
 from enum import Enum, IntEnum"""
 
-TYPE_IMPORTS_37 = """
-if sys.version_info >= (3, 9, 0):
-    from typing import Union, Optional, Any, Generic, TypeVar, Callable, List, \\
-        Iterable, Iterator, Tuple, Dict
-    # do not use list, tuple, dict, because contained types won't be forward ref'd
-    from collections.abc import Coroutine
-else:
-    from typing import Union, List, Tuple, Optional, Dict, Iterable, Iterator, \\
-        Any, Generic, TypeVar, Callable, Coroutine
+
+TYPE_IMPORTS_37 = """from typing import Union, Optional, Any, Generic, TypeVar, Callable, List, \\
+    Iterable, Iterator, AsyncIterable, Tuple, Dict, Literal
 """
 
-TYPE_IMPORTS_39 = """from typing import Union, Optional, Any, Generic, TypeVar, Callable, List, \\
-    Iterable, Iterator, Tuple, Dict, Literal
-from collections.abc import Coroutine"""
-
 TYPE_IMPORTS_311 = """from typing import Union, Optional, Any, Generic, TypeVar, Callable, List, \\
-    Iterable, Iterator, Tuple, Dict, TypedDict, NotRequired, Literal, TypeAlias
+    Iterable, Iterator, AsyncIterable, Tuple, Dict, TypedDict, NotRequired, Literal, TypeAlias
 from collections.abc import Coroutine
 try:
     from typing import ReadOnly
@@ -379,8 +369,8 @@ except ImportError:
     ReadOnly = Union"""
 
 TYPE_IMPORTS_313 = """from typing import Union, Optional, Any, Generic, TypeVar, Callable, List, \\
-    Iterable, Iterator, Tuple, Dict, TypedDict, NotRequired, ReadOnly, Literal
-from collections.abc import Coroutine"""
+    Iterable, Iterator, AsyncIterable, Tuple, Dict, TypedDict, NotRequired, ReadOnly, Literal
+e"""
 
 TYPEDDICT_IMPORTS_37 = """
 try:
@@ -415,7 +405,7 @@ except ImportError:
 
 TYPE_IMPORTS_MAPPING = {(3, 13): [TYPE_IMPORTS_313],
                         (3, 11): [TYPE_IMPORTS_311],
-                        (3,  9): [TYPE_IMPORTS_39, TYPEDDICT_IMPORTS_37],
+                        (3,  9): [TYPE_IMPORTS_37, TYPEDDICT_IMPORTS_37],
                         (3,  7): [TYPE_IMPORTS_37, TYPEDDICT_IMPORTS_37]}
 
 FUNCTOOLS_IMPORTS = """
@@ -527,7 +517,7 @@ TYPE_NAME_SUBSTITUTION = {
     'any': 'Any',
     'void': 'None',
 
-    'Thenable': 'Coroutine',
+    'Thenable': 'Thenable',
     'IterableIterator': 'Iterator',
     'Array': 'List',
     'ReadonlyArray': 'List',
@@ -589,7 +579,8 @@ class ts2pythonCompiler(Compiler):
              'Dict': 'Dict', 'Set': 'Set', 'Any': 'Any', 'Generic': 'Generic',
              'Coroutine': 'Coroutine', 'list': 'list', 'tuple': 'tuple', 'dict': 'dict',
              'set': 'set', 'frozenset': 'frozenset', 'int': 'int', 'float': 'float',
-             'str': 'str', 'None': 'None'}]
+             'str': 'str', 'None': 'None', 'Thenable': 'Thenable'}]
+        self.special_types_used: Set[str] = set()   # Can contian Thenable, in the future maybe also PromiseLike
         self.local_classes: List[List[str]] = [[]]
         self.base_classes: Dict[str, List[str]] = {}
         self.typed_dicts: Set[str] = {'TypedDict'}  # names of classes that are TypedDicts
@@ -652,6 +643,8 @@ class ts2pythonCompiler(Compiler):
                            # f'# feature level: Python {f_major}.{f_minor}\n',
                            'from __future__ import annotations' if
                            self.use_postponed_evaluation else '',
+                           'Thenable = AsyncIterable' if
+                           'Thenable' in self.special_types_used else '',
                            GENERAL_IMPORTS] \
                 + type_imports \
                 + ([FUNCTOOLS_IMPORTS] if self.require_singledispatch else []) \

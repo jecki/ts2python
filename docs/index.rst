@@ -55,17 +55,20 @@ ts2python tries to be as backwards compatible as possible. To run ts2python you
 need at least Python version 3.8. The code ts2python generates is backwards
 compatible down to version 3.7. If you do not need to be compatible with older
 versions, you can use the --compatibility [VERSION] switch to generate code
-for newer versions only. Usually, this code is a bit cleaner than the fully
-compatible code, e.g.::
+for newer versions only, e.g.::
 
    $ ts2python --compatibility 3.11 [FILENAME.ts]
 
+Usually, this code is somewhat cleaner than the fully
+compatible code. Also, certain features like `type`-statments (Python 3.12 and
+above) or the `ReadOnly`-qualifier (Python 3.13 and higher) are only available
+at higher compatibility levels!
 In order to achieve full conformity with most type-checkers, it is advisable
 to use compatibility level 3.11 and also add the ``-a toplevel``-switch
 to always turn anonymous TypeScript-interfaces into top-level classes, rather
-than locally defined classes, which is not allowed for Python's TypedDict, although
-it should be (in my IMHO) and works perfectly well - except that type-checkers like
-pylance emit an error-message.
+than locally defined classes. Local classes are not allowed for Python TypedDicts,
+although they work perfectly well - except that type-checkers like pylance
+emit an error-message.
 
 With compatibility-level 3.11 and above, the generated code does not need to
 use ts2python's "typeddict_shim"-compatibility layer, any more. This greatly

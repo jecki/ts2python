@@ -357,20 +357,21 @@ from enum import Enum, IntEnum"""
 
 
 TYPE_IMPORTS_37 = """from typing import Union, Optional, Any, Generic, TypeVar, Callable, List, \\
-    Iterable, Iterator, AsyncIterable, Tuple, Dict, Literal
+    Iterable, Iterator, Tuple, Dict, Literal, Awaitable
 """
 
 TYPE_IMPORTS_311 = """from typing import Union, Optional, Any, Generic, TypeVar, Callable, List, \\
-    Iterable, Iterator, AsyncIterable, Tuple, Dict, TypedDict, NotRequired, Literal, TypeAlias
-from collections.abc import Coroutine
+    Iterable, Iterator, Tuple, Dict, TypedDict, NotRequired, Literal, TypeAlias, \\
+    Awaitable, Self
 try:
     from typing import ReadOnly
 except ImportError:
-    ReadOnly = Union"""
+    ReadOnly = Union
+"""
 
 TYPE_IMPORTS_313 = """from typing import Union, Optional, Any, Generic, TypeVar, Callable, List, \\
-    Iterable, Iterator, AsyncIterable, Tuple, Dict, TypedDict, NotRequired, ReadOnly, Literal
-e"""
+    Iterable, Iterator, Tuple, Dict, TypedDict, NotRequired, Literal, ReadOnly, Awaitable
+"""
 
 TYPEDDICT_IMPORTS_37 = """
 try:
@@ -422,6 +423,14 @@ except ImportError:
               f"{sys.version}. This module may therefore fail to run if "
               f"singledispatchmethod is needed, anywhere!")     
 """
+
+
+PROMISE_LIKE_CLASS_312 = """class PromiseLike[T]:
+    def then(self, onfullfilled: Optional[Callable], onrejected: Optional[Callable]) -> Self:
+        pass
+"""
+
+PROMISE_LIKE_CLASS_37 = """PromiseLike = Iterable  # Admittedly, a very poor hack"""
 
 
 def to_typename(varname: str) -> str:
@@ -517,9 +526,10 @@ TYPE_NAME_SUBSTITUTION = {
     'any': 'Any',
     'void': 'None',
 
-    'Thenable': 'Thenable',
+    'PromiseLike': 'PromiseLike',
     'IterableIterator': 'Iterator',
     'Array': 'List',
+    'Record': 'Dict',
     'ReadonlyArray': 'List',
     'Uint32Array': 'List[int]',
     'Error': 'Exception',
@@ -579,8 +589,7 @@ class ts2pythonCompiler(Compiler):
              'Dict': 'Dict', 'Set': 'Set', 'Any': 'Any', 'Generic': 'Generic',
              'Coroutine': 'Coroutine', 'list': 'list', 'tuple': 'tuple', 'dict': 'dict',
              'set': 'set', 'frozenset': 'frozenset', 'int': 'int', 'float': 'float',
-             'str': 'str', 'None': 'None', 'Thenable': 'Thenable'}]
-        self.special_types_used: Set[str] = set()   # Can contian Thenable, in the future maybe also PromiseLike
+             'str': 'str', 'None': 'None'}]
         self.local_classes: List[List[str]] = [[]]
         self.base_classes: Dict[str, List[str]] = {}
         self.typed_dicts: Set[str] = {'TypedDict'}  # names of classes that are TypedDicts
@@ -643,8 +652,6 @@ class ts2pythonCompiler(Compiler):
                            # f'# feature level: Python {f_major}.{f_minor}\n',
                            'from __future__ import annotations' if
                            self.use_postponed_evaluation else '',
-                           'Thenable = AsyncIterable' if
-                           'Thenable' in self.special_types_used else '',
                            GENERAL_IMPORTS] \
                 + type_imports \
                 + ([FUNCTOOLS_IMPORTS] if self.require_singledispatch else []) \
@@ -1054,6 +1061,9 @@ class ts2pythonCompiler(Compiler):
             if decl.name == 'types':
                 break
             if decl.name == 'declaration':
+                if i >= 0 and self.path[i-1].name == 'declarations_block' \
+                        and 'function' in self.path[i-1]:
+                    break
                 qualifiers = decl.get('qualifiers', None)
                 if qualifiers and 'readonly' in qualifiers:
                     return True
@@ -1363,14 +1373,24 @@ class ts2pythonCompiler(Compiler):
         return TYPE_NAME_SUBSTITUTION[node.content]
 
     def on_generic_type(self, node) -> str:
-        base_type = self.compile(node['type_name'])
-        if base_type == 'Record':
-            base_type = "Dict"
+        type_name = node['type_name']
+        if type_name.content == 'PromiseLike' \
+                and 'PromiseLike' not in self.known_types \
+                and 'PromiseLike' not in self.obj_name:  # a hack for a special case
+            interface = pick_from_path(self.path, 'interface')  # a hack for a special case
+            if not interface or not interface['identifier'].content == 'PromiseLike':
+                if self.compatibility_level >= (3, 12):
+                    promiselike_def = PROMISE_LIKE_CLASS_312
+                else:
+                    promiselike_def = PROMISE_LIKE_CLASS_37
+                self.local_classes[-1].append(promiselike_def)
+                self.known_types[-1]['PromiseLike']= 'PromiseLike'
+        base_type = self.compile(type_name)
         parameters = self.compile(node['type_parameters'])
         if parameters == 'None':
             return base_type
         else:
-            return ''.join([base_type, '[', parameters, ']'])
+            return f'{base_type}[{parameters}]'
 
     def on_type_parameters(self, node) -> str:
         type_parameters = [self.compile(nd) for nd in node.children]

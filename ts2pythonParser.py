@@ -297,9 +297,7 @@ ASTTransformation: Junction = Junction(
 
 def dump_configuration() -> str:
     return f"""[ts2python]
-BaseClassName = {get_config_value('ts2python.BaseClassName', 'TypedDict')}
 RenderAnonymous = {get_config_value('ts2python.RenderAnonymous', 'local')}
-ClassDecorator = {get_config_value('ts2python.ClassDecorator', '')} 
 UseEnum = {get_config_value('ts2python.UseEnum', True)}
 UsePostponedEvaluation = {get_config_value('ts2python.UsePostponedEvaluation', True)}
 UseTypeUnion = {get_config_value('ts2python.UseTypeUnion', False)}
@@ -340,6 +338,35 @@ def required_python_version(ts2python_cfg: Dict[str, bool],
     # ReadOnly can be defined as Union for Python-version < 3.13
     # NotRequired can be defined as Optional for Python-version < 3.11
     return min_version
+
+
+def set_compatibility_level(version_info: Tuple[int, ...] = (3, 7),
+                            config_or_preset: str = "preset"):
+    if config_or_preset == "preset":
+        set_value = set_preset_value
+    else:
+        assert config_or_preset == "config"
+        set_value = set_config_value
+    if not version_info >= (3, 7):
+        print('Compatibility version must be >= 3.7')
+        sys.exit(1)
+    if version_info >= (3, 8):
+        set_value('ts2python.UseLiteralType', True, allow_new_key=True)
+    if version_info >= (3, 10):
+        set_value('ts2python.UseTypeUnion', True, allow_new_key=True)
+        if version_info < (3, 12):
+            set_value('ts2python.UseExplicitTypeAlias', True, allow_new_key=True)
+    if version_info >= (3, 11):
+        set_value('ts2python.UseNotRequired', True, allow_new_key=True)
+        set_value('ts2python.UseVariadicGenerics', True, allow_new_key=True)
+    if version_info >= (3, 12):
+        set_value('ts2python.UseTypeParameters', True, allow_new_key=True)
+    if version_info >= (3, 13):
+        set_value('ts2python.AllowReadOnly', True, allow_new_key=True)
+    if version_info >= (3, 14):
+        set_value('ts2python.AssumeDeferredEvaluation', True, allow_new_key=True)
+
+
 
 
 def source_hash(source_text: str) -> str:
@@ -542,26 +569,15 @@ class ts2pythonCompiler(Compiler):
 
     def reset(self):
         super().reset()
-        bcn = get_config_value('ts2python.BaseClassName', 'TypedDict')
-        i = bcn.rfind('.')
-        if i >= 0:
-            self.additional_imports = f'\nfrom {bcn[:i]} import {bcn[i + 1:]}\n'
-            bcn = bcn[i + 1:]
-        else:
-            self.additional_imports = ''
-        self.base_class_name = bcn
+        self.additional_imports = ''
         self.require_singledispatch = False
+        self.base_class_name = "TypedDict"
         self.render_anonymous = get_config_value('ts2python.RenderAnonymous', 'local')
-        self.class_decorator = get_config_value('ts2python.ClassDecorator', '').strip()
         if self.render_anonymous not in ('type', 'functional', 'local', 'toplevel'):
             raise ValueError(
                 f'Illegal value "{self.render_anonymous}" for '
                 f'ts2python.RenderAnonymous. Must be one of "type", '
                 f'"functional", "local", "toplevel".')
-        if self.class_decorator:
-            if self.class_decorator[0] != '@':
-                self.class_decorator = '@' + self.class_decorator
-            self.class_decorator += '\n'
         ts2python_cfg = get_config_values('ts2python.*')
         self.use_enums = ts2python_cfg.get('ts2python.UseEnum', True)
         self.use_postponed_evaluation = ts2python_cfg.get('ts2python.UsePostponedEvaluation', False)
@@ -721,7 +737,6 @@ class ts2pythonCompiler(Compiler):
                             generic_types: str = '') -> str:
         assert name
         optional_key_list = self.optional_keys[-1]
-        decorator = self.class_decorator
         base_class_name = (force_base_class or self.base_class_name).strip()
         tps = generic_types if self.use_type_parameters else ''
         if base_class_name == 'TypedDict':
@@ -731,30 +746,27 @@ class ts2pythonCompiler(Compiler):
                                           base_classes.find('Generic[') < 0) \
                                       else 'GenericTypedDict'
                 if self.use_not_required or total:
-                    return decorator + \
-                           f"class {name}{tps}({base_classes}, {td_name}):\n"
+                    return f"class {name}{tps}({base_classes}, {td_name}):\n"
                 else:
-                    return decorator + f"class {name}{tps}({base_classes}, "\
+                    return f"class {name}{tps}({base_classes}, "\
                            f"{td_name}, total={total}):\n"
             else:
                 tps = generic_types if self.use_type_parameters else ''
                 if self.use_not_required or total:
-                    return decorator + f"class {name}{tps}(TypedDict):\n"
+                    return f"class {name}{tps}(TypedDict):\n"
                 else:
-                    return decorator + \
-                           f"class {name}{tps}(TypedDict, total={total}):\n"
+                    return f"class {name}{tps}(TypedDict, total={total}):\n"
         else:
             if base_classes:
                 if base_class_name:
-                    return decorator + \
-                        f"class {name}{tps}({base_classes}, {base_class_name}):\n"
+                    return f"class {name}{tps}({base_classes}, {base_class_name}):\n"
                 else:
-                    return decorator + f"class {name}{tps}({base_classes}):\n"
+                    return f"class {name}{tps}({base_classes}):\n"
             else:
                 if base_class_name:
-                    return decorator + f"class {name}{tps}({base_class_name}):\n"
+                    return f"class {name}{tps}({base_class_name}):\n"
                 else:
-                    return decorator + f"class {name}{tps}:\n"
+                    return f"class {name}{tps}:\n"
 
     def render_local_classes(self) -> str:
         self.func_name = ''
@@ -1680,15 +1692,12 @@ def main(called_from_app=False):
                         help='Run batch jobs in a single thread (recommended only for debugging)')
     parser.add_argument('-c', '--compatibility', nargs=1, action='extend', type=str,
                         help='Minimal required python version (must be >= 3.7)')
-    parser.add_argument('-b', '--base', nargs=1, action='extend', type=str,
-                        help='Base class name, e.g. TypedDict (default) or BaseModel (pydantic)')
     parser.add_argument('-a', '--anonymous', nargs=1, action='extend', type=str,
                         help='How to render anonymous interfaces: "local" (default), '
                              '"toplevel", "functional", "type"')
-    parser.add_argument('-d', '--decorator', nargs=1, action='extend', type=str,
-                        help="addes the given decorator ")
-    parser.add_argument('-p', '--peps', nargs='+', action='extend', type=str,
-                        help='Assume Python-PEPs, e.g. 655 or ~655')
+    parser.add_argument('-p', '--peps', nargs=1, action='extend', type=str,
+                        help='Assume or ignore Python-PEPs, e.g. "655,~705" assume NotRequired '
+                             '(PEP 655), but ignore ReadOnly (PEP 705)')
     parser.add_argument('-k', '--comments', action='store_const', const="comments",
                         help="Preserve (multiline) comments")
 
@@ -1698,7 +1707,7 @@ def main(called_from_app=False):
     from DHParser.configuration import read_local_config
     read_local_config(os.path.join(scriptpath, 'ts2python/ts2pythonParser.ini'))
 
-    if args.debug or args.compatibility or args.base or args.decorator or args.peps or args.anonymous:
+    if args.debug or args.compatibility or args.peps or args.anonymous:
         access_presets()
         if args.debug is not None:
             log_dir = 'LOGS'
@@ -1707,29 +1716,10 @@ def main(called_from_app=False):
             set_preset_value('log_syntax_trees', frozenset(['cst', 'ast']))  # don't use a set literal, here
         if args.compatibility:
             version_info = tuple(int(part) for part in args.compatibility[0].split('.'))
-            if not version_info >= (3, 7):
-                print('Compatibility version must be >= 3.7')
-                sys.exit(1)
-            if version_info >= (3, 8):
-                set_preset_value('ts2python.UseLiteralType', True, allow_new_key=True)
-            if version_info >= (3, 10):
-                set_preset_value('ts2python.UseTypeUnion', True, allow_new_key=True)
-                if version_info < (3, 12):
-                    set_preset_value('ts2python.UseExplicitTypeAlias', True, allow_new_key=True)
-            if version_info >= (3, 11):
-                set_preset_value('ts2python.UseNotRequired', True, allow_new_key=True)
-                set_preset_value('ts2python.UseVariadicGenerics', True, allow_new_key=True)
-            if version_info >= (3, 12):
-                set_preset_value('ts2python.UseTypeParameters', True, allow_new_key=True)
-            if version_info >= (3, 13):
-                set_preset_value('ts2python.AllowReadOnly', True, allow_new_key=True)
-            if version_info >= (3, 14):
-                set_preset_value('ts2python.AssumeDeferredEvaluation', True, allow_new_key=True)
-        if args.base:  set_preset_value('ts2python.BaseClassName', args.base[0].strip())
+            set_compatibility_level(version_info, "preset")
         if args.anonymous:  set_preset_value('ts2python.RenderAnonymous', args.anonymous[0].strip())
-        if args.decorator:  set_preset_value('ts2python.ClassDecorator', args.decorator[0].strip())
         if args.peps:
-            args_peps = [pep.strip() for pep in args.peps]
+            args_peps = [pep.strip() for pep in args.peps[0].split(',')]
             all_peps = { '435',  '563',  '584',  '586',  '604', '613',
                          '646',  '649',  '655',  '695',  '705',  '749',
                         '~435', '~563', '~584', '~586', '~604', '~613',

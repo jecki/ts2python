@@ -10,6 +10,9 @@ Version 0.8.0
   for Python compatibility level >= 3.13
 - bugfix: configuration-flag UseTypeParameters (for Python
   version 3.12 and above) is not ignored, anymore
+- Removed --base (Base-Class) and --decorator switches from command line
+  options. Base-class now always defaults to TypedDict, and no additional
+  decorators will be added
 - typo-corrections and some updates to the documentation
 
 

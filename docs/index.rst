@@ -60,8 +60,8 @@ for newer versions only, e.g.::
    $ ts2python --compatibility 3.11 [FILENAME.ts]
 
 Usually, this code is somewhat cleaner than the fully
-compatible code. Also, certain features like `type`-statments (Python 3.12 and
-above) or the `ReadOnly`-qualifier (Python 3.13 and higher) are only available
+compatible code. Also, certain features like ``type``-statments (Python 3.12 and
+above) or the ``ReadOnly``-qualifier (Python 3.13 and higher) are only available
 at higher compatibility levels!
 In order to achieve full conformity with most type-checkers, it is advisable
 to use compatibility level 3.11 and also add the ``-a toplevel``-switch

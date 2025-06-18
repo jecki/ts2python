@@ -49,7 +49,7 @@ except ImportError:
 from DHParser.compile import Compiler, compile_source, Junction, full_compile
 from DHParser.configuration import set_config_value, get_config_value, get_config_values, \
     access_presets, finalize_presets, set_preset_value, get_preset_value, NEVER_MATCH_PATTERN, \
-    get_config_values
+    get_config_values, read_local_config
 from DHParser import dsl
 from DHParser.dsl import recompile_grammar, never_cancel
 from DHParser.ebnf import grammar_changed
@@ -1704,8 +1704,7 @@ def main(called_from_app=False):
     args = parser.parse_args()
     file_names, out, log_dir = args.files, args.out[0], ''
 
-    from DHParser.configuration import read_local_config
-    read_local_config(os.path.join(scriptpath, 'ts2python/ts2pythonParser.ini'))
+    read_local_config(os.path.join(scriptpath, 'ts2pythonConfig.ini'))
 
     if args.debug or args.compatibility or args.peps or args.anonymous:
         access_presets()

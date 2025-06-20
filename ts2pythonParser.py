@@ -384,8 +384,9 @@ from enum import Enum, IntEnum"""
 
 
 TYPE_IMPORTS_37 = """from typing import Union, Optional, Any, Generic, TypeVar, Callable, List, \\
-    Iterable, Iterator, Tuple, Dict, Literal, Awaitable
+    Iterable, Iterator, Tuple, Dict, Awaitable
 """
+
 
 TYPE_IMPORTS_311 = """from typing import Union, Optional, Any, Generic, TypeVar, Callable, List, \\
     Iterable, Iterator, Tuple, Dict, TypedDict, NotRequired, Literal, TypeAlias, \\

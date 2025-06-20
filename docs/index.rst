@@ -64,7 +64,7 @@ compatible code. Also, certain features like ``type``-statments (Python 3.12 and
 above) or the ``ReadOnly``-qualifier (Python 3.13 and higher) are only available
 at higher compatibility levels!
 In order to achieve full conformity with most type-checkers, it is advisable
-to use compatibility level 3.11 and also add the ``-a toplevel``-switch
+to use compatibility level 3.11 and also add the ``-a toplevel`` switch
 to always turn anonymous TypeScript-interfaces into top-level classes, rather
 than locally defined classes. Local classes are not allowed for Python TypedDicts,
 although they work perfectly well - except that type-checkers like pylance
@@ -81,6 +81,50 @@ code that dispatch on a forward-referenced type, i.e. a type that is denoted
 in the code by a string containing the type-name rather than the type-name
 directly. (It's a current limitation of functools.singledispatch that it
 cannot handle forward references.)
+
+Command-line switches
+---------------------
+
+The Python output of ts2pythonParser can be controlled by the following
+command line-switches:
+
+* ``-c`` followed by a Python Version-number, e.g. ``-c 3.12``
+
+*  ``-p`` followed by a comma separated list of `PEP`_-numbers, e.g.
+   ``-p 563,601``. Supported PEPs are:
+
+   * `435`_  - use Enums (Python 3.4)
+   * `563`_  - use postponed evaluation (Python 3.7)
+   * `584`_ or `586`_  - use Literal type (Python 3.8)
+   * `604`_  - use type union (Python 3.10)
+   * `613`_  - use explicit type alias (Python 3.10 - 3.11)
+   * `646`_  - use variadic Generics (Python 3.11)
+   * `649`_ or `749`_ - assume deferred type evaluation (Python 3.14)
+   * `655`_  - use NotRequired instead of Optional (Python3.11)
+   * `695`_  - use type parameters (Python 3.12)
+   * `705`_  - allow ReadOnly (Python 3.13)
+
+   Setting a Python Version-Number with the ``-c`` switch also
+   automatically sets all PEPs
+   that have been implemented with that version, except for PEP `563`_ which
+   must be set explicitly with the ``-p 563`` switch as this concerns an
+   optional feature for Python-Versions 3.7-3.12 which will be turned on
+   with the ``from future import __annotation__`` statement at the beginnig
+   of the generated source code.
+
+* ``-k`` preserves Typescript-multiline comments and adds them as
+  Python-comments to the generated source-code
+
+* ``-a`` followed by one of the four possible keywords ``local`` (default),
+  ``toplevel``, ``functional``, ``type``. These are four different styles
+  for transpiling anonymous interfaces. The default rule ``local`` is not
+  strictly conformant with the type-rules for TypedDicts. For full type-checker
+  conformance use ``toplevel``. The other two keywords, "functional" and "type"
+  should be considered as experimental as they have seen little testing.
+
+* ``-o`` followed by the name of an output-directory for the generated Python
+  code. If an output-directory is chosen the results will be written as files
+  to this directory, rather than printed to the console (stdout).
 
 
 Current Limitations
@@ -130,7 +174,19 @@ when you to change something in the ts2python-source yourself!
 .. _ts2PythonParser.py: https://github.com/jecki/ts2python/blob/main/ts2pythonParser.py
 .. _json_validation: https://github.com/jecki/ts2python/blob/main/ts2python/json_validation.py
 .. _typing_extensions: https://github.com/python/typing/blob/master/typing_extensions/README.rst
-
+.. _PEP: https://peps.python.org/
+.. _435: https://peps.python.org/pep-0435/
+.. _563: https://peps.python.org/pep-0563/
+.. _584: https://peps.python.org/pep-0584/
+.. _586: https://peps.python.org/pep-0586/
+.. _604: https://peps.python.org/pep-0604/
+.. _613: https://peps.python.org/pep-0613/
+.. _646: https://peps.python.org/pep-0646/
+.. _649: https://peps.python.org/pep-0649/
+.. _655: https://peps.python.org/pep-0655/
+.. _695: https://peps.python.org/pep-0695/
+.. _705: https://peps.python.org/pep-0705/
+.. _749: https://peps.python.org/pep-0749/
 
 .. toctree::
    :maxdepth: 2

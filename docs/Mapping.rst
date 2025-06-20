@@ -20,7 +20,7 @@ Thus,::
 
 becomes::
 
-    class Message(TypedDict, total=True):
+    class Message(TypedDict):
         jsonrpc: str
 
 ts2python uses `TypedDict`_ as base class per default. Optional fields of a TypeScript-Interface
@@ -78,7 +78,7 @@ The above Message-interface will then read as::
     class RequestMessage(Message, TypedDict):
         id: Union[int, str]
         method: str
-        params: NotRequired[Union[List, Dict]]
+        params: NotRequired[List | Dict]
 
 
 Mapping of Field Types
@@ -189,12 +189,12 @@ the identifier of the index signature. Thus,::
 becomes::
 
     class WorkspaceEdit(TypedDict, total=False):
-        changes: Optional[Dict['DocumentUri', List['TextEdit']]]
+        changes: NotRequired[Dict['DocumentUri', List['TextEdit']]]
         documentChanges: Union[
             List['TextDocumentEdit'],
             List[Union['TextDocumentEdit', 'CreateFile', 'RenameFile', 'DeleteFile']],
             None]
-        changeAnnotations: Optional[Dict[str, 'ChangeAnnotation']]
+        changeAnnotations: NotRequired[Dict[str, 'ChangeAnnotation']]
 
 
 Mapping of Tuple Types
@@ -211,9 +211,9 @@ Typescript::
 
 Python::
 
-    class ParameterInformation(TypedDict, total=False):
+    class ParameterInformation(TypedDict):
         label: Union[str, Tuple[int, int]]
-        documentation: Union[str, 'MarkupContent', None]
+        documentation: NotRequired[Union[str, 'MarkupContent']]
 
 
 Mapping of Records
@@ -229,7 +229,7 @@ Typescript::
 
 Python::
 
-    class Test(TypedDict, total=True):
+    class Test(TypedDict):
         t: Dict[str, float]
 
 
@@ -263,19 +263,19 @@ it is technically sound and works perfectly well in practice
 (see :ref:`toplevel_switch` for how to
 enforce "legal" conformance, if needed) ::
 
-    class InitializeParams(WorkDoneProgressParams, TypedDict, total=False):
-        class ClientInfo_(TypedDict, total=False):
+    class InitializeParams(WorkDoneProgressParams, TypedDict):
+        class ClientInfo_(TypedDict):
             name: str
-            version: Optional[str]
+            version: NotRequired[str]
         processId: Union[int, None]
-        clientInfo: Optional[ClientInfo_]
-        locale: Optional[str]
-        rootPath: Union[str, None]
+        clientInfo: NotRequired[ClientInfo_]
+        locale: NotRequired[str]
+        rootPath: NotRequired[Union[str, None]]
         rootUri: Union['DocumentUri', None]
-        initializationOptions: Optional[Any]
+        initializationOptions: NotRequired[Any]
         capabilities: 'ClientCapabilities'
-        trace: Optional['TraceValue']
-        workspaceFolders: Union[List['WorkspaceFolder'], None]
+        trace: NotRequired['TraceValue']
+        workspaceFolders: NoRequired[Union[List['WorkspaceFolder'], None]]
 
 This works also for nested local interfaces::
 
@@ -297,21 +297,21 @@ This works also for nested local interfaces::
 
 becomes::
 
-    class SemanticTokensClientCapabilities(TypedDict, total=False):
-        class Requests_(TypedDict, total=False):
-            class Range_1(TypedDict, total=True):
+    class SemanticTokensClientCapabilities(TypedDict):
+        class Requests_(TypedDict):
+            class Range_1(TypedDict):
                 pass
-            class Full_1(TypedDict, total=False):
-                delta: Optional[bool]
-            range: Union[bool, Range_1, None]
-            full: Union[bool, Full_1, None]
-        dynamicRegistration: Optional[bool]
+            class Full_1(TypedDict):
+                delta: NotRequired[bool]
+            range: NotRequired[Union[bool, Range_1]]
+            full: NotRequired[Union[bool, Full_1]]
+        dynamicRegistration: NotRequired[bool]
         requests: Requests_
         tokenTypes: List[str]
         tokenModifiers: List[str]
         formats: List['TokenFormat']
-        overlappingTokenSupport: Optional[bool]
-        multilineTokenSupport: Optional[bool]
+        overlappingTokenSupport: NotRequired[bool]
+        multilineTokenSupport: NotRequired[bool]
 
 In case of type unions, the local classes will be numbered,
 because there could be more than one local interface for the
@@ -329,9 +329,9 @@ becomes::
 
     class TextDocumentContentChangeEvent_0(TypedDict, total=False):
         range: Range
-        rangeLength: Optional[int]
+        rangeLength: NotRequired[int]
         text: str
-    class TextDocumentContentChangeEvent_1(TypedDict, total=True):
+    class TextDocumentContentChangeEvent_1(TypedDict):
         text: str
     TextDocumentContentChangeEvent = Union[
         TextDocumentContentChangeEvent_0, TextDocumentContentChangeEvent_1]
@@ -429,7 +429,8 @@ becomes::
         value: T
 
 
-If the compatibility-level is set to 3.11 or above, TypeVars will be used instead::
+If the compatibility-level is set to 3.11 or above, TypeVars suffice.
+There is no need to derive from ``Generic`` or ``GenericTypedDict``, any more::
 
     T = TypeVar('T')
 

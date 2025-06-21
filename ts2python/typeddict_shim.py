@@ -291,18 +291,23 @@ if sys.version_info < (3,14):
         _TypedDict = type.__new__(_TypedDictMeta, 'TypedDict', (), {})
         TypedDict.__mro_entries__ = lambda bases: (_TypedDict,)
 
-    else:  # Python Version 3.6 and PyPy
-        TypedDict = _TypedDictMeta('TypedDict', (dict,), {})
-        TypedDict.__module__ = __name__
+        class GenericTypedDict:
+            def __getitem__(self, *args, **kwargs):
+                return None
+            def 
 
-        _TypedDict = type.__new__(_TypedDictMeta, 'TypedDict', (), {})
-        TypedDict.__mro_entries__ = lambda bases: (_TypedDict,)
+    # else:  # Python Version 3.6 and PyPy
+    #     TypedDict = _TypedDictMeta('TypedDict', (dict,), {})
+    #     TypedDict.__module__ = __name__
+    #
+    #     _TypedDict = type.__new__(_TypedDictMeta, 'TypedDict', (), {})
+    #     TypedDict.__mro_entries__ = lambda bases: (_TypedDict,)
 
-    class GenericTypedDict:
-        def __init_subclass__(cls, *args, **kwargs):
-            pass
-    GenericTypedDict.__module__ = __name__
-    GenericMeta = type
+    # class GenericTypedDict:
+    #     def __init_subclass__(cls, *args, **kwargs):
+    #         pass
+    # GenericTypedDict.__module__ = __name__
+    # GenericMeta = type
 
     # up to this point, all functions have been copied and adapted from
     # the typing.py module of the Python-STL

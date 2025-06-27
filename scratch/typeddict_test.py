@@ -6,6 +6,7 @@ except ImportError:
     Protocol = Generic
     Final = type
 
+
 def _type_convert(arg, module=None):
     """For converting None to type(None), and strings to ForwardRef."""
     if arg is None:
@@ -62,7 +63,7 @@ class _TypedDictMeta(type):
         Subclasses and instances of TypedDict return actual dictionaries.
         """
         for base in bases:
-            if type(base) is not _TypedDictMeta:
+            if type(base) is not _TypedDictMeta and base is not Generic:
                 raise TypeError('cannot inherit from both a TypedDict type '
                                 'and a non-TypedDict base class')
         tp_dict = type.__new__(_TypedDictMeta, name, (dict,), ns)
@@ -170,11 +171,11 @@ TypedDict.__mro_entries__ = lambda bases: (_TypedDict,)
 
 
 
-T = TypeVar('T')
+T: TypeVar = TypeVar('T')
 
 class Test(TypedDict):
     value: int
 
-class Test2(TypedDict):
+class Test2(TypedDict, Generic[T]):
     val: Test[T]
 

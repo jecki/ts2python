@@ -206,6 +206,8 @@ class TestValidation:
         from DHParser.configuration import set_config_value, get_config_value
         not_required = get_config_value('ts2python.UseNotRequired', False)
         assumeDeferredEvaluation = get_config_value('ts2python.AssumeDeferredEvaluation', False)
+        if sys.version_info >= (3, 11):
+            pass
         set_config_value('ts2python.UseNotRequired', True, allow_new_key=True)
         if sys.version_info >= (3, 14, 0):
             set_config_value('ts2python.AssumeDeferredEvaluation', True, allow_new_key=True)

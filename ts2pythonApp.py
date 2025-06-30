@@ -25,8 +25,8 @@ class ts2pythonApp(tkinter.Tk):
         super().__init__()
         self.withdraw()
         self.title('ts2python App')
-        self.minsize(480, 320)
-        self.geometry("800x600")
+        self.minsize(640, 400)
+        self.geometry("960x680")
         self.option_add('*tearOff', False)
 
         self.protocol("WM_DELETE_WINDOW", self.on_close)
@@ -65,12 +65,21 @@ class ts2pythonApp(tkinter.Tk):
         self.deiconify()
 
     def create_widgets(self):
-        self.pick_source = ttk.Button(self, text="Pick TypeScript file(s)...", command=self.on_pick_src)
-        self.progressbar = ttk.Progressbar(self, orient="horizontal", variable=self.progress)
-        self.cancel = ttk.Button(self, text="Cancel", command=self.on_cancel)
+        self.pick_source_info = ttk.Label(text="Paste source code below or...")
+        self.pick_source = ttk.Button(text="Pick Source file(s)...",
+                                      command=self.on_pick_source)
+        self.source_info = ttk.Label(text='Source:')
+        self.source_clear = ttk.Button(text="Clear source")
+        self.source_clear['state'] = tkinter.DISABLED
+        self.source = tkinter.Text()
+        self.result_info = ttk.Label(text='Result:')
+        self.result = tkinter.Text()
+        self.errors_info = ttk.Label(text='Errors:')
+        self.errors = tkinter.Text()
+        self.progressbar = ttk.Progressbar(orient="horizontal", variable=self.progress)
+        self.cancel = ttk.Button(text="Cancel", command=self.on_cancel)
         self.cancel['state'] = tkinter.DISABLED
-        self.errors_info = ttk.Label(self, text='Errors:')
-        self.errors = tkinter.Text(self, bg="white")
+        self.message = ttk.Label(text='')
         self.exit = ttk.Button(text="Quit", command=self.on_close)
 
     def connect_events(self):
@@ -82,14 +91,24 @@ class ts2pythonApp(tkinter.Tk):
         padWE = dict(sticky=(tkinter.W, tkinter.E), padx="5", pady="5")
         padAll = dict(sticky=(tkinter.N, tkinter.S, tkinter.W, tkinter.E), padx="5", pady="5")
         padNW = dict(sticky=(tkinter.W, tkinter.N), padx="5", pady="5")
-        self.pick_source.grid(row=0, column=0, columnspan=2)
-        self.progressbar.grid(row=1, column=0, **padWE)
-        self.cancel.grid(row=1, column=1, **padE)
-        self.errors_info.grid(row=2, column=0, **padW)
-        self.errors.grid(row=3, column=0, columnspan=2, **padAll)
-        self.exit.grid(row=4, column=1, **padE)
-        self.rowconfigure(3, weight=1)
-        self.columnconfigure(0, weight=9)
+        self.pick_source_info.grid(row=0, column=2, **padW)
+        self.pick_source.grid(row=0, column=3, **padW)
+        self.source_info.grid(row=1, column=0, **padW)
+        self.source_clear.grid(row=1, column=5, **padE)
+        self.source.grid(row=2, column=0, columnspan=6, **padAll)
+        self.result_info.grid(row=3, column=0, **padW)
+        self.result.grid(row=4, column=0, columnspan=6, **padAll)
+        self.errors_info.grid(row=5, column=0, **padW)
+        self.errors.grid(row=6, column=0, columnspan=6, **padAll)
+        self.progressbar.grid(row=7, column=0, columnspan=5, **padWE)
+        self.cancel.grid(row=7, column=5, **padE)
+        self.message.grid(row=8, column=0, columnspan=5, **padWE)
+        self.exit.grid(row=8, column=5, **padE)
+        self.rowconfigure(2, weight=1)
+        self.rowconfigure(4, weight=1)
+        self.rowconfigure(6, weight=2)
+        self.columnconfigure(1, weight=1)
+        self.columnconfigure(4, weight=1)
 
     def clear_result(self):
         with self.lock:
@@ -145,7 +164,7 @@ class ts2pythonApp(tkinter.Tk):
                                     if sys.platform == "darwin" else self.outdir)
             self.worker = None
 
-    def on_pick_src(self):
+    def on_pick_source(self):
         if not self.worker or self.on_cancel():
             self.progress.set(0)
             self.names = list(tkinter.filedialog.askopenfilenames(
@@ -166,6 +185,9 @@ class ts2pythonApp(tkinter.Tk):
                 self.worker.start()
                 self.cancel['stat'] = tkinter.NORMAL
                 self.after(1000, self.poll_worker)
+
+    def on_clear_source(self):
+        pass  # TODO: add on_clear_source
 
     def on_cancel(self) -> bool:
         if self.worker:

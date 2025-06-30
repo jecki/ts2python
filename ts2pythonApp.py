@@ -6,10 +6,11 @@ import sys
 import os
 import threading
 
-import tkinter
+import tkinter as tk
 import webbrowser
 from tkinter import ttk
-from tkinter import filedialog, messagebox
+from tkinter import filedialog, messagebox, scrolledtext
+
 
 try:
     scriptdir = os.path.dirname(os.path.realpath(__file__))
@@ -20,7 +21,7 @@ if scriptdir and scriptdir not in sys.path: sys.path.append(scriptdir)
 import ts2pythonParser
 
 
-class ts2pythonApp(tkinter.Tk):
+class ts2pythonApp(tk.Tk):
     def __init__(self):
         super().__init__()
         self.withdraw()
@@ -48,8 +49,12 @@ class ts2pythonApp(tkinter.Tk):
         # widget-variables
         self.num_sources = 0
         self.num_compiled = 0
-        self.progress = tkinter.IntVar()
+        self.progress = tk.IntVar()
         self.progress.set(0)
+
+        self.source_undo_state = ""
+        self.source_current_state = ""
+        self.source_modified_sentinel = 0
 
         self.create_widgets()
         self.connect_events()
@@ -69,31 +74,34 @@ class ts2pythonApp(tkinter.Tk):
         self.pick_source = ttk.Button(text="Pick Source file(s)...",
                                       command=self.on_pick_source)
         self.source_info = ttk.Label(text='Source:')
-        self.source_clear = ttk.Button(text="Clear source")
-        self.source_clear['state'] = tkinter.DISABLED
-        self.source = tkinter.Text()
+        self.source_undo = ttk.Button(text="Undo", command=self.on_source_undo)
+        self.source_clear = ttk.Button(text="Clear source", command=self.on_clear_source)
+        self.source_clear['state'] = tk.DISABLED
+        self.source = scrolledtext.ScrolledText()
         self.result_info = ttk.Label(text='Result:')
-        self.result = tkinter.Text()
+        self.result = scrolledtext.ScrolledText()
         self.errors_info = ttk.Label(text='Errors:')
-        self.errors = tkinter.Text()
+        self.errors = scrolledtext.ScrolledText()
         self.progressbar = ttk.Progressbar(orient="horizontal", variable=self.progress)
         self.cancel = ttk.Button(text="Cancel", command=self.on_cancel)
-        self.cancel['state'] = tkinter.DISABLED
+        self.cancel['state'] = tk.DISABLED
         self.message = ttk.Label(text='')
         self.exit = ttk.Button(text="Quit", command=self.on_close)
 
     def connect_events(self):
-        pass
+        self.source.bind("<<Modified>>", self.on_source_change)
 
     def place_widgets(self):
-        padW = dict(sticky=(tkinter.W,), padx="5", pady="5")
-        padE = dict(sticky=(tkinter.E,), padx="5", pady="5")
-        padWE = dict(sticky=(tkinter.W, tkinter.E), padx="5", pady="5")
-        padAll = dict(sticky=(tkinter.N, tkinter.S, tkinter.W, tkinter.E), padx="5", pady="5")
-        padNW = dict(sticky=(tkinter.W, tkinter.N), padx="5", pady="5")
+        padW = dict(sticky=(tk.W,), padx="5", pady="5")
+        padE = dict(sticky=(tk.E,), padx="5", pady="5")
+        padWE = dict(sticky=(tk.W, tk.E), padx="5", pady="5")
+        padAll = dict(sticky=(tk.N, tk.S, tk.W, tk.E), padx="5", pady="5")
+        padNW = dict(sticky=(tk.W, tk.N), padx="5", pady="5")
         self.pick_source_info.grid(row=0, column=2, **padW)
         self.pick_source.grid(row=0, column=3, **padW)
         self.source_info.grid(row=1, column=0, **padW)
+        self.source_undo.grid(row=1, column=4, **padE)
+        self.source_undo['state'] = tk.DISABLED
         self.source_clear.grid(row=1, column=5, **padE)
         self.source.grid(row=2, column=0, columnspan=6, **padAll)
         self.result_info.grid(row=3, column=0, **padW)
@@ -112,11 +120,11 @@ class ts2pythonApp(tkinter.Tk):
 
     def clear_result(self):
         with self.lock:
-            self.errors.delete("1.0", tkinter.END)
+            self.errors.delete("1.0", tk.END)
             self.update()
 
     def log_callback(self, txt):
-        self.errors.insert(tkinter.END, txt + '\n')
+        self.errors.insert(tk.END, txt + '\n')
         self.errors.yview_moveto(1.0)
         self.num_compiled += 1
         self.progress.set(min(100, int(100 * self.num_compiled / self.num_sources)))
@@ -132,13 +140,13 @@ class ts2pythonApp(tkinter.Tk):
         if self.worker and self.worker.is_alive():
             self.after(1000, self.poll_worker)
         else:
-            self.cancel['stat'] = tkinter.DISABLED
+            self.cancel['stat'] = tk.DISABLED
             if self.cancel_flag:
                 self.errors.yview_moveto(1.0)
                 with self.lock:  self.cancel_flag = False
             else:
-                self.errors.insert(tkinter.END, "Compilation finished.\n")
-                self.errors.insert(tkinter.END, f"Results written to {self.outdir}.\n")
+                self.errors.insert(tk.END, "Compilation finished.\n")
+                self.errors.insert(tk.END, f"Results written to {self.outdir}.\n")
                 if len(self.names) == 1:
                     basename = os.path.splitext(os.path.basename(self.names[0]))[0]
                     for msgtype in ('_ERRORS.txt', '_WARNINGS.txt'):
@@ -148,15 +156,15 @@ class ts2pythonApp(tkinter.Tk):
                             lines = msg.split('\n')
                             leadout = '...\n' if len(lines) > 20 else '\n'
                             msg = '\n'.join([msgtype[1:-4] ] + lines[:20] + [leadout])
-                            self.errors.insert(tkinter.END, msg)
+                            self.errors.insert(tk.END, msg)
                             break
                 else:
-                    self.errors.insert(tkinter.END,
+                    self.errors.insert(tk.END,
                         f"Errors (if any) written to {self.outdir}.\n")
                 if self.target == 'html':
                     html_name = os.path.splitext(os.path.basename(self.names[0]))[0] + '.html'
                     html_name = os.path.join(self.outdir, html_name)
-                    self.errors.insert(tkinter.END, html_name + "\n")
+                    self.errors.insert(tk.END, html_name + "\n")
                     webbrowser.open('file://' + os.path.abspath(html_name)
                                     if sys.platform == "darwin" else html_name)
                 else:
@@ -167,7 +175,7 @@ class ts2pythonApp(tkinter.Tk):
     def on_pick_source(self):
         if not self.worker or self.on_cancel():
             self.progress.set(0)
-            self.names = list(tkinter.filedialog.askopenfilenames(
+            self.names = list(tk.filedialog.askopenfilenames(
                 title="Chose files to parse/compile",
                 filetypes=[('All', '*')]
             ))
@@ -183,26 +191,57 @@ class ts2pythonApp(tkinter.Tk):
                     kwargs = dict([('log_func', self.log_callback),
                                    ('cancel_func', self.cancel_callback)]))
                 self.worker.start()
-                self.cancel['stat'] = tkinter.NORMAL
+                self.cancel['stat'] = tk.NORMAL
                 self.after(1000, self.poll_worker)
 
     def on_clear_source(self):
-        pass  # TODO: add on_clear_source
+        self.source_undo_state = self.source.get("1.0", tk.END)
+        self.source.delete('1.0', tk.END)
+        self.source_current_state = ''
+        self.source_clear['state'] = tk.DISABLED
+        self.source_undo['state'] = tk.NORMAL \
+                if self.source_undo_state != self.source_current_state else tk.DISABLED
+        self.source_modified_sentinel = 2
+
+    def on_source_change(self, event):
+        if self.source_modified_sentinel: # ignore call due to change of emit_modified
+            self.source_modified_sentinel -= 1
+            if self.source_modified_sentinel > 0:
+                self.source.edit_modified(False)
+        else:
+            self.source_undo_state = self.source_current_state
+            self.source_current_state = self.source.get("1.0", tk.END)
+            self.source_undo['state'] = tk.NORMAL \
+                if self.source_undo_state != self.source_current_state else tk.DISABLED
+            self.source_clear['state'] = tk.NORMAL if self.source_current_state else tk.DISABLED
+            self.source_modified_sentinel = 1
+            self.source.edit_modified(False)
+
+    def on_source_undo(self):
+        saved_state = self.source.get("1.0", tk.END)
+        self.source.delete('1.0', tk.END)
+        self.source.insert(tk.END, self.source_undo_state)
+        self.source_current_state = self.source_undo_state
+        self.source_undo_state = saved_state
+        self.source_undo['state'] = tk.NORMAL \
+                if self.source_undo_state != self.source_current_state else tk.DISABLED
+        self.source_clear['state'] = tk.NORMAL if self.source_current_state else tk.DISABLED
+        self.source_modified_sentinel = 2
 
     def on_cancel(self) -> bool:
         if self.worker:
-            if tkinter.messagebox.askyesno(
+            if tk.messagebox.askyesno(
                 title="Cancel?",
                 message="A parsing/compilation-process is still under way!\n"
                         "Cancel running process?"):
                 if self.worker:
                     with self.lock:  self.cancel_flag = True
-                    self.errors.insert(tkinter.END, "Canceling reaming tasks...\n")
+                    self.errors.insert(tk.END, "Canceling reaming tasks...\n")
                     self.update()
                     self.update_idletasks()
                     self.worker.join(5.0)
                     if not self.worker.is_alive():
-                        self.errors.insert(tkinter.END, "Stopped.\n")
+                        self.errors.insert(tk.END, "Stopped.\n")
                         self.cancel_flag = False
                     self.errors.yview_moveto(1.0)
                     return True
@@ -214,7 +253,7 @@ class ts2pythonApp(tkinter.Tk):
     def on_close(self):
         if self.on_cancel():
             if self.worker and self.worker.is_alive():
-                self.errors.insert(tkinter.END, "Killing still running processes!\n")
+                self.errors.insert(tk.END, "Killing still running processes!\n")
                 self.errors.yview_moveto(1.0)
             self.destroy()
             self.quit()

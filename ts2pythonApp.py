@@ -52,8 +52,6 @@ class ts2pythonApp(tk.Tk):
         self.progress = tk.IntVar()
         self.progress.set(0)
 
-        self.source_undo_state = ""
-        self.source_current_state = ""
         self.source_modified_sentinel = 0
 
         self.create_widgets()
@@ -76,8 +74,7 @@ class ts2pythonApp(tk.Tk):
         self.source_info = ttk.Label(text='Source:')
         self.source_undo = ttk.Button(text="Undo", command=self.on_source_undo)
         self.source_clear = ttk.Button(text="Clear source", command=self.on_clear_source)
-        self.source_clear['state'] = tk.DISABLED
-        self.source = scrolledtext.ScrolledText()
+        self.source = scrolledtext.ScrolledText(undo=True)
         self.result_info = ttk.Label(text='Result:')
         self.result = scrolledtext.ScrolledText()
         self.errors_info = ttk.Label(text='Errors:')
@@ -101,7 +98,6 @@ class ts2pythonApp(tk.Tk):
         self.pick_source.grid(row=0, column=3, **padW)
         self.source_info.grid(row=1, column=0, **padW)
         self.source_undo.grid(row=1, column=4, **padE)
-        self.source_undo['state'] = tk.DISABLED
         self.source_clear.grid(row=1, column=5, **padE)
         self.source.grid(row=2, column=0, columnspan=6, **padAll)
         self.result_info.grid(row=3, column=0, **padW)
@@ -195,12 +191,7 @@ class ts2pythonApp(tk.Tk):
                 self.after(1000, self.poll_worker)
 
     def on_clear_source(self):
-        self.source_undo_state = self.source.get("1.0", tk.END)
         self.source.delete('1.0', tk.END)
-        self.source_current_state = ''
-        self.source_clear['state'] = tk.DISABLED
-        self.source_undo['state'] = tk.NORMAL \
-                if self.source_undo_state != self.source_current_state else tk.DISABLED
         self.source_modified_sentinel = 2
 
     def on_source_change(self, event):
@@ -209,23 +200,13 @@ class ts2pythonApp(tk.Tk):
             if self.source_modified_sentinel > 0:
                 self.source.edit_modified(False)
         else:
-            self.source_undo_state = self.source_current_state
-            self.source_current_state = self.source.get("1.0", tk.END)
-            self.source_undo['state'] = tk.NORMAL \
-                if self.source_undo_state != self.source_current_state else tk.DISABLED
-            self.source_clear['state'] = tk.NORMAL if self.source_current_state else tk.DISABLED
+            txt = self.source.get("1.0", tk.END)
             self.source_modified_sentinel = 1
             self.source.edit_modified(False)
 
     def on_source_undo(self):
-        saved_state = self.source.get("1.0", tk.END)
-        self.source.delete('1.0', tk.END)
-        self.source.insert(tk.END, self.source_undo_state)
-        self.source_current_state = self.source_undo_state
-        self.source_undo_state = saved_state
-        self.source_undo['state'] = tk.NORMAL \
-                if self.source_undo_state != self.source_current_state else tk.DISABLED
-        self.source_clear['state'] = tk.NORMAL if self.source_current_state else tk.DISABLED
+        self.source.edit_undo()
+        txt = self.source.get("1.0", tk.END)
         self.source_modified_sentinel = 2
 
     def on_cancel(self) -> bool:

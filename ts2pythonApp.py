@@ -200,14 +200,16 @@ class ts2pythonApp(tk.Tk):
             if self.source_modified_sentinel > 0:
                 self.source.edit_modified(False)
         else:
-            txt = self.source.get("1.0", tk.END)
             self.source_modified_sentinel = 1
             self.source.edit_modified(False)
 
     def on_source_undo(self):
-        self.source.edit_undo()
-        txt = self.source.get("1.0", tk.END)
-        self.source_modified_sentinel = 2
+        try:
+            self.source.edit_undo()
+            self.source_modified_sentinel = 2
+        except tk.TclError:
+            pass  # nothing to undo-error
+
 
     def on_cancel(self) -> bool:
         if self.worker:

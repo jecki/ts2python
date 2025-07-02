@@ -26,8 +26,8 @@ class ts2pythonApp(tk.Tk):
         super().__init__()
         self.withdraw()
         self.title('ts2python App')
-        self.minsize(640, 400)
-        self.geometry("960x680")
+        self.minsize(800, 680)
+        self.geometry("960x720")
         self.option_add('*tearOff', False)
 
         self.protocol("WM_DELETE_WINDOW", self.on_close)
@@ -87,6 +87,7 @@ class ts2pythonApp(tk.Tk):
 
     def connect_events(self):
         self.source.bind("<<Modified>>", self.on_source_change)
+        self.source.bind("<Control-v>", self.on_source_insert)
 
     def place_widgets(self):
         padW = dict(sticky=(tk.W,), padx="5", pady="5")
@@ -202,6 +203,9 @@ class ts2pythonApp(tk.Tk):
         else:
             self.source_modified_sentinel = 1
             self.source.edit_modified(False)
+
+    def on_source_insert(self, event):
+        print(event)
 
     def on_source_undo(self):
         try:

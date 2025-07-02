@@ -4,6 +4,7 @@
 
 import sys
 import os
+import re
 import threading
 
 import tkinter as tk
@@ -53,6 +54,15 @@ class ts2pythonApp(tk.Tk):
         self.progress.set(0)
 
         self.source_modified_sentinel = 0
+        self.source_paste = False
+        grammar = ts2pythonParser.parsing.factory()
+        self.parser_names = grammar.parser_names__[:]
+        self.parser_names.remove(grammar.root__.pname)
+        self.parser_names.sort(key=lambda s: s.lower().lstrip('_'))
+        self.parser_names.insert(0, grammar.root__.pname)
+        self.root_name = tk.StringVar(value=grammar.root__.pname)
+
+        self.targets = list(ts2pythonParser.targets)
 
         self.create_widgets()
         self.connect_events()
@@ -74,7 +84,11 @@ class ts2pythonApp(tk.Tk):
         self.source_info = ttk.Label(text='Source:')
         self.source_undo = ttk.Button(text="Undo", command=self.on_source_undo)
         self.source_clear = ttk.Button(text="Clear source", command=self.on_clear_source)
+        self.source_clear['state'] = tk.DISABLED
         self.source = scrolledtext.ScrolledText(undo=True)
+        self.root_parser = ttk.Combobox(self, values=self.parser_names, textvariable=self.root_name)
+        self.compile = ttk.Button(text="Compile", command=self.on_compile)
+        self.compile['state'] = tk.DISABLED
         self.result_info = ttk.Label(text='Result:')
         self.result = scrolledtext.ScrolledText()
         self.errors_info = ttk.Label(text='Errors:')
@@ -88,6 +102,7 @@ class ts2pythonApp(tk.Tk):
     def connect_events(self):
         self.source.bind("<<Modified>>", self.on_source_change)
         self.source.bind("<Control-v>", self.on_source_insert)
+        self.source.bind("<Command-v>", self.on_source_insert)
 
     def place_widgets(self):
         padW = dict(sticky=(tk.W,), padx="5", pady="5")
@@ -97,23 +112,26 @@ class ts2pythonApp(tk.Tk):
         padNW = dict(sticky=(tk.W, tk.N), padx="5", pady="5")
         self.pick_source_info.grid(row=0, column=2, **padW)
         self.pick_source.grid(row=0, column=3, **padW)
-        self.source_info.grid(row=1, column=0, **padW)
-        self.source_undo.grid(row=1, column=4, **padE)
-        self.source_clear.grid(row=1, column=5, **padE)
-        self.source.grid(row=2, column=0, columnspan=6, **padAll)
-        self.result_info.grid(row=3, column=0, **padW)
-        self.result.grid(row=4, column=0, columnspan=6, **padAll)
-        self.errors_info.grid(row=5, column=0, **padW)
-        self.errors.grid(row=6, column=0, columnspan=6, **padAll)
-        self.progressbar.grid(row=7, column=0, columnspan=5, **padWE)
-        self.cancel.grid(row=7, column=5, **padE)
-        self.message.grid(row=8, column=0, columnspan=5, **padWE)
-        self.exit.grid(row=8, column=5, **padE)
-        self.rowconfigure(2, weight=1)
-        self.rowconfigure(4, weight=1)
-        self.rowconfigure(6, weight=2)
+        self.source_info.grid(row=0, column=0, **padW)
+        self.source_undo.grid(row=0, column=4, **padE)
+        self.source_clear.grid(row=0, column=5, **padE)
+        self.source.grid(row=1, column=0, columnspan=6, **padAll)
+        self.root_parser.grid(row=2, column=2, **padE)
+        self.compile.grid(row=2, column=3, **padW)
+        self.result_info.grid(row=2, column=0, **padW)
+        self.result.grid(row=3, column=0, columnspan=6, **padAll)
+        self.errors_info.grid(row=4, column=0, **padW)
+        self.errors.grid(row=5, column=0, columnspan=6, **padAll)
+        self.progressbar.grid(row=6, column=0, columnspan=5, **padWE)
+        self.cancel.grid(row=6, column=5, **padE)
+        self.message.grid(row=7, column=0, columnspan=5, **padWE)
+        self.exit.grid(row=7, column=5, **padE)
+        self.rowconfigure(1, weight=1)
+        self.rowconfigure(3, weight=1)
+        self.rowconfigure(5, weight=2)
         self.columnconfigure(1, weight=1)
         self.columnconfigure(4, weight=1)
+        self.source.focus_set()
 
     def clear_result(self):
         with self.lock:
@@ -193,6 +211,8 @@ class ts2pythonApp(tk.Tk):
 
     def on_clear_source(self):
         self.source.delete('1.0', tk.END)
+        self.compile['stat'] = tk.DISABLED
+        self.source_clear['stat'] = tk.DISABLED
         self.source_modified_sentinel = 2
 
     def on_source_change(self, event):
@@ -203,9 +223,19 @@ class ts2pythonApp(tk.Tk):
         else:
             self.source_modified_sentinel = 1
             self.source.edit_modified(False)
+            txt = self.source.get('1.0', tk.END)
+            if re.fullmatch(r'\s*', txt):
+                self.compile['stat'] = tk.DISABLED
+                self.source_clear['stat'] = tk.DISABLED
+            else:
+                self.compile['stat'] = tk.NORMAL
+                self.source_clear['stat'] = tk.NORMAL
+            if self.source_paste:
+                self.source_paste = False
+                # Call compile here, directly
 
     def on_source_insert(self, event):
-        print(event)
+        self.source_paste = True
 
     def on_source_undo(self):
         try:
@@ -214,6 +244,8 @@ class ts2pythonApp(tk.Tk):
         except tk.TclError:
             pass  # nothing to undo-error
 
+    def on_compile(self):
+        pass
 
     def on_cancel(self) -> bool:
         if self.worker:

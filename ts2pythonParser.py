@@ -1494,7 +1494,7 @@ compiling: Junction = create_junction(
 # (See DHParser.compile for a description of junctions)
 
 # ADD YOUR OWN POST-PROCESSING-JUNCTIONS HERE:
-junctions = set([ASTTransformation, compiling])
+junctions = {ASTTransformation, compiling}
 
 # put your targets of interest, here. A target is the name of result (or stage)
 # of any transformation, compilation or postprocessing step after parsing.

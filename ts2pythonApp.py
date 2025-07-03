@@ -40,13 +40,6 @@ class ts2pythonApp(tk.Tk):
         # self.rowconfigure(0, weight=1)
         # self.columnconfigure(1, weight=1)
 
-        if 'html' in ts2pythonParser.targets or 'HTML' in ts2pythonParser.targets:
-            self.target = 'html'
-        elif len(ts2pythonParser.targets) == 1:
-            self.target = list(ts2pythonParser.targets)[0]
-        else:
-            self.target = ''
-
         # widget-variables
         self.num_sources = 0
         self.num_compiled = 0
@@ -57,12 +50,14 @@ class ts2pythonApp(tk.Tk):
         self.source_paste = False
         grammar = ts2pythonParser.parsing.factory()
         self.parser_names = grammar.parser_names__[:]
-        self.parser_names.remove(grammar.root__.pname)
+        # self.parser_names.remove(grammar.root__.pname)
         self.parser_names.sort(key=lambda s: s.lower().lstrip('_'))
-        self.parser_names.insert(0, grammar.root__.pname)
+        # self.parser_names.insert(0, grammar.root__.pname)
         self.root_name = tk.StringVar(value=grammar.root__.pname)
 
-        self.targets = list(ts2pythonParser.targets)
+        self.targets = [j.dst for j in ts2pythonParser.junctions]
+        self.targets.sort(key=lambda s: s in ts2pythonParser.targets)
+        self.target_name = tk.StringVar(value=list(ts2pythonParser.targets)[0])
 
         self.create_widgets()
         self.connect_events()
@@ -89,6 +84,7 @@ class ts2pythonApp(tk.Tk):
         self.root_parser = ttk.Combobox(self, values=self.parser_names, textvariable=self.root_name)
         self.compile = ttk.Button(text="Compile", command=self.on_compile)
         self.compile['state'] = tk.DISABLED
+        self.target_stage = ttk.Combobox(self, values=self.targets, textvariable=self.target_name)
         self.result_info = ttk.Label(text='Result:')
         self.result = scrolledtext.ScrolledText()
         self.errors_info = ttk.Label(text='Errors:')
@@ -117,7 +113,8 @@ class ts2pythonApp(tk.Tk):
         self.source_clear.grid(row=0, column=5, **padE)
         self.source.grid(row=1, column=0, columnspan=6, **padAll)
         self.root_parser.grid(row=2, column=2, **padE)
-        self.compile.grid(row=2, column=3, **padW)
+        self.compile.grid(row=2, column=3, **padWE)
+        self.target_stage.grid(row=2, column=4, **padW)
         self.result_info.grid(row=2, column=0, **padW)
         self.result.grid(row=3, column=0, columnspan=6, **padAll)
         self.errors_info.grid(row=4, column=0, **padW)
@@ -176,7 +173,7 @@ class ts2pythonApp(tk.Tk):
                 else:
                     self.errors.insert(tk.END,
                         f"Errors (if any) written to {self.outdir}.\n")
-                if self.target == 'html':
+                if self.target_name.get().lower() == 'html':
                     html_name = os.path.splitext(os.path.basename(self.names[0]))[0] + '.html'
                     html_name = os.path.join(self.outdir, html_name)
                     self.errors.insert(tk.END, html_name + "\n")

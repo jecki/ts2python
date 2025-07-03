@@ -1528,9 +1528,7 @@ def compile_src(source: str, target: str = "py") -> Tuple[Any, List[Error]]:
 
 
 def serialize_result(result: Any) -> Union[str, bytes]:
-    """Serialization of result. REWRITE THIS, IF YOUR COMPILATION RESULT
-    IS NOT A TREE OF NODES.
-    """
+    """Serialization of the compilation-result."""
     if isinstance(result, Node):
         return result.serialize(how='default' if RESULT_FILE_EXTENSION != '.xml' else 'xml')
     elif isinstance(result, (str, StringView)):

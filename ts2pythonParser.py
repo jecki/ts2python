@@ -284,10 +284,10 @@ def ts2pythonTransformer() -> TransformerCallable:
     threads or processes."""
     return static(partial(transformer,
         transformation_table=ts2python_AST_transformation_table.copy(),
-        src_stage='cst', dst_stage='ast'))
+        src_stage='CST', dst_stage='AST'))
 
 ASTTransformation: Junction = Junction(
-    'cst', ThreadLocalSingletonFactory(ts2pythonTransformer), 'ast')
+    'CST', ThreadLocalSingletonFactory(ts2pythonTransformer), 'AST')
 
 #######################################################################
 #
@@ -1481,7 +1481,7 @@ class ts2pythonCompiler(Compiler):
         return identifier
 
 compiling: Junction = create_junction(
-    ts2pythonCompiler, "ast", "py")
+    ts2pythonCompiler, 'AST', "py")
 
 
 #######################################################################
@@ -1711,7 +1711,7 @@ def main(called_from_app=False):
             log_dir = 'LOGS'
             set_preset_value('history_tracking', True)
             set_preset_value('resume_notices', True)
-            set_preset_value('log_syntax_trees', frozenset(['cst', 'ast']))  # don't use a set literal, here
+            set_preset_value('log_syntax_trees', frozenset(['CST', 'AST']))  # don't use a set literal, here
         if args.compatibility:
             version_info = tuple(int(part) for part in args.compatibility[0].split('.'))
             set_compatibility_level(version_info, "preset")

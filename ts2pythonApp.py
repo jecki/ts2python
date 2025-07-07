@@ -6,12 +6,15 @@ import sys
 import os
 import re
 import threading
+from typing import cast
 
 import tkinter as tk
 import webbrowser
 from tkinter import ttk
 from tkinter import filedialog, messagebox, scrolledtext
 
+from DHParser.nodetree import Node, EMPTY_NODE
+from DHParser.pipeline import full_pipeline, PipelineResult
 
 try:
     scriptdir = os.path.dirname(os.path.realpath(__file__))
@@ -55,9 +58,12 @@ class ts2pythonApp(tk.Tk):
         # self.parser_names.insert(0, grammar.root__.pname)
         self.root_name = tk.StringVar(value=grammar.root__.pname)
 
+        self.all_results: PipelineResult = {}
+
         self.targets = [j.dst for j in ts2pythonParser.junctions]
         self.targets.sort(key=lambda s: s in ts2pythonParser.targets)
         self.target_name = tk.StringVar(value=list(ts2pythonParser.targets)[0])
+        self.target_format = tk.StringVar(value="XML")
 
         self.create_widgets()
         self.connect_events()
@@ -85,8 +91,17 @@ class ts2pythonApp(tk.Tk):
         self.compile = ttk.Button(text="Compile", command=self.on_compile)
         self.compile['state'] = tk.DISABLED
         self.target_stage = ttk.Combobox(self, values=self.targets, textvariable=self.target_name)
+        self.target_choice = ttk.Combobox(
+            self, values=['XML', 'SXML', 'sxpr', 'xast', 'ndst', 'tree'],
+            textvariable=self.target_format)
+        if self.target_name.get() not in ('AST', 'CST'):
+            self.target_choice['state'] = tk.DISABLED
         self.result_info = ttk.Label(text='Result:')
         self.result = scrolledtext.ScrolledText()
+        self.save_result = ttk.Button(text="Save result...", command=self.on_save_result)
+        self.save_result['state'] = tk.DISABLED
+        self.export_test = ttk.Button(text="Export as test case...", command=self.on_export_test)
+        self.export_test['state'] = tk.DISABLED
         self.errors_info = ttk.Label(text='Errors:')
         self.errors = scrolledtext.ScrolledText()
         self.progressbar = ttk.Progressbar(orient="horizontal", variable=self.progress)
@@ -99,6 +114,8 @@ class ts2pythonApp(tk.Tk):
         self.source.bind("<<Modified>>", self.on_source_change)
         self.source.bind("<Control-v>", self.on_source_insert)
         self.source.bind("<Command-v>", self.on_source_insert)
+        self.target_stage.bind("<<ComboboxSelected>>", self.on_target_stage)
+        self.target_choice.bind("<<ComboboxSelected>>", self.on_target_choice)
 
     def place_widgets(self):
         padW = dict(sticky=(tk.W,), padx="5", pady="5")
@@ -115,8 +132,11 @@ class ts2pythonApp(tk.Tk):
         self.root_parser.grid(row=2, column=2, **padE)
         self.compile.grid(row=2, column=3, **padWE)
         self.target_stage.grid(row=2, column=4, **padW)
+        self.target_choice.grid(row=2, column=5, **padE)
         self.result_info.grid(row=2, column=0, **padW)
         self.result.grid(row=3, column=0, columnspan=6, **padAll)
+        self.save_result.grid(row=4, column=3, **padWE)
+        self.export_test.grid(row=4, column=4, **padWE)
         self.errors_info.grid(row=4, column=0, **padW)
         self.errors.grid(row=5, column=0, columnspan=6, **padAll)
         self.progressbar.grid(row=6, column=0, columnspan=5, **padWE)
@@ -242,6 +262,35 @@ class ts2pythonApp(tk.Tk):
             pass  # nothing to undo-error
 
     def on_compile(self):
+        pass
+
+    def update_result(self, if_tree=False):
+        target = self.target_name.get()
+        result = self.all_results.get(target, ("", []))[0]
+        if isinstance(result, Node):
+            format = self.target_format.get()
+            result_txt = cast(Node, result).serialize(format)
+            self.result.delete('1.0', tk.END)
+            self.result.insert(tk.END, result_txt)
+        elif not if_tree:
+            self.result.delete('1.0', tk.END)
+            self.result.insert(tk.END, result)
+
+    def on_target_stage(self, event):
+        target = self.target_name.get()
+        if target in ('AST', 'CST'):
+            self.target_choice['state'] = tk.NORMAL
+        elif isinstance(self.all_results.get(target, (EMPTY_NODE, []))[0], Node):
+            self.target_choice['state'] = tk.DISABLED
+        self.update_result()
+
+    def on_target_choice(self, event):
+        self.update_result(if_tree=True)
+
+    def on_save_result(self):
+        pass
+
+    def on_export_test(self):
         pass
 
     def on_cancel(self) -> bool:

@@ -262,7 +262,10 @@ class ts2pythonApp(tk.Tk):
             pass  # nothing to undo-error
 
     def on_compile(self):
-        pass
+        parser = self.root_name.get()
+        target = self.target_name.get()
+        serialization_format = self.target_format.get()
+
 
     def update_result(self, if_tree=False):
         target = self.target_name.get()

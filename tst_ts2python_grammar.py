@@ -27,7 +27,7 @@ except (ImportError, ModuleNotFoundError):
 
 try:
     from DHParser.configuration import access_presets, set_preset_value, \
-        finalize_presets, get_config_value
+        finalize_presets, get_config_value, ALLOWED_PRESET_VALUES
     from DHParser import dsl
     import DHParser.log
     from DHParser import testing

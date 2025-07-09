@@ -49,7 +49,7 @@ except ImportError:
 from DHParser.compile import Compiler, compile_source, Junction, full_compile
 from DHParser.configuration import set_config_value, get_config_value, get_config_values, \
     access_presets, finalize_presets, set_preset_value, get_preset_value, NEVER_MATCH_PATTERN, \
-    get_config_values, read_local_config
+    get_config_values, read_local_config,ALLOWED_PRESET_VALUES
 from DHParser import dsl
 from DHParser.dsl import recompile_grammar, never_cancel
 from DHParser.ebnf import grammar_changed
@@ -1649,6 +1649,7 @@ def inspect(test_file_path: str):
 
 
 def main(called_from_app=False):
+    global targets, test_targets, serializations, junctions
     # recompile grammar if needed
     script_path = os.path.abspath(__file__)
     script_name = os.path.basename(script_path)
@@ -1699,11 +1700,38 @@ def main(called_from_app=False):
                              '(PEP 655), but ignore ReadOnly (PEP 705)')
     parser.add_argument('-k', '--comments', action='store_const', const="comments",
                         help="Preserve (multiline) comments")
+    parser.add_argument('-s', '--serialize', nargs=1, default=[],
+                        help="Choose serialization format for tree structured data. Available: "
+                             + ', '.join(ALLOWED_PRESET_VALUES['default_serialization']))
+    parser.add_argument('-t', '--target', nargs='+', default=[],
+                        help='Pick compilation target(s). Available targets: '
+                             '%s; default: %s' % (', '.join(test_targets), ', '.join(targets)))
 
     args = parser.parse_args()
     file_names, out, log_dir = args.files, args.out[0], ''
 
     read_local_config(os.path.join(scriptpath, 'ts2pythonConfig.ini'))
+
+    if args.serialize:
+        if (args.serialize[0].lower() not in
+                [sf.lower() for sf in ALLOWED_PRESET_VALUES['default_serialization']]):
+            print('Unknown serialization format: ' + args.serialize[0] +
+                  '! Available formats for tree-structures: '
+                  + ', '.join(ALLOWED_PRESET_VALUES['default_serialization']))
+            sys.exit(1)
+        serializations['*'] = args.serialize
+        access_presets()
+        set_preset_value('{NAME}_serializations', serializations, allow_new_key=True)
+        finalize_presets()
+
+    if args.target:
+        chosen = set(args.target)
+        unknown = chosen - test_targets
+        if unknown:
+            print('Unknown targets: ' + ', '.join(unknown) + ' chosen!' +
+                  '\nAvailable targets: ' + ', '.join(test_targets))
+            sys.exit(1)
+        targets = chosen
 
     if args.debug or args.compatibility or args.peps or args.anonymous:
         access_presets()

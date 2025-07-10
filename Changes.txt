@@ -13,6 +13,9 @@ Version 0.8.0
 - Removed --base (Base-Class) and --decorator switches from command line
   options. Base-class now always defaults to TypedDict, and no additional
   decorators will be added
+- ts2pythonParser skript has a new option --target that allows to select
+  the abstract-syntax-tree as compilation target rahter than the final
+  Python file
 - typo-corrections and some updates to the documentation
 
 

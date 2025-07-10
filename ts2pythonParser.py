@@ -63,7 +63,7 @@ from DHParser.parse import Grammar, PreprocessorToken, Whitespace, Drop, AnyChar
     ZeroOrMore, Forward, NegativeLookahead, Required, CombinedParser, Custom, mixin_comment, \
     last_value, matching_bracket, optional_last_value, SmartRE
 from DHParser.pipeline import create_parser_junction, create_preprocess_junction, \
-    create_junction, PseudoJunction, full_pipeline, end_points
+    create_junction, PseudoJunction, full_pipeline, end_points, PipelineResult
 from DHParser.preprocess import nil_preprocessor, PreprocessorFunc, PreprocessorResult, \
     gen_find_include_func, preprocess_includes, make_preprocessor, chain_preprocessors
 from DHParser.stringview import StringView
@@ -1520,24 +1520,40 @@ serializations = expand_table(dict([('*', ['sxpr'])]))
 RESULT_FILE_EXTENSION = ".py"  # Change this according to your needs!
 
 
-def compile_src(source: str, target: str = "py") -> Tuple[Any, List[Error]]:
+def pipeline(source: str,
+             target: str = "{NAME}",
+             start_parser: str = "root_parser__") -> PipelineResult:
+    """Runs the source code through the processing pipeline. If
+    the parameter target is not the empty string, only the stages required
+    for the given target will be passed.
+    """
+    global targets
+    target_set = set([target]) if target else targets
+    return full_pipeline(
+        source, preprocessing.factory, parsing.factory, junctions, target_set,
+        start_parser)
+
+
+def compile_src(source: str,
+                target: str = "py",
+                start_parser: str = "root_parser__") -> Tuple[Any, List[Error]]:
     """Compiles ``source`` and returns (result, errors)."""
-    results = full_pipeline(source, preprocessing.factory, parsing.factory,
-                           junctions, {target})
-    return results[target]
+    full_compilation_result = pipeline(source, target, start_parser)
+    return full_compilation_result[target]
 
 
-def serialize_result(result: Any) -> Union[str, bytes]:
+def serialize_result(result: Any, format = "") -> Union[str, bytes]:
     """Serialization of the compilation-result."""
     if isinstance(result, Node):
-        return result.serialize(how='default' if RESULT_FILE_EXTENSION != '.xml' else 'xml')
+        if not format:  format = serializations['*'][0]
+        return result.serialize(format)
     elif isinstance(result, (str, StringView)):
         return result
     else:
         return repr(result)
 
 
-def process_file(source: str, out_dir: str = '') -> str:
+def process_file(source: str, out_dir: str = '', target: str='py') -> str:
     """Compiles the source and writes the serialized results back to disk,
     unless any fatal errors have occurred. Error and Warning messages are
     written to a file with the same name as `result_filename` with an
@@ -1545,11 +1561,13 @@ def process_file(source: str, out_dir: str = '') -> str:
     extension. Returns the name of the error-messages file or an empty
     string if no errors of warnings occurred.
     """
+    global targets, serializations
+    extension = RESULT_FILE_EXTENSION if target == 'py' else '.' + serializations['*'][0]
+
     source_filename = source if is_filename(source) else ''
     if source_filename:
         result_filename = os.path.join(out_dir,
-            os.path.splitext(os.path.basename(source_filename))[0]
-            + RESULT_FILE_EXTENSION)
+            os.path.splitext(os.path.basename(source_filename))[0] + extension)
     else:
         result_filename = os.path.join(out_dir, "out.py")
     if os.path.isfile(result_filename):
@@ -1561,7 +1579,7 @@ def process_file(source: str, out_dir: str = '') -> str:
         m = re.search(r'source_hash__ *= *"([\w.!? ]*)"', result)
         if m and m.groups()[-1] == source_hash(source):
             return ''  # no re-compilation necessary, because source hasn't changed
-    result, errors = compile_src(source)
+    result, errors = compile_src(source, target)
     if not has_errors(errors, FATAL):
         if os.path.abspath(source_filename) != os.path.abspath(result_filename):
             with open(result_filename, 'w', encoding='utf-8') as f:
@@ -1683,7 +1701,7 @@ def main(called_from_app=False):
     parser = ArgumentParser(description="Parses a ts2python-file and shows its syntax-tree.")
     parser.add_argument('files', nargs='*' if called_from_app else '+')
     parser.add_argument('-D', '--debug', action='store_const', const='debug',
-                        help='Store debug information in LOGS subdirectory')
+                        help='Write debug information to LOGS subdirectory')
     parser.add_argument('-o', '--out', nargs=1, default=['ts2python_output'],
                         help='Output directory for batch processing')
     parser.add_argument('-v', '--verbose', action='store_const', const='verbose',
@@ -1701,7 +1719,7 @@ def main(called_from_app=False):
     parser.add_argument('-k', '--comments', action='store_const', const="comments",
                         help="Preserve (multiline) comments")
     parser.add_argument('-s', '--serialize', nargs=1, default=[],
-                        help="Choose serialization format for tree structured data. Available: "
+                        help="Choose serialization format for abstract syntax tree. Available: "
                              + ', '.join(ALLOWED_PRESET_VALUES['default_serialization']))
     parser.add_argument('-t', '--target', nargs='+', default=[],
                         help='Pick compilation target(s). Available targets: '
@@ -1821,7 +1839,10 @@ def main(called_from_app=False):
 
     else:
         assert file_names[0].lower().endswith('.ts')
-        error_file = process_file(file_names[0], '.')
+        if len(targets) == 1:
+            error_file = process_file(file_names[0], '.', target=next(iter(targets)))
+        else:
+            error_file = process_file(file_names[0], '.')
         if error_file:
             with open(error_file, 'r', encoding='utf-8') as f:
                 print(f.read())

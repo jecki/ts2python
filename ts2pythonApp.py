@@ -56,7 +56,8 @@ class ts2pythonApp(tk.Tk):
         # self.parser_names.remove(grammar.root__.pname)
         self.parser_names.sort(key=lambda s: s.lower().lstrip('_'))
         # self.parser_names.insert(0, grammar.root__.pname)
-        self.root_name = tk.StringVar(value=grammar.root__.pname)
+        # self.root_name = tk.StringVar(value=grammar.root__.pname)
+        self.root_name = tk.StringVar(value="document")
 
         self.all_results: PipelineResult = {}
 
@@ -116,6 +117,7 @@ class ts2pythonApp(tk.Tk):
         self.source.bind("<Command-v>", self.on_source_insert)
         self.target_stage.bind("<<ComboboxSelected>>", self.on_target_stage)
         self.target_choice.bind("<<ComboboxSelected>>", self.on_target_choice)
+        self.root_parser.bind("<<ComboboxSelected>>", self.on_root_parser)
 
     def place_widgets(self):
         padW = dict(sticky=(tk.W,), padx="5", pady="5")
@@ -237,16 +239,17 @@ class ts2pythonApp(tk.Tk):
             self.source_modified_sentinel -= 1
             if self.source_modified_sentinel > 0:
                 self.source.edit_modified(False)
+            else:
+                txt = self.source.get('1.0', tk.END)
+                if re.fullmatch(r'\s*', txt):
+                    self.compile['stat'] = tk.DISABLED
+                    self.source_clear['stat'] = tk.DISABLED
+                else:
+                    self.compile['stat'] = tk.NORMAL
+                    self.source_clear['stat'] = tk.NORMAL
         else:
             self.source_modified_sentinel = 1
             self.source.edit_modified(False)
-            txt = self.source.get('1.0', tk.END)
-            if re.fullmatch(r'\s*', txt):
-                self.compile['stat'] = tk.DISABLED
-                self.source_clear['stat'] = tk.DISABLED
-            else:
-                self.compile['stat'] = tk.NORMAL
-                self.source_clear['stat'] = tk.NORMAL
             if self.source_paste:
                 self.source_paste = False
                 # Call compile here, directly
@@ -265,7 +268,18 @@ class ts2pythonApp(tk.Tk):
         parser = self.root_name.get()
         target = self.target_name.get()
         serialization_format = self.target_format.get()
-
+        source = self.source.get("1.0", tk.END)
+        if source.find('\n') < 0:
+            if not source.strip():  return
+            source += '\n'
+        self.all_results = ts2pythonParser.pipeline(source, target, parser)
+        result, errors = self.all_results[target]
+        self.result.delete("1.0", tk.END)
+        self.result.insert("1.0", result.serialize(serialization_format)
+                           if isinstance(result, Node) else result)
+        self.errors.delete("1.0", tk.END)
+        self.errors.insert("1.0", '\n'.join(str(e) for e in errors))
+        self.compile['stat'] = tk.DISABLED
 
     def update_result(self, if_tree=False):
         target = self.target_name.get()
@@ -286,9 +300,14 @@ class ts2pythonApp(tk.Tk):
         elif isinstance(self.all_results.get(target, (EMPTY_NODE, []))[0], Node):
             self.target_choice['state'] = tk.DISABLED
         self.update_result()
+        self.compile['stat'] = tk.NORMAL
 
     def on_target_choice(self, event):
         self.update_result(if_tree=True)
+
+    def on_root_parser(self, event):
+        self.update_result(if_tree=True)
+        self.compile['stat'] = tk.NORMAL
 
     def on_save_result(self):
         pass

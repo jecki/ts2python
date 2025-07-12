@@ -11,7 +11,7 @@ from typing import cast
 import tkinter as tk
 import webbrowser
 from tkinter import ttk
-from tkinter import filedialog, messagebox, scrolledtext
+from tkinter import filedialog, messagebox, scrolledtext, font
 
 from DHParser.nodetree import Node, EMPTY_NODE
 from DHParser.pipeline import full_pipeline, PipelineResult
@@ -23,6 +23,32 @@ except NameError:
 if scriptdir and scriptdir not in sys.path: sys.path.append(scriptdir)
 
 import ts2pythonParser
+
+
+class TextLineNumbers(tk.Canvas):
+    """See https://stackoverflow.com/questions/16369470/tkinter-adding-line-number-to-text-widget
+    and https://stackoverflow.com/questions/24896747/how-to-display-line-numbers-in-tkinter-text-widget
+    """
+    def __init__(self, text_widget, **kwargs):
+        super().__init__(width=40, **kwargs)
+        self.text_widget = text_widget
+        self.text_widget.bind('<KeyRelease>', self.redraw)
+        self.text_widget.bind('<MouseWheel>', self.redraw)
+        self.text_widget.bind('<Button-1>', self.redraw)
+        self.text_widget.bind('<Configure>', self.redraw)
+        self.redraw()
+
+    def redraw(self, event=None):
+        self.delete("all")
+        i = self.text_widget.index("@0,0")
+        while True:
+            dline = self.text_widget.dlineinfo(i)
+            if dline is None:
+                break
+            y = dline[1]
+            linenum = str(i).split(".")[0]
+            self.create_text(2, y, anchor="nw", text=linenum)
+            i = self.text_widget.index(f"{i}+1line")
 
 
 class ts2pythonApp(tk.Tk):
@@ -66,6 +92,13 @@ class ts2pythonApp(tk.Tk):
         self.target_name = tk.StringVar(value=list(ts2pythonParser.targets)[0])
         self.target_format = tk.StringVar(value="XML")
 
+        self.default_font = font.nametofont("TkDefaultFont")
+        font_properties = self.default_font.actual()
+        family, size = font_properties['family'], font_properties['size']
+        self.bold_font = ttk.Style()
+        self.bold_font.configure("BoldRed.TButton",
+                                 font=(family, size, "bold"),
+                                 foreground="red")
         self.create_widgets()
         self.connect_events()
         self.place_widgets()
@@ -88,8 +121,9 @@ class ts2pythonApp(tk.Tk):
         self.source_clear = ttk.Button(text="Clear source", command=self.on_clear_source)
         self.source_clear['state'] = tk.DISABLED
         self.source = scrolledtext.ScrolledText(undo=True)
+        self.line_numbers = TextLineNumbers(self.source)
         self.root_parser = ttk.Combobox(self, values=self.parser_names, textvariable=self.root_name)
-        self.compile = ttk.Button(text="Compile", command=self.on_compile)
+        self.compile = ttk.Button(text="Compile", style="BoldRed.TButton", command=self.on_compile)
         self.compile['state'] = tk.DISABLED
         self.target_stage = ttk.Combobox(self, values=self.targets, textvariable=self.target_name)
         self.target_choice = ttk.Combobox(
@@ -99,12 +133,14 @@ class ts2pythonApp(tk.Tk):
             self.target_choice['state'] = tk.DISABLED
         self.result_info = ttk.Label(text='Result:')
         self.result = scrolledtext.ScrolledText()
+        # self.result['state'] = tk.DISABLED
         self.save_result = ttk.Button(text="Save result...", command=self.on_save_result)
         self.save_result['state'] = tk.DISABLED
         self.export_test = ttk.Button(text="Export as test case...", command=self.on_export_test)
         self.export_test['state'] = tk.DISABLED
         self.errors_info = ttk.Label(text='Errors:')
         self.errors = scrolledtext.ScrolledText()
+        # self.errors['state'] = tk.DISABLED
         self.progressbar = ttk.Progressbar(orient="horizontal", variable=self.progress)
         self.cancel = ttk.Button(text="Cancel", command=self.on_cancel)
         self.cancel['state'] = tk.DISABLED
@@ -130,7 +166,8 @@ class ts2pythonApp(tk.Tk):
         self.source_info.grid(row=0, column=0, **padW)
         self.source_undo.grid(row=0, column=4, **padE)
         self.source_clear.grid(row=0, column=5, **padE)
-        self.source.grid(row=1, column=0, columnspan=6, **padAll)
+        self.source.grid(row=1, column=1, columnspan=5, **padAll)
+        self.line_numbers.grid(row=1, column=0, **padAll)
         self.root_parser.grid(row=2, column=2, **padE)
         self.compile.grid(row=2, column=3, **padWE)
         self.target_stage.grid(row=2, column=4, **padW)
@@ -281,7 +318,7 @@ class ts2pythonApp(tk.Tk):
         self.errors.insert("1.0", '\n'.join(str(e) for e in errors))
         self.compile['stat'] = tk.DISABLED
 
-    def update_result(self, if_tree=False):
+    def update_result(self, if_tree=False) -> bool:
         target = self.target_name.get()
         result = self.all_results.get(target, ("", []))[0]
         if isinstance(result, Node):
@@ -292,6 +329,7 @@ class ts2pythonApp(tk.Tk):
         elif not if_tree:
             self.result.delete('1.0', tk.END)
             self.result.insert(tk.END, result)
+        return bool(result[0]) or bool(result[1])
 
     def on_target_stage(self, event):
         target = self.target_name.get()
@@ -299,8 +337,8 @@ class ts2pythonApp(tk.Tk):
             self.target_choice['state'] = tk.NORMAL
         elif isinstance(self.all_results.get(target, (EMPTY_NODE, []))[0], Node):
             self.target_choice['state'] = tk.DISABLED
-        self.update_result()
-        self.compile['stat'] = tk.NORMAL
+        if not self.update_result():
+            self.compile['stat'] = tk.NORMAL
 
     def on_target_choice(self, event):
         self.update_result(if_tree=True)

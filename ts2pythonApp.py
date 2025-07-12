@@ -91,6 +91,7 @@ class ts2pythonApp(tk.Tk):
         self.targets.sort(key=lambda s: s in ts2pythonParser.targets)
         self.target_name = tk.StringVar(value=list(ts2pythonParser.targets)[0])
         self.target_format = tk.StringVar(value="XML")
+        self.error_list = []
 
         self.default_font = font.nametofont("TkDefaultFont")
         font_properties = self.default_font.actual()
@@ -154,6 +155,10 @@ class ts2pythonApp(tk.Tk):
         self.target_stage.bind("<<ComboboxSelected>>", self.on_target_stage)
         self.target_choice.bind("<<ComboboxSelected>>", self.on_target_choice)
         self.root_parser.bind("<<ComboboxSelected>>", self.on_root_parser)
+        self.errors.bind('<KeyRelease>', self.on_errors)
+        self.errors.bind('<MouseWheel>', self.on_errors)
+        self.errors.bind('<Button-1>', self.on_errors)
+        self.errors.bind('<Configure>', self.on_errors)
 
     def place_widgets(self):
         padW = dict(sticky=(tk.W,), padx="5", pady="5")
@@ -310,12 +315,12 @@ class ts2pythonApp(tk.Tk):
             if not source.strip():  return
             source += '\n'
         self.all_results = ts2pythonParser.pipeline(source, target, parser)
-        result, errors = self.all_results[target]
+        result, self.error_list = self.all_results[target]
         self.result.delete("1.0", tk.END)
         self.result.insert("1.0", result.serialize(serialization_format)
                            if isinstance(result, Node) else result)
         self.errors.delete("1.0", tk.END)
-        self.errors.insert("1.0", '\n'.join(str(e) for e in errors))
+        self.errors.insert("1.0", '\n'.join(str(e) for e in self.error_list))
         self.compile['stat'] = tk.DISABLED
 
     def update_result(self, if_tree=False) -> bool:
@@ -346,6 +351,14 @@ class ts2pythonApp(tk.Tk):
     def on_root_parser(self, event):
         self.update_result(if_tree=True)
         self.compile['stat'] = tk.NORMAL
+
+    def on_errors(self, event):
+        i = self.errors.index("@0,0")
+        try:
+            error = self.error_list[i - 1]
+            self.source.see(f"{error.line}{error.column-1}")
+        except IndexError:
+            pass
 
     def on_save_result(self):
         pass

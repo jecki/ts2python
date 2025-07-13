@@ -353,10 +353,10 @@ class ts2pythonApp(tk.Tk):
         self.compile['stat'] = tk.NORMAL
 
     def on_errors(self, event):
-        i = self.errors.index("@0,0")
+        i = int(self.errors.index("@0,0").split('.')[0])
         try:
             error = self.error_list[i - 1]
-            self.source.see(f"{error.line}{error.column-1}")
+            self.source.see(f"{error.line}.{error.column-1}")
         except IndexError:
             pass
 

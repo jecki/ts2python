@@ -155,10 +155,10 @@ class ts2pythonApp(tk.Tk):
         self.target_stage.bind("<<ComboboxSelected>>", self.on_target_stage)
         self.target_choice.bind("<<ComboboxSelected>>", self.on_target_choice)
         self.root_parser.bind("<<ComboboxSelected>>", self.on_root_parser)
-        self.errors.bind('<KeyRelease>', self.on_errors)
-        self.errors.bind('<MouseWheel>', self.on_errors)
-        self.errors.bind('<Button-1>', self.on_errors)
-        self.errors.bind('<Configure>', self.on_errors)
+        self.errors.bind('<KeyRelease>', self.on_errors_key)
+        # self.errors.bind('<MouseWheel>', self.on_errors_mouse)
+        self.errors.bind('<Button-1>', self.on_errors_mouse)
+        # self.errors.bind('<Configure>', self.on_errors)
 
     def place_widgets(self):
         padW = dict(sticky=(tk.W,), padx="5", pady="5")
@@ -255,7 +255,11 @@ class ts2pythonApp(tk.Tk):
                 title="Chose files to parse/compile",
                 filetypes=[('All', '*')]
             ))
-            if self.names:
+            if len(self.names) == 1:
+                with open(self.names[0], 'r', encoding='utf-8') as f:
+                    snippet = f.read()
+                    # TODO: Replace source snippet, reset root parser
+            elif len(self.names) >= 2:
                 self.num_sources = len(self.names)
                 self.num_compiled = 0
                 self.outdir = os.path.join(os.path.dirname(self.names[0]), 'ts2python_output')
@@ -314,14 +318,18 @@ class ts2pythonApp(tk.Tk):
         if source.find('\n') < 0:
             if not source.strip():  return
             source += '\n'
+        self.source.tag_delete("error")
         self.all_results = ts2pythonParser.pipeline(source, target, parser)
         result, self.error_list = self.all_results[target]
+        self.compile['stat'] = tk.DISABLED
         self.result.delete("1.0", tk.END)
         self.result.insert("1.0", result.serialize(serialization_format)
                            if isinstance(result, Node) else result)
         self.errors.delete("1.0", tk.END)
         self.errors.insert("1.0", '\n'.join(str(e) for e in self.error_list))
-        self.compile['stat'] = tk.DISABLED
+        for e in self.error_list:
+            self.source.tag_add("error", f"{e.line}.{e.column-1}", f"{e.line}.{e.column}")
+        self.source.tag_config("error", background="red")
 
     def update_result(self, if_tree=False) -> bool:
         target = self.target_name.get()
@@ -352,13 +360,26 @@ class ts2pythonApp(tk.Tk):
         self.update_result(if_tree=True)
         self.compile['stat'] = tk.NORMAL
 
-    def on_errors(self, event):
-        i = int(self.errors.index("@0,0").split('.')[0])
+    def expose_error(self, i):
+        self.source.tag_delete("errorline")
         try:
-            error = self.error_list[i - 1]
+            error = self.error_list[i]
             self.source.see(f"{error.line}.{error.column-1}")
+            self.source.tag_add("errorline", f"{error.line}.{0}",
+                                f"{error.line}.{error.column-1}")
+            self.source.tag_add("errorline", f"{error.line}.{error.column}",
+                                f"{error.line}.{max(error.column + 40, 240)}")
+            self.source.tag_config("errorline", background="yellow")
         except IndexError:
             pass
+
+    def on_errors_key(self, event):
+        i = int(self.errors.index(tk.INSERT).split('.')[0])
+        self.expose_error(i - 1)
+
+    def on_errors_mouse(self, event):
+        i = int(self.errors.index(f"@0,{event.y}").split('.')[0])
+        self.expose_error(i - 1)
 
     def on_save_result(self):
         pass

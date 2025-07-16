@@ -205,8 +205,8 @@ class ts2pythonApp(tk.Tk):
             self.update()
 
     def log_callback(self, txt):
-        self.errors.insert(tk.END, txt + '\n')
-        self.errors.yview_moveto(1.0)
+        self.result.insert(tk.END, txt + '\n')
+        # self.errors.yview_moveto(1.0)
         self.num_compiled += 1
         self.progress.set(min(100, int(100 * self.num_compiled / self.num_sources)))
         self.update()
@@ -223,25 +223,24 @@ class ts2pythonApp(tk.Tk):
         else:
             self.cancel['stat'] = tk.DISABLED
             if self.cancel_flag:
-                self.errors.yview_moveto(1.0)
+                self.result.yview_moveto(1.0)
                 with self.lock:  self.cancel_flag = False
             else:
-                self.errors.insert(tk.END, "Compilation finished.\n")
-                self.errors.insert(tk.END, f"Results written to {self.outdir}.\n")
-                if len(self.names) == 1:
-                    basename = os.path.splitext(os.path.basename(self.names[0]))[0]
-                    for msgtype in ('_ERRORS.txt', '_WARNINGS.txt'):
-                        msgfile = os.path.join(self.outdir, basename + msgtype)
-                        if os.path.exists(msgfile):
-                            with open(msgfile, 'r', encoding='utf-8') as f:  msg = f.read()
-                            lines = msg.split('\n')
-                            leadout = '...\n' if len(lines) > 20 else '\n'
-                            msg = '\n'.join([msgtype[1:-4] ] + lines[:20] + [leadout])
-                            self.errors.insert(tk.END, msg)
-                            break
-                else:
-                    self.errors.insert(tk.END,
-                        f"Errors (if any) written to {self.outdir}.\n")
+                self.result.insert(tk.END, "Compilation finished.\n")
+                self.result.insert(tk.END, f"Results written to {self.outdir}.\n")
+                # if len(self.names) == 1:
+                #     basename = os.path.splitext(os.path.basename(self.names[0]))[0]
+                #     for msgtype in ('_ERRORS.txt', '_WARNINGS.txt'):
+                #         msgfile = os.path.join(self.outdir, basename + msgtype)
+                #         if os.path.exists(msgfile):
+                #             with open(msgfile, 'r', encoding='utf-8') as f:  msg = f.read()
+                #             lines = msg.split('\n')
+                #             leadout = '...\n' if len(lines) > 20 else '\n'
+                #             msg = '\n'.join([msgtype[1:-4] ] + lines[:20] + [leadout])
+                #             self.errors.insert(tk.END, msg)
+                #             break
+                # else:
+                self.errors.insert(tk.END, f"Errors (if any) written to {self.outdir}.\n")
                 if self.target_name.get().lower() == 'html':
                     html_name = os.path.splitext(os.path.basename(self.names[0]))[0] + '.html'
                     html_name = os.path.join(self.outdir, html_name)
@@ -260,32 +259,35 @@ class ts2pythonApp(tk.Tk):
                 title="Chose files to parse/compile",
                 filetypes=[('All', '*')]
             ))
-            if len(self.names) == 1:
-                try:
-                    with open(self.names[0], 'r', encoding='utf-8') as f:
-                        snippet = f.read()
-                        self.source.delete(1.0, tk.END)
-                        self.result.delete(1.0, tk.END)
-                        self.errors.delete(1.0, tk.END)
-                        self.source.insert(tk.END, snippet)
-                except (FileNotFoundError, PermissionError,
-                        IsADirectoryError, IOError) as e:
-                    self.result.delete('1.0', tk.END)
-                    self.result.insert(tk.END, str(e))
-            elif len(self.names) >= 2:
-                self.num_sources = len(self.names)
-                self.num_compiled = 0
-                self.outdir = os.path.join(os.path.dirname(self.names[0]), 'ts2python_output')
-                if not os.path.exists(self.outdir):  os.mkdir(self.outdir)
-                with self.lock:  self.cancel_flag = False
-                self.worker = threading.Thread(
-                    target = ts2pythonParser.batch_process,
-                    args = (self.names, self.outdir),
-                    kwargs = dict([('log_func', self.log_callback),
-                                   ('cancel_func', self.cancel_callback)]))
-                self.worker.start()
-                self.cancel['stat'] = tk.NORMAL
-                self.after(1000, self.poll_worker)
+            if self.names:
+                self.all_results = {}
+                self.error_list = []
+                self.source.delete(1.0, tk.END)
+                self.result.delete(1.0, tk.END)
+                self.errors.delete(1.0, tk.END)
+                if len(self.names) == 1:
+                    try:
+                        with open(self.names[0], 'r', encoding='utf-8') as f:
+                            snippet = f.read()
+                            self.source.insert(tk.END, snippet)
+                    except (FileNotFoundError, PermissionError,
+                            IsADirectoryError, IOError) as e:
+                        self.result.insert(tk.END, str(e))
+                else:
+                    self.num_sources = len(self.names)
+                    self.num_compiled = 0
+                    self.outdir = os.path.join(os.path.dirname(self.names[0]),
+                                               'ts2python_output')
+                    if not os.path.exists(self.outdir):  os.mkdir(self.outdir)
+                    with self.lock:  self.cancel_flag = False
+                    self.worker = threading.Thread(
+                        target = ts2pythonParser.batch_process,
+                        args = (self.names, self.outdir),
+                        kwargs = dict([('log_func', self.log_callback),
+                                       ('cancel_func', self.cancel_callback)]))
+                    self.worker.start()
+                    self.cancel['stat'] = tk.NORMAL
+                    self.after(1000, self.poll_worker)
 
     def on_clear_source(self):
         self.source.delete('1.0', tk.END)
@@ -375,6 +377,9 @@ class ts2pythonApp(tk.Tk):
             if not source.strip():  return
             source += '\n'
         self.source.tag_delete("error")
+        self.source.tag_delete("errorline")
+        self.errors.tag_delete("currenterror")
+        self.errors.tag_delete("error")
         self.all_results = ts2pythonParser.pipeline(source, target, parser)
         result, self.error_list = self.all_results[target]
         self.compile['stat'] = tk.DISABLED

@@ -58,7 +58,7 @@ class ts2pythonApp(tk.Tk):
         self.withdraw()
         self.title('ts2python App')
         self.minsize(800, 680)
-        self.geometry("960x720")
+        self.geometry("960x880")
         self.option_add('*tearOff', False)
 
         self.protocol("WM_DELETE_WINDOW", self.on_close)
@@ -155,6 +155,8 @@ class ts2pythonApp(tk.Tk):
         self.source.bind("<<Modified>>", self.on_source_change)
         self.source.bind("<Control-v>", self.on_source_insert)
         self.source.bind("<Command-v>", self.on_source_insert)
+        self.source.bind("<KeyRelease>", self.on_source_key)
+        self.source.bind("<Button-1>", self.on_source_mouse)
         self.target_stage.bind("<<ComboboxSelected>>", self.on_target_stage)
         self.target_choice.bind("<<ComboboxSelected>>", self.on_target_choice)
         self.root_parser.bind("<<ComboboxSelected>>", self.on_root_parser)
@@ -321,6 +323,37 @@ class ts2pythonApp(tk.Tk):
         except tk.TclError:
             pass  # nothing to undo-error
 
+    def hilight_error_line(self, i):
+        self.source.tag_delete("errorline")
+        self.errors.tag_delete("currenterror")
+        if 0 <= i < len(self.error_list):
+            error = self.error_list[i]
+            line, col = self.tk_error_pos(error)
+            self.source.see(f"{line}.{col}")
+            line_str = self.source.get(f'{line}.0', f'{line + 1}.0').strip('\n')
+            self.source.tag_add("errorline", f"{line}.{0}", f"{line}.{col}")
+            self.source.tag_add("errorline", f"{line}.{col + 1}", f"{line}.{len(line_str)}")
+            self.source.tag_config("errorline", background="yellow")
+            err_str = self.errors.get(f'{i + 1}.0', f'{i + 2}.0').strip('\n')
+            self.errors.tag_add("currenterror", f"{i + 1}.{0}", f"{i + 1}.{len(err_str)}")
+            self.errors.tag_config("currenterror", background="lavender")
+
+    def show_if_error_at(self, location):
+        tag_names = self.source.tag_names(location)
+        l, c = map(int, location.split('.'))
+        if 'error' in tag_names or 'warning' in tag_names:
+            for i, e in enumerate(self.error_list):
+                if e.line == l and abs(e.column - c) <= 2:
+                    self.hilight_error_line(i)
+        elif not any(e.line == l for e in self.error_list):
+            self.hilight_error_line(-1)  # stop highlighting
+
+    def on_source_key(self, event):
+        self.show_if_error_at(self.source.index(tk.INSERT))
+
+    def on_source_mouse(self, event):
+        self.show_if_error_at(self.source.index(f"@{event.x},{event.y}"))
+
     def tk_error_pos(self, error: Error) -> Tuple[int, int]:
         line = error.line
         col = error.column - 1
@@ -363,15 +396,15 @@ class ts2pythonApp(tk.Tk):
 
     def update_result(self, if_tree=False) -> bool:
         target = self.target_name.get()
-        result = self.all_results.get(target, ("", []))[0]
-        if isinstance(result, Node):
+        result = self.all_results.get(target, ("", []))
+        if isinstance(result[0], Node):
             format = self.target_format.get()
-            result_txt = cast(Node, result).serialize(format)
+            result_txt = cast(Node, result[0]).serialize(format)
             self.result.delete('1.0', tk.END)
             self.result.insert(tk.END, result_txt)
         elif not if_tree:
             self.result.delete('1.0', tk.END)
-            self.result.insert(tk.END, result)
+            self.result.insert(tk.END, result[0])
         return bool(result[0]) or bool(result[1])
 
     def on_target_stage(self, event):
@@ -389,23 +422,6 @@ class ts2pythonApp(tk.Tk):
     def on_root_parser(self, event):
         self.update_result(if_tree=True)
         self.compile['stat'] = tk.NORMAL
-
-    def hilight_error_line(self, i):
-        self.source.tag_delete("errorline")
-        self.errors.tag_delete("currenterror")
-        try:
-            error = self.error_list[i]
-            line, col = self.tk_error_pos(error)
-            self.source.see(f"{line}.{col}")
-            line_str = self.source.get(f'{line}.0', f'{line + 1}.0').strip('\n')
-            self.source.tag_add("errorline", f"{line}.{0}", f"{line}.{col}")
-            self.source.tag_add("errorline", f"{line}.{col + 1}", f"{line}.{len(line_str)}")
-            self.source.tag_config("errorline", background="yellow")
-            err_str = self.errors.get(f'{i + 1}.0', f'{i + 2}.0').strip('\n')
-            self.errors.tag_add("currenterror", f"{i + 1}.{0}", f"{i + 1}.{len(err_str)}")
-            self.errors.tag_config("currenterror", background="lavender")
-        except IndexError:
-            pass
 
     def on_errors_key(self, event):
         i = int(self.errors.index(tk.INSERT).split('.')[0])

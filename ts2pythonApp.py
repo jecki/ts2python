@@ -376,11 +376,13 @@ class ts2pythonApp(tk.Tk):
         if source.find('\n') < 0:
             if not source.strip():  return
             source += '\n'
+
+        self.all_results = ts2pythonParser.pipeline(source, target, parser)
+
         self.source.tag_delete("error")
         self.source.tag_delete("errorline")
         self.errors.tag_delete("currenterror")
         self.errors.tag_delete("error")
-        self.all_results = ts2pythonParser.pipeline(source, target, parser)
         result, self.error_list = self.all_results[target]
         self.compile['stat'] = tk.DISABLED
         self.result.delete("1.0", tk.END)

@@ -73,19 +73,19 @@ extends     = ("extends" | "implements")
 
 declarations_block = "{" [ (function|declaration) { [";"|","] (function|declaration) } [";"|","] ]
                          [map_signature [";"|","] ] "}"
-declaration = ["export"] qualifiers ["let"|"var"] !_keyword identifier [optional] !`(` [":" types]
+declaration = ["export"] qualifiers ["let"|"var"] !_keyword identifier [optional] !`(` [":" §types]
 
 
 # @function_resume = /(?=;)/
 
 function    = [["export"] qualifiers
                ["function"] !_keyword identifier [optional] [type_parameters]]
-              "(" §[arg_list] ")" [":" types]
+              "(" §[arg_list] ")" [":" §types]
             | special
   arg_list  = (argument { "," argument } ["," arg_tail] | arg_tail) [","]
-  arg_tail  = "..." identifier [":" (array_of | generic_type)]
-  argument  = identifier [optional] [":" types]  # same as declaration ?
-special     = "[" name "]" "(" §[arg_list] ")" [":" types]
+  arg_tail  = "..." identifier [":" §(array_of | generic_type)]
+  argument  = identifier [optional] [":" §types]  # same as declaration ?
+special     = "[" name "]" "(" §[arg_list] ")" [":" §types]
 
 _keyword    = (`readonly` | `function` | `const` | `public` | `private` | `protected`) !/\w/
 

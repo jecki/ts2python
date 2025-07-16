@@ -139,9 +139,9 @@ class ts2pythonGrammar(Grammar):
     literal = Forward()
     type = Forward()
     types = Forward()
-    source_hash__ = "e4be941365df870eeba2f0e17eb636f3"
+    source_hash__ = "35e72c94043a01a617b41a370934a54c"
     early_tree_reduction__ = CombinedParser.MERGE_TREETOPS
-    disposable__ = re.compile('(?:_array_ellipsis$|_top_level_assignment$|_quoted_identifier$|DOT$|INT$|_reserved$|NEG$|FRAC$|EXP$|_keyword$|EOF$|_top_level_literal$|_namespace$|_part$)')
+    disposable__ = re.compile('(?:_namespace$|_reserved$|_top_level_literal$|_keyword$|_part$|NEG$|_top_level_assignment$|FRAC$|_quoted_identifier$|DOT$|EOF$|EXP$|_array_ellipsis$|INT$)')
     static_analysis_pending__ = []  # type: List[bool]
     parser_initialization__ = ["upon instantiation"]
     COMMENT__ = r'(?://.*)\n?|(?:/\*(?:.|\n)*?\*/) *\n?'
@@ -209,9 +209,9 @@ class ts2pythonGrammar(Grammar):
     virtual_enum = Series(Option(Series(Drop(Text("export")), dwsp__)), Series(Drop(Text("namespace")), dwsp__), identifier, Series(Drop(Text("{")), dwsp__), ZeroOrMore(Alternative(interface, type_alias, enum, const, Series(declaration, Option(Series(Drop(Text(";")), dwsp__))))), Series(Drop(Text("}")), dwsp__))
     qualifiers = Interleave(readonly, static, Series(Drop(Text('public')), dwsp__), Series(Drop(Text('protected')), dwsp__), Series(Drop(Text('private')), dwsp__), repetitions=[(0, 1), (0, 1), (0, 1), (0, 1), (0, 1)])
     _keyword = Drop(SmartRE(f'(?P<:Text>readonly|function|const|public|private|protected)(?!\\w)', '`readonly`|`function`|`const`|`public`|`private`|`protected` !/\\w/'))
-    special = Series(Series(Drop(Text("[")), dwsp__), name, Series(Drop(Text("]")), dwsp__), Series(Drop(Text("(")), dwsp__), Option(arg_list), Series(Drop(Text(")")), dwsp__), Option(Series(Series(Drop(Text(":")), dwsp__), types)), mandatory=4)
-    argument = Series(identifier, Option(optional), Option(Series(Series(Drop(Text(":")), dwsp__), types)))
-    arg_tail = Series(Series(Drop(Text("...")), dwsp__), identifier, Option(Series(Series(Drop(Text(":")), dwsp__), Alternative(array_of, generic_type))))
+    special = Series(Series(Drop(Text("[")), dwsp__), name, Series(Drop(Text("]")), dwsp__), Series(Drop(Text("(")), dwsp__), Option(arg_list), Series(Drop(Text(")")), dwsp__), Option(Series(Series(Drop(Text(":")), dwsp__), types, mandatory=1)), mandatory=4)
+    argument = Series(identifier, Option(optional), Option(Series(Series(Drop(Text(":")), dwsp__), types, mandatory=1)))
+    arg_tail = Series(Series(Drop(Text("...")), dwsp__), identifier, Option(Series(Series(Drop(Text(":")), dwsp__), Alternative(array_of, generic_type), mandatory=1)))
     symList = Series(Series(Drop(Text("{")), dwsp__), symbol, ZeroOrMore(Series(Series(Drop(Text(",")), dwsp__), symbol)), Series(Drop(Text("}")), dwsp__))
     importList = Series(Alternative(symList, identifier), ZeroOrMore(Series(Series(Drop(Text(",")), dwsp__), Alternative(symList, identifier))))
     Import = Series(Series(Drop(Text("import")), dwsp__), Option(Series(Alternative(wildcard, importList), Series(Drop(Text("from")), dwsp__))), string)
@@ -222,8 +222,8 @@ class ts2pythonGrammar(Grammar):
     type.set(Series(Option(readonly), Alternative(array_of, basic_type, generic_type, indexed_type, Series(type_name, NegativeLookahead(Text("("))), Series(Series(Drop(Text("(")), dwsp__), types, Series(Drop(Text(")")), dwsp__)), mapped_type, declarations_block, type_tuple, declarations_tuple, literal, func_type)))
     types.set(Series(Option(Series(Drop(Text("|")), dwsp__)), Alternative(intersection, type), ZeroOrMore(Series(Series(Drop(Text("|")), dwsp__), Alternative(intersection, type)))))
     arg_list.set(Series(Alternative(Series(argument, ZeroOrMore(Series(Series(Drop(Text(",")), dwsp__), argument)), Option(Series(Series(Drop(Text(",")), dwsp__), arg_tail))), arg_tail), Option(Series(Drop(Text(",")), dwsp__))))
-    function.set(Alternative(Series(Option(Series(Option(Series(Drop(Text("export")), dwsp__)), qualifiers, Option(Series(Drop(Text("function")), dwsp__)), NegativeLookahead(_keyword), identifier, Option(optional), Option(type_parameters))), Series(Drop(Text("(")), dwsp__), Option(arg_list), Series(Drop(Text(")")), dwsp__), Option(Series(Series(Drop(Text(":")), dwsp__), types)), mandatory=2), special))
-    declaration.set(Series(Option(Series(Drop(Text("export")), dwsp__)), qualifiers, Option(SmartRE(f'(?:let)(?P<comment__>{WSP_RE__})|(?:var)(?P<comment__>{WSP_RE__})', '"let"|"var"')), NegativeLookahead(_keyword), identifier, Option(optional), NegativeLookahead(Text("(")), Option(Series(Series(Drop(Text(":")), dwsp__), types))))
+    function.set(Alternative(Series(Option(Series(Option(Series(Drop(Text("export")), dwsp__)), qualifiers, Option(Series(Drop(Text("function")), dwsp__)), NegativeLookahead(_keyword), identifier, Option(optional), Option(type_parameters))), Series(Drop(Text("(")), dwsp__), Option(arg_list), Series(Drop(Text(")")), dwsp__), Option(Series(Series(Drop(Text(":")), dwsp__), types, mandatory=1)), mandatory=2), special))
+    declaration.set(Series(Option(Series(Drop(Text("export")), dwsp__)), qualifiers, Option(SmartRE(f'(?:let)(?P<comment__>{WSP_RE__})|(?:var)(?P<comment__>{WSP_RE__})', '"let"|"var"')), NegativeLookahead(_keyword), identifier, Option(optional), NegativeLookahead(Text("(")), Option(Series(Series(Drop(Text(":")), dwsp__), types, mandatory=1))))
     declarations_block.set(Series(Series(Drop(Text("{")), dwsp__), Option(Series(Alternative(function, declaration), ZeroOrMore(Series(Option(SmartRE(f'(?:;)(?P<comment__>{WSP_RE__})|(?:,)(?P<comment__>{WSP_RE__})', '";"|","')), Alternative(function, declaration))), Option(SmartRE(f'(?:;)(?P<comment__>{WSP_RE__})|(?:,)(?P<comment__>{WSP_RE__})', '";"|","')))), Option(Series(map_signature, Option(SmartRE(f'(?:;)(?P<comment__>{WSP_RE__})|(?:,)(?P<comment__>{WSP_RE__})', '";"|","')))), Series(Drop(Text("}")), dwsp__)))
     document.set(Series(dwsp__, ZeroOrMore(Alternative(interface, type_alias, _namespace, enum, const, module, _top_level_assignment, _array_ellipsis, _top_level_literal, Series(Import, Option(Series(Drop(Text(";")), dwsp__))), Series(function, Option(Series(Drop(Text(";")), dwsp__))), Series(declaration, Option(Series(Drop(Text(";")), dwsp__)))))))
     root = Series(document, EOF)
@@ -239,6 +239,20 @@ class ts2pythonGrammar(Grammar):
     
 parsing: PseudoJunction = create_parser_junction(ts2pythonGrammar)
 get_grammar = parsing.factory # for backwards compatibility, only
+
+try:
+    assert RE_INCLUDE == NEVER_MATCH_PATTERN or \
+        RE_COMMENT in (ts2pythonGrammar.COMMENT__, NEVER_MATCH_PATTERN), \
+        "Please adjust the pre-processor-variable RE_COMMENT in file ts2pythonParser.py so that " \
+        "it either is the NEVER_MATCH_PATTERN or has the same value as the COMMENT__-attribute " \
+        "of the grammar class ts2pythonGrammar! " \
+        'Currently, RE_COMMENT reads "%s" while COMMENT__ is "%s". ' \
+        % (RE_COMMENT, ts2pythonGrammar.COMMENT__) + \
+        "\n\nIf RE_COMMENT == NEVER_MATCH_PATTERN then includes will deliberately be " \
+        "processed, otherwise RE_COMMENT==ts2pythonGrammar.COMMENT__ allows the " \
+        "preprocessor to ignore comments."
+except (AttributeError, NameError):
+    pass
 
 
 #######################################################################

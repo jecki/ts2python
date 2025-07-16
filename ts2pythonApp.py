@@ -97,10 +97,12 @@ class ts2pythonApp(tk.Tk):
         self.default_font = font.nametofont("TkDefaultFont")
         font_properties = self.default_font.actual()
         family, size = font_properties['family'], font_properties['size']
-        self.bold_font = ttk.Style()
-        self.bold_font.configure("BoldRed.TButton",
-                                 font=(family, size, "bold"),
-                                 foreground="red")
+        self.bold_label = ttk.Style()
+        self.bold_label.configure("Bold.TLabel", font=(family, size, "bold"))
+        self.bold_button = ttk.Style()
+        self.bold_button.configure("BoldRed.TButton", font=(family, size, "bold"),
+                                   foreground="red")
+
         self.create_widgets()
         self.connect_events()
         self.place_widgets()
@@ -118,7 +120,7 @@ class ts2pythonApp(tk.Tk):
         self.pick_source_info = ttk.Label(text="Paste source code below or...")
         self.pick_source = ttk.Button(text="Pick Source file(s)...",
                                       command=self.on_pick_source)
-        self.source_info = ttk.Label(text='Source:')
+        self.source_info = ttk.Label(text='Source:', style="Bold.TLabel")
         self.source_undo = ttk.Button(text="Undo", command=self.on_source_undo)
         self.source_clear = ttk.Button(text="Clear source", command=self.on_clear_source)
         self.source_clear['state'] = tk.DISABLED
@@ -133,14 +135,14 @@ class ts2pythonApp(tk.Tk):
             textvariable=self.target_format)
         if self.target_name.get() not in ('AST', 'CST'):
             self.target_choice['state'] = tk.DISABLED
-        self.result_info = ttk.Label(text='Result:')
+        self.result_info = ttk.Label(text='Result:', style="Bold.TLabel")
         self.result = scrolledtext.ScrolledText()
         # self.result['state'] = tk.DISABLED
         self.save_result = ttk.Button(text="Save result...", command=self.on_save_result)
         self.save_result['state'] = tk.DISABLED
         self.export_test = ttk.Button(text="Export as test case...", command=self.on_export_test)
         self.export_test['state'] = tk.DISABLED
-        self.errors_info = ttk.Label(text='Errors:')
+        self.errors_info = ttk.Label(text='Errors:', style="Bold.TLabel")
         self.errors = scrolledtext.ScrolledText()
         # self.errors['state'] = tk.DISABLED
         self.progressbar = ttk.Progressbar(orient="horizontal", variable=self.progress)

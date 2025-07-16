@@ -6,13 +6,14 @@ import sys
 import os
 import re
 import threading
-from typing import cast
+from typing import cast, Tuple
 
 import tkinter as tk
 import webbrowser
 from tkinter import ttk
 from tkinter import filedialog, messagebox, scrolledtext, font
 
+from DHParser.error import Error, ERROR
 from DHParser.nodetree import Node, EMPTY_NODE
 from DHParser.pipeline import full_pipeline, PipelineResult
 
@@ -256,9 +257,17 @@ class ts2pythonApp(tk.Tk):
                 filetypes=[('All', '*')]
             ))
             if len(self.names) == 1:
-                with open(self.names[0], 'r', encoding='utf-8') as f:
-                    snippet = f.read()
-                    # TODO: Replace source snippet, reset root parser
+                try:
+                    with open(self.names[0], 'r', encoding='utf-8') as f:
+                        snippet = f.read()
+                        self.source.delete(1.0, tk.END)
+                        self.result.delete(1.0, tk.END)
+                        self.errors.delete(1.0, tk.END)
+                        self.source.insert(tk.END, snippet)
+                except (FileNotFoundError, PermissionError,
+                        IsADirectoryError, IOError) as e:
+                    self.result.delete('1.0', tk.END)
+                    self.result.insert(tk.END, str(e))
             elif len(self.names) >= 2:
                 self.num_sources = len(self.names)
                 self.num_compiled = 0
@@ -310,6 +319,18 @@ class ts2pythonApp(tk.Tk):
         except tk.TclError:
             pass  # nothing to undo-error
 
+    def tk_error_pos(self, error: Error) -> Tuple[int, int]:
+        line = error.line
+        col = error.column - 1
+        line_str = self.source.get(f'{line}.0', f'{line + 1}.0').strip('\n')
+        if 0 < col == len(line_str):  col -= 1
+        return (line, col)
+
+    def mark_error_pos(self, error):
+        line, col = self.tk_error_pos(error)
+        typ = 'error' if error.code >= ERROR else 'warning'
+        self.source.tag_add(typ, f'{line}.{col}', f'{line}.{col + 1}')
+
     def on_compile(self):
         parser = self.root_name.get()
         target = self.target_name.get()
@@ -326,10 +347,17 @@ class ts2pythonApp(tk.Tk):
         self.result.insert("1.0", result.serialize(serialization_format)
                            if isinstance(result, Node) else result)
         self.errors.delete("1.0", tk.END)
-        self.errors.insert("1.0", '\n'.join(str(e) for e in self.error_list))
+        for i, e in enumerate(self.error_list):
+            err_str = str(e) + '\n'
+            self.errors.insert(f"{i + 1}.0", err_str)
+            if e.code >= ERROR:
+                self.errors.tag_add('error', f"{i + 1}.{0}", f"{i + 1}.{len(err_str)}")
+        self.errors.tag_config('error', foreground='red')
+        # self.errors.insert("1.0", '\n'.join(str(e) for e in self.error_list))
         for e in self.error_list:
-            self.source.tag_add("error", f"{e.line}.{e.column-1}", f"{e.line}.{e.column}")
-        self.source.tag_config("error", background="red")
+            self.mark_error_pos(e)
+        self.source.tag_config("error", background="orange red")
+        self.source.tag_config("warning", background="thistle")
 
     def update_result(self, if_tree=False) -> bool:
         target = self.target_name.get()
@@ -360,26 +388,30 @@ class ts2pythonApp(tk.Tk):
         self.update_result(if_tree=True)
         self.compile['stat'] = tk.NORMAL
 
-    def expose_error(self, i):
+    def hilight_error_line(self, i):
         self.source.tag_delete("errorline")
+        self.errors.tag_delete("currenterror")
         try:
             error = self.error_list[i]
-            self.source.see(f"{error.line}.{error.column-1}")
-            self.source.tag_add("errorline", f"{error.line}.{0}",
-                                f"{error.line}.{error.column-1}")
-            self.source.tag_add("errorline", f"{error.line}.{error.column}",
-                                f"{error.line}.{max(error.column + 40, 240)}")
+            line, col = self.tk_error_pos(error)
+            self.source.see(f"{line}.{col}")
+            line_str = self.source.get(f'{line}.0', f'{line + 1}.0').strip('\n')
+            self.source.tag_add("errorline", f"{line}.{0}", f"{line}.{col}")
+            self.source.tag_add("errorline", f"{line}.{col + 1}", f"{line}.{len(line_str)}")
             self.source.tag_config("errorline", background="yellow")
+            err_str = self.errors.get(f'{i + 1}.0', f'{i + 2}.0').strip('\n')
+            self.errors.tag_add("currenterror", f"{i + 1}.{0}", f"{i + 1}.{len(err_str)}")
+            self.errors.tag_config("currenterror", background="lavender")
         except IndexError:
             pass
 
     def on_errors_key(self, event):
         i = int(self.errors.index(tk.INSERT).split('.')[0])
-        self.expose_error(i - 1)
+        self.hilight_error_line(i - 1)
 
     def on_errors_mouse(self, event):
         i = int(self.errors.index(f"@0,{event.y}").split('.')[0])
-        self.expose_error(i - 1)
+        self.hilight_error_line(i - 1)
 
     def on_save_result(self):
         pass

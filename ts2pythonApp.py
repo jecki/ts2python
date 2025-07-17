@@ -109,6 +109,7 @@ class ts2pythonApp(tk.Tk):
 
         self.lock = threading.Lock()
         self.worker = None
+        self.compilation_units = 0
         self.cancel_flag = False
 
         self.outdir = ''
@@ -219,38 +220,21 @@ class ts2pythonApp(tk.Tk):
     def poll_worker(self):
         self.update_idletasks()
         if self.worker and self.worker.is_alive():
-            self.after(1000, self.poll_worker)
+            if self.cancel['stat'] != tk.NORMAL:
+                self.cancel['stat'] = tk.NORMAL
+            self.after(500, self.poll_worker)
         else:
             self.cancel['stat'] = tk.DISABLED
             if self.cancel_flag:
                 self.result.yview_moveto(1.0)
-                with self.lock:  self.cancel_flag = False
+                self.cancel_flag = False
+            elif self.compilation_units == 1:
+                self.finish_single_unit()
             else:
-                self.result.insert(tk.END, "Compilation finished.\n")
-                self.result.insert(tk.END, f"Results written to {self.outdir}.\n")
-                # if len(self.names) == 1:
-                #     basename = os.path.splitext(os.path.basename(self.names[0]))[0]
-                #     for msgtype in ('_ERRORS.txt', '_WARNINGS.txt'):
-                #         msgfile = os.path.join(self.outdir, basename + msgtype)
-                #         if os.path.exists(msgfile):
-                #             with open(msgfile, 'r', encoding='utf-8') as f:  msg = f.read()
-                #             lines = msg.split('\n')
-                #             leadout = '...\n' if len(lines) > 20 else '\n'
-                #             msg = '\n'.join([msgtype[1:-4] ] + lines[:20] + [leadout])
-                #             self.errors.insert(tk.END, msg)
-                #             break
-                # else:
-                self.errors.insert(tk.END, f"Errors (if any) written to {self.outdir}.\n")
-                if self.target_name.get().lower() == 'html':
-                    html_name = os.path.splitext(os.path.basename(self.names[0]))[0] + '.html'
-                    html_name = os.path.join(self.outdir, html_name)
-                    self.errors.insert(tk.END, html_name + "\n")
-                    webbrowser.open('file://' + os.path.abspath(html_name)
-                                    if sys.platform == "darwin" else html_name)
-                else:
-                    webbrowser.open('file://' + os.path.abspath(self.outdir)
-                                    if sys.platform == "darwin" else self.outdir)
+                self.finish_multiple_units()
             self.worker = None
+            self.compilation_units = 0
+            self.compilation_target = ""
 
     def on_pick_source(self):
         if not self.worker or self.on_cancel():
@@ -280,14 +264,30 @@ class ts2pythonApp(tk.Tk):
                                                'ts2python_output')
                     if not os.path.exists(self.outdir):  os.mkdir(self.outdir)
                     with self.lock:  self.cancel_flag = False
+                    self.compilation_units = len(self.names)
                     self.worker = threading.Thread(
                         target = ts2pythonParser.batch_process,
                         args = (self.names, self.outdir),
                         kwargs = dict([('log_func', self.log_callback),
                                        ('cancel_func', self.cancel_callback)]))
                     self.worker.start()
-                    self.cancel['stat'] = tk.NORMAL
-                    self.after(1000, self.poll_worker)
+                    # self.cancel['stat'] = tk.NORMAL
+                    self.after(100, self.poll_worker)
+
+    def finish_multiple_units(self):
+        assert self.compilation_units >= 2
+        self.result.insert(tk.END, "Compilation finished.\n")
+        self.result.insert(tk.END, f"Results written to {self.outdir}.\n")
+        self.errors.insert(tk.END, f"Errors (if any) written to {self.outdir}.\n")
+        if self.target_name.get().lower() == 'html':
+            html_name = os.path.splitext(os.path.basename(self.names[0]))[0] + '.html'
+            html_name = os.path.join(self.outdir, html_name)
+            self.errors.insert(tk.END, html_name + "\n")
+            webbrowser.open('file://' + os.path.abspath(html_name)
+                            if sys.platform == "darwin" else html_name)
+        else:
+            webbrowser.open('file://' + os.path.abspath(self.outdir)
+                            if sys.platform == "darwin" else self.outdir)
 
     def on_clear_source(self):
         self.source.delete('1.0', tk.END)
@@ -338,7 +338,7 @@ class ts2pythonApp(tk.Tk):
             self.source.tag_config("errorline", background="yellow")
             err_str = self.errors.get(f'{i + 1}.0', f'{i + 2}.0').strip('\n')
             self.errors.tag_add("currenterror", f"{i + 1}.{0}", f"{i + 1}.{len(err_str)}")
-            self.errors.tag_config("currenterror", background="lavender")
+            self.errors.tag_config("currenterror", background="yellow")
 
     def show_if_error_at(self, location):
         tag_names = self.source.tag_names(location)
@@ -368,21 +368,39 @@ class ts2pythonApp(tk.Tk):
         typ = 'error' if error.code >= ERROR else 'warning'
         self.source.tag_add(typ, f'{line}.{col}', f'{line}.{col + 1}')
 
+    def compile_single_unit(self, source, target, parser):
+        results = ts2pythonParser.pipeline(source, target, parser)
+        with self.lock:
+            if not self.cancel_flag:
+                self.all_results = results
+
     def on_compile(self):
-        parser = self.root_name.get()
-        target = self.target_name.get()
-        serialization_format = self.target_format.get()
         source = self.source.get("1.0", tk.END)
         if source.find('\n') < 0:
             if not source.strip():  return
             source += '\n'
+        parser = self.root_name.get()
+        self.compilation_target = self.target_name.get()
+        self.compilation_units = 1
+        # self.all_results = ts2pythonParser.pipeline(source, self.compilation_target, parser)
+        # self.finish_single_unit()
+        self.worker = threading.Thread(
+            target = self.compile_single_unit,
+            args = (source, self.compilation_target, parser)
+        )
+        self.worker.start()
+        self.after(100, self.poll_worker)
 
-        self.all_results = ts2pythonParser.pipeline(source, target, parser)
-
+    def finish_single_unit(self):
         self.source.tag_delete("error")
         self.source.tag_delete("errorline")
         self.errors.tag_delete("currenterror")
         self.errors.tag_delete("error")
+        serialization_format = self.target_format.get()
+        target = self.target_name.get()
+        if target not in self.all_results:
+            target = self.compilation_target
+            self.target_name.set(target)
         result, self.error_list = self.all_results[target]
         self.compile['stat'] = tk.DISABLED
         self.result.delete("1.0", tk.END)

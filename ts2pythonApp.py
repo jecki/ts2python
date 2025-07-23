@@ -16,6 +16,7 @@ from tkinter import filedialog, messagebox, scrolledtext, font
 from DHParser.error import Error, ERROR
 from DHParser.nodetree import Node, EMPTY_NODE
 from DHParser.pipeline import full_pipeline, PipelineResult
+from DHParser.toolkit import MultiCoreManager
 
 try:
     scriptdir = os.path.dirname(os.path.realpath(__file__))
@@ -110,7 +111,9 @@ class ts2pythonApp(tk.Tk):
         self.lock = threading.Lock()
         self.worker = None
         self.compilation_units = 0
-        self.cancel_flag = False
+        self.mc_manager = MultiCoreManager()
+        # self.mc_manager.start()
+        self.cancel_event = self.mc_manager.Event()
 
         self.outdir = ''
         self.names = []
@@ -212,11 +215,6 @@ class ts2pythonApp(tk.Tk):
         self.progress.set(min(100, int(100 * self.num_compiled / self.num_sources)))
         self.update()
 
-    def cancel_callback(self) -> bool:
-        with self.lock:
-            res = self.cancel_flag
-        return res
-
     def poll_worker(self):
         self.update_idletasks()
         if self.worker and self.worker.is_alive():
@@ -225,9 +223,9 @@ class ts2pythonApp(tk.Tk):
             self.after(500, self.poll_worker)
         else:
             self.cancel['stat'] = tk.DISABLED
-            if self.cancel_flag:
+            if self.cancel_event.is_set():
                 self.result.yview_moveto(1.0)
-                self.cancel_flag = False
+                self.cancel_event.clear()
             elif self.compilation_units == 1:
                 self.finish_single_unit()
             else:
@@ -263,13 +261,13 @@ class ts2pythonApp(tk.Tk):
                     self.outdir = os.path.join(os.path.dirname(self.names[0]),
                                                'ts2python_output')
                     if not os.path.exists(self.outdir):  os.mkdir(self.outdir)
-                    with self.lock:  self.cancel_flag = False
                     self.compilation_units = len(self.names)
                     self.worker = threading.Thread(
                         target = ts2pythonParser.batch_process,
                         args = (self.names, self.outdir),
                         kwargs = dict([('log_func', self.log_callback),
-                                       ('cancel_func', self.cancel_callback)]))
+                                       ('cancel_func',
+                                        self.cancel_event.is_set)]))
                     self.worker.start()
                     # self.cancel['stat'] = tk.NORMAL
                     self.after(100, self.poll_worker)
@@ -313,7 +311,7 @@ class ts2pythonApp(tk.Tk):
             self.source.edit_modified(False)
             if self.source_paste:
                 self.source_paste = False
-                # Call compile here, directly
+                # Call compile, here, directly
 
     def on_source_insert(self, event):
         self.source_paste = True
@@ -370,9 +368,8 @@ class ts2pythonApp(tk.Tk):
 
     def compile_single_unit(self, source, target, parser):
         results = ts2pythonParser.pipeline(source, target, parser)
-        with self.lock:
-            if not self.cancel_flag:
-                self.all_results = results
+        if not self.cancel_event.is_set():
+            self.all_results = results
 
     def on_compile(self):
         source = self.source.get("1.0", tk.END)
@@ -386,10 +383,10 @@ class ts2pythonApp(tk.Tk):
         # self.finish_single_unit()
         self.worker = threading.Thread(
             target = self.compile_single_unit,
-            args = (source, self.compilation_target, parser)
+            args = (source, self.compilation_target, parser)  # TODO pass cancel_event.is_set, here
         )
         self.worker.start()
-        self.after(100, self.poll_worker)
+        self.after(200, self.poll_worker)
 
     def finish_single_unit(self):
         self.source.tag_delete("error")
@@ -469,18 +466,18 @@ class ts2pythonApp(tk.Tk):
                 message="A parsing/compilation-process is still under way!\n"
                         "Cancel running process?"):
                 if self.worker:
-                    with self.lock:  self.cancel_flag = True
+                    self.cancel_event.set()
                     self.errors.insert(tk.END, "Canceling reaming tasks...\n")
                     self.update()
                     self.update_idletasks()
                     self.worker.join(5.0)
                     if not self.worker.is_alive():
                         self.errors.insert(tk.END, "Stopped.\n")
-                        self.cancel_flag = False
+                        self.cancel_event.clear()
                     self.errors.yview_moveto(1.0)
                     return True
                 else:
-                    with self.lock:  self.cancel_flag = False
+                    self.cancel_event.clear()
                     return False
         return True
 
@@ -489,6 +486,7 @@ class ts2pythonApp(tk.Tk):
             if self.worker and self.worker.is_alive():
                 self.errors.insert(tk.END, "Killing still running processes!\n")
                 self.errors.yview_moveto(1.0)
+            self.mc_manager.shutdown()
             self.destroy()
             self.quit()
 

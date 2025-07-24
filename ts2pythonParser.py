@@ -1536,7 +1536,8 @@ RESULT_FILE_EXTENSION = ".py"  # Change this according to your needs!
 
 def pipeline(source: str,
              target: str = "{NAME}",
-             start_parser: str = "root_parser__") -> PipelineResult:
+             start_parser: str = "root_parser__",
+             *, cancel_query=None) -> PipelineResult:
     """Runs the source code through the processing pipeline. If
     the parameter target is not the empty string, only the stages required
     for the given target will be passed.
@@ -1545,14 +1546,15 @@ def pipeline(source: str,
     target_set = set([target]) if target else targets
     return full_pipeline(
         source, preprocessing.factory, parsing.factory, junctions, target_set,
-        start_parser)
+        start_parser, cancel_query=cancel_query)
 
 
 def compile_src(source: str,
                 target: str = "py",
-                start_parser: str = "root_parser__") -> Tuple[Any, List[Error]]:
+                start_parser: str = "root_parser__",
+                *, cancel_query=None) -> Tuple[Any, List[Error]]:
     """Compiles ``source`` and returns (result, errors)."""
-    full_compilation_result = pipeline(source, target, start_parser)
+    full_compilation_result = pipeline(source, target, start_parser, cancel_query=cancel_query)
     return full_compilation_result[target]
 
 
@@ -1567,7 +1569,8 @@ def serialize_result(result: Any, format = "") -> Union[str, bytes]:
         return repr(result)
 
 
-def process_file(source: str, out_dir: str = '', target: str='py') -> str:
+def process_file(source: str, out_dir: str = '', target: str='py',
+                 *, cancel_query=None) -> str:
     """Compiles the source and writes the serialized results back to disk,
     unless any fatal errors have occurred. Error and Warning messages are
     written to a file with the same name as `result_filename` with an
@@ -1593,7 +1596,7 @@ def process_file(source: str, out_dir: str = '', target: str='py') -> str:
         m = re.search(r'source_hash__ *= *"([\w.!? ]*)"', result)
         if m and m.groups()[-1] == source_hash(source):
             return ''  # no re-compilation necessary, because source hasn't changed
-    result, errors = compile_src(source, target)
+    result, errors = compile_src(source, target, cancel_query=cancel_query)
     if not has_errors(errors, FATAL):
         if os.path.abspath(source_filename) != os.path.abspath(result_filename):
             with open(result_filename, 'w', encoding='utf-8') as f:

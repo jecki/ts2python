@@ -103,6 +103,9 @@ class ts2pythonApp(tk.Tk):
         self.bold_button = ttk.Style()
         self.bold_button.configure("BoldRed.TButton", font=(family, size, "bold"),
                                    foreground="red")
+        self.normal_button = ttk.Style()
+        self.normal_button.configure("NormalBlack.TButton", font=(family, size, "bold"),
+                                     foreground="black")
 
         self.create_widgets()
         self.connect_events()
@@ -367,7 +370,8 @@ class ts2pythonApp(tk.Tk):
         self.source.tag_add(typ, f'{line}.{col}', f'{line}.{col + 1}')
 
     def compile_single_unit(self, source, target, parser):
-        results = ts2pythonParser.pipeline(source, target, parser)
+        results = ts2pythonParser.pipeline(
+            source, target, parser, cancel_query=self.cancel_event.is_set)
         if not self.cancel_event.is_set():
             self.all_results = results
 
@@ -383,7 +387,7 @@ class ts2pythonApp(tk.Tk):
         # self.finish_single_unit()
         self.worker = threading.Thread(
             target = self.compile_single_unit,
-            args = (source, self.compilation_target, parser)  # TODO pass cancel_event.is_set, here
+            args = (source, self.compilation_target, parser),
         )
         self.worker.start()
         self.after(200, self.poll_worker)
@@ -465,6 +469,8 @@ class ts2pythonApp(tk.Tk):
                 title="Cancel?",
                 message="A parsing/compilation-process is still under way!\n"
                         "Cancel running process?"):
+                self.update()
+                self.update_idletasks()
                 if self.worker:
                     self.cancel_event.set()
                     self.errors.insert(tk.END, "Canceling reaming tasks...\n")

@@ -220,16 +220,16 @@ class ts2pythonApp(tk.Tk):
 
     def poll_worker(self):
         self.update_idletasks()
-        if self.worker and self.worker.is_alive() \
-                and not self.cancel_event.is_set():
-            if self.cancel['stat'] != tk.NORMAL:
+        if self.worker and self.worker.is_alive():
+            if self.cancel['stat'] != tk.NORMAL \
+                    and not self.cancel_event.is_set():
                 self.cancel['stat'] = tk.NORMAL
             self.after(500, self.poll_worker)
         else:
             self.cancel['stat'] = tk.DISABLED
             if self.cancel_event.is_set():
+                self.errors.insert(tk.END, "Canceled\n")
                 self.result.yview_moveto(1.0)
-                self.cancel_event.clear()
             elif self.compilation_units == 1:
                 self.finish_single_unit()
             else:
@@ -484,13 +484,10 @@ class ts2pythonApp(tk.Tk):
                     self.update()
                     self.update_idletasks()
                     self.worker.join(5.0)
-                    if not self.worker.is_alive():
-                        self.errors.insert(tk.END, "Stopped.\n")
                     self.errors.yview_moveto(1.0)
                     self.adjust_button_status()
                     return True
                 else:
-                    # self.cancel_event.clear()
                     return False
         return True
 

@@ -1613,8 +1613,8 @@ def process_file(source: str, out_dir: str = '', target: str='py',
     return ''
 
 
-def _process_file(args: Tuple[str, str]) -> str:
-    return process_file(*args)
+def _process_file(args: Tuple[str, str, Callable]) -> str:
+    return process_file(*args[:2], cancel_query=args[2])
 
 
 def batch_process(file_names: List[str], out_dir: str,
@@ -1626,7 +1626,7 @@ def batch_process(file_names: List[str], out_dir: str,
     messages files.
     """
     return dsl.batch_process(file_names, out_dir, _process_file,
-        submit_func=submit_func, log_func=log_func, cancel_func=cancel_func)
+        submit_func=submit_func, log_func=log_func, cancel_query=cancel_func)
 
 
 INSPECT_TEMPLATE = """<h2>{testname}</h2>

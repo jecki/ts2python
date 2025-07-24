@@ -220,7 +220,8 @@ class ts2pythonApp(tk.Tk):
 
     def poll_worker(self):
         self.update_idletasks()
-        if self.worker and self.worker.is_alive():
+        if self.worker and self.worker.is_alive() \
+                and not self.cancel_event.is_set():
             if self.cancel['stat'] != tk.NORMAL:
                 self.cancel['stat'] = tk.NORMAL
             self.after(500, self.poll_worker)
@@ -259,6 +260,7 @@ class ts2pythonApp(tk.Tk):
                             IsADirectoryError, IOError) as e:
                         self.result.insert(tk.END, str(e))
                 else:
+                    self.cancel_event.clear()
                     self.num_sources = len(self.names)
                     self.num_compiled = 0
                     self.outdir = os.path.join(os.path.dirname(self.names[0]),
@@ -272,8 +274,8 @@ class ts2pythonApp(tk.Tk):
                                        ('cancel_func',
                                         self.cancel_event.is_set)]))
                     self.worker.start()
-                    # self.cancel['stat'] = tk.NORMAL
                     self.after(100, self.poll_worker)
+                    self.compile['stat'] = tk.DISABLED
 
     def finish_multiple_units(self):
         assert self.compilation_units >= 2
@@ -296,19 +298,22 @@ class ts2pythonApp(tk.Tk):
         self.source_clear['stat'] = tk.DISABLED
         self.source_modified_sentinel = 2
 
+    def adjust_button_status(self):
+        txt = self.source.get('1.0', tk.END)
+        if re.fullmatch(r'\s*', txt):
+            self.compile['stat'] = tk.DISABLED
+            self.source_clear['stat'] = tk.DISABLED
+        else:
+            self.compile['stat'] = tk.NORMAL
+            self.source_clear['stat'] = tk.NORMAL
+
     def on_source_change(self, event):
         if self.source_modified_sentinel: # ignore call due to change of emit_modified
             self.source_modified_sentinel -= 1
             if self.source_modified_sentinel > 0:
                 self.source.edit_modified(False)
             else:
-                txt = self.source.get('1.0', tk.END)
-                if re.fullmatch(r'\s*', txt):
-                    self.compile['stat'] = tk.DISABLED
-                    self.source_clear['stat'] = tk.DISABLED
-                else:
-                    self.compile['stat'] = tk.NORMAL
-                    self.source_clear['stat'] = tk.NORMAL
+                self.adjust_button_status()
         else:
             self.source_modified_sentinel = 1
             self.source.edit_modified(False)
@@ -385,12 +390,14 @@ class ts2pythonApp(tk.Tk):
         self.compilation_units = 1
         # self.all_results = ts2pythonParser.pipeline(source, self.compilation_target, parser)
         # self.finish_single_unit()
+        self.cancel_event.clear()
         self.worker = threading.Thread(
             target = self.compile_single_unit,
             args = (source, self.compilation_target, parser),
         )
         self.worker.start()
         self.after(200, self.poll_worker)
+        self.compile['stat'] = tk.DISABLED
 
     def finish_single_unit(self):
         self.source.tag_delete("error")
@@ -479,11 +486,11 @@ class ts2pythonApp(tk.Tk):
                     self.worker.join(5.0)
                     if not self.worker.is_alive():
                         self.errors.insert(tk.END, "Stopped.\n")
-                        self.cancel_event.clear()
                     self.errors.yview_moveto(1.0)
+                    self.adjust_button_status()
                     return True
                 else:
-                    self.cancel_event.clear()
+                    # self.cancel_event.clear()
                     return False
         return True
 

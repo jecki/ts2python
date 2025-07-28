@@ -221,12 +221,12 @@ class ts2pythonApp(tk.Tk):
     def poll_worker(self):
         self.update_idletasks()
         if self.worker and self.worker.is_alive():
-            if self.cancel['stat'] != tk.NORMAL \
+            if self.cancel['state'] != tk.NORMAL \
                     and not self.cancel_event.is_set():
-                self.cancel['stat'] = tk.NORMAL
+                self.cancel['state'] = tk.NORMAL
             self.after(500, self.poll_worker)
         else:
-            self.cancel['stat'] = tk.DISABLED
+            self.cancel['state'] = tk.DISABLED
             if self.cancel_event.is_set():
                 self.errors.insert(tk.END, "Canceled\n")
                 self.result.yview_moveto(1.0)
@@ -251,11 +251,14 @@ class ts2pythonApp(tk.Tk):
                 self.source.delete(1.0, tk.END)
                 self.result.delete(1.0, tk.END)
                 self.errors.delete(1.0, tk.END)
+                self.export_test['state'] = tk.DISABLED
+                self.save_result['state'] = tk.DISABLED
                 if len(self.names) == 1:
                     try:
                         with open(self.names[0], 'r', encoding='utf-8') as f:
                             snippet = f.read()
                             self.source.insert(tk.END, snippet)
+                            self.export_test['state'] = tk.NORMAL
                     except (FileNotFoundError, PermissionError,
                             IsADirectoryError, IOError) as e:
                         self.result.insert(tk.END, str(e))
@@ -275,37 +278,22 @@ class ts2pythonApp(tk.Tk):
                                         self.cancel_event.is_set)]))
                     self.worker.start()
                     self.after(100, self.poll_worker)
-                    self.compile['stat'] = tk.DISABLED
-
-    def finish_multiple_units(self):
-        assert self.compilation_units >= 2
-        self.result.insert(tk.END, "Compilation finished.\n")
-        self.result.insert(tk.END, f"Results written to {self.outdir}.\n")
-        self.errors.insert(tk.END, f"Errors (if any) written to {self.outdir}.\n")
-        if self.target_name.get().lower() == 'html':
-            html_name = os.path.splitext(os.path.basename(self.names[0]))[0] + '.html'
-            html_name = os.path.join(self.outdir, html_name)
-            self.errors.insert(tk.END, html_name + "\n")
-            webbrowser.open('file://' + os.path.abspath(html_name)
-                            if sys.platform == "darwin" else html_name)
-        else:
-            webbrowser.open('file://' + os.path.abspath(self.outdir)
-                            if sys.platform == "darwin" else self.outdir)
+                    self.compile['state'] = tk.DISABLED
 
     def on_clear_source(self):
         self.source.delete('1.0', tk.END)
-        self.compile['stat'] = tk.DISABLED
-        self.source_clear['stat'] = tk.DISABLED
+        self.compile['state'] = tk.DISABLED
+        self.source_clear['state'] = tk.DISABLED
         self.source_modified_sentinel = 2
 
     def adjust_button_status(self):
         txt = self.source.get('1.0', tk.END)
         if re.fullmatch(r'\s*', txt):
-            self.compile['stat'] = tk.DISABLED
-            self.source_clear['stat'] = tk.DISABLED
+            self.compile['state'] = tk.DISABLED
+            self.source_clear['state'] = tk.DISABLED
         else:
-            self.compile['stat'] = tk.NORMAL
-            self.source_clear['stat'] = tk.NORMAL
+            self.compile['state'] = tk.NORMAL
+            self.source_clear['state'] = tk.NORMAL
 
     def on_source_change(self, event):
         if self.source_modified_sentinel: # ignore call due to change of emit_modified
@@ -314,12 +302,13 @@ class ts2pythonApp(tk.Tk):
                 self.source.edit_modified(False)
             else:
                 self.adjust_button_status()
+                self.export_test['state'] = tk.DISABLED
         else:
             self.source_modified_sentinel = 1
             self.source.edit_modified(False)
             if self.source_paste:
                 self.source_paste = False
-                # Call compile, here, directly
+                # Call compile, here, directly?
 
     def on_source_insert(self, event):
         self.source_paste = True
@@ -383,7 +372,7 @@ class ts2pythonApp(tk.Tk):
     def on_compile(self):
         source = self.source.get("1.0", tk.END)
         if source.find('\n') < 0:
-            if not source.strip():  return
+            if re.fullmatch(r'\s*', source):  return
             source += '\n'
         parser = self.root_name.get()
         self.compilation_target = self.target_name.get()
@@ -397,7 +386,9 @@ class ts2pythonApp(tk.Tk):
         )
         self.worker.start()
         self.after(200, self.poll_worker)
-        self.compile['stat'] = tk.DISABLED
+        self.compile['state'] = tk.DISABLED
+        self.save_result['state'] = tk.DISABLED
+        self.export_test['state'] = tk.DISABLED
 
     def finish_single_unit(self):
         self.source.tag_delete("error")
@@ -410,10 +401,14 @@ class ts2pythonApp(tk.Tk):
             target = self.compilation_target
             self.target_name.set(target)
         result, self.error_list = self.all_results[target]
-        self.compile['stat'] = tk.DISABLED
+        self.compile['state'] = tk.DISABLED
         self.result.delete("1.0", tk.END)
-        self.result.insert("1.0", result.serialize(serialization_format)
-                           if isinstance(result, Node) else result)
+        serialized = result.serialize(serialization_format) \
+                     if isinstance(result, Node) else result
+        self.result.insert("1.0", serialized)
+        if not re.fullmatch(r'\s*', serialized):
+            self.save_result['state'] = tk.NORMAL
+        self.export_test['state'] = tk.NORMAL
         self.errors.delete("1.0", tk.END)
         for i, e in enumerate(self.error_list):
             err_str = str(e) + '\n'
@@ -427,17 +422,37 @@ class ts2pythonApp(tk.Tk):
         self.source.tag_config("error", background="orange red")
         self.source.tag_config("warning", background="thistle")
 
+    def finish_multiple_units(self):
+        assert self.compilation_units >= 2
+        self.result.insert(tk.END, "Compilation finished.\n")
+        self.result.insert(tk.END, f"Results written to {self.outdir}.\n")
+        self.errors.insert(tk.END, f"Errors (if any) written to {self.outdir}.\n")
+        if self.target_name.get().lower() == 'html':
+            html_name = os.path.splitext(os.path.basename(self.names[0]))[0] + '.html'
+            html_name = os.path.join(self.outdir, html_name)
+            self.errors.insert(tk.END, html_name + "\n")
+            webbrowser.open('file://' + os.path.abspath(html_name)
+                            if sys.platform == "darwin" else html_name)
+        else:
+            webbrowser.open('file://' + os.path.abspath(self.outdir)
+                            if sys.platform == "darwin" else self.outdir)
+
     def update_result(self, if_tree=False) -> bool:
         target = self.target_name.get()
         result = self.all_results.get(target, ("", []))
+        result_txt = None
         if isinstance(result[0], Node):
             format = self.target_format.get()
             result_txt = cast(Node, result[0]).serialize(format)
+        elif not if_tree:
+            result_txt = result[0]
+        if result_txt is not None:
             self.result.delete('1.0', tk.END)
             self.result.insert(tk.END, result_txt)
-        elif not if_tree:
-            self.result.delete('1.0', tk.END)
-            self.result.insert(tk.END, result[0])
+            if re.fullmatch(r'\s*', result_txt):
+                self.save_result['state'] = tk.DISABLED
+            else:
+                self.save_result['state'] = tk.NORMAL
         return bool(result[0]) or bool(result[1])
 
     def on_target_stage(self, event):
@@ -447,14 +462,14 @@ class ts2pythonApp(tk.Tk):
         elif isinstance(self.all_results.get(target, (EMPTY_NODE, []))[0], Node):
             self.target_choice['state'] = tk.DISABLED
         if not self.update_result():
-            self.compile['stat'] = tk.NORMAL
+            self.compile['state'] = tk.NORMAL
 
     def on_target_choice(self, event):
         self.update_result(if_tree=True)
 
     def on_root_parser(self, event):
         self.update_result(if_tree=True)
-        self.compile['stat'] = tk.NORMAL
+        self.compile['state'] = tk.NORMAL
 
     def on_errors_key(self, event):
         i = int(self.errors.index(tk.INSERT).split('.')[0])
@@ -465,7 +480,21 @@ class ts2pythonApp(tk.Tk):
         self.hilight_error_line(i - 1)
 
     def on_save_result(self):
-        pass
+        target = self.target_name.get()
+        if self.target_choice['state'] == tk.NORMAL:
+            format = 'in format ' + self.target_format.get()
+        else:
+            format = ''
+        file = tk.filedialog.asksaveasfile(
+            title=f"Save {target}-results {format} as..",
+            filetypes=[(target, '*.' + target), ('All', '*')]
+        )
+        if file:
+            result = self.result.get("1.0", tk.END)
+            try:
+                file.write(result)
+            finally:
+                file.close()
 
     def on_export_test(self):
         pass

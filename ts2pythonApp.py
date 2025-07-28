@@ -505,10 +505,14 @@ class ts2pythonApp(tk.Tk):
             error_level = 0
         cases = { 'M1': source }
         tests = { 'match': cases }
-        unit = { parser: tests}
         if error_level < ERROR:
             for stage, result in self.all_results.items():
-
+                cases = { 'M1': result.serialize if isinstance(result, Node)
+                                else result }
+                tests[stage] = cases
+        unit = { parser: tests}
+        # TODO: generate config header; generate test-file
+        #       filedialog; either save or merge test-file
 
     def on_cancel(self) -> bool:
         if self.worker:

@@ -497,7 +497,18 @@ class ts2pythonApp(tk.Tk):
                 file.close()
 
     def on_export_test(self):
-        pass
+        source = self.source.get("1.0", tk.END)
+        parser = self.target_name.get()
+        if self.error_list:
+            error_level = max(e.code for e in self.error_list)
+        else:
+            error_level = 0
+        cases = { 'M1': source }
+        tests = { 'match': cases }
+        unit = { parser: tests}
+        if error_level < ERROR:
+            for stage, result in self.all_results.items():
+
 
     def on_cancel(self) -> bool:
         if self.worker:

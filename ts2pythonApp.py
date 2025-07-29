@@ -13,9 +13,11 @@ import webbrowser
 from tkinter import ttk
 from tkinter import filedialog, messagebox, scrolledtext, font
 
+from DHParser.configuration import dump_config_data
 from DHParser.error import Error, ERROR
 from DHParser.nodetree import Node, EMPTY_NODE
-from DHParser.pipeline import full_pipeline, PipelineResult
+from DHParser.pipeline import PipelineResult
+from DHParser.testing import unit_to_config, unit_from_file
 from DHParser.toolkit import MultiCoreManager
 
 try:
@@ -497,22 +499,29 @@ class ts2pythonApp(tk.Tk):
                 file.close()
 
     def on_export_test(self):
-        source = self.source.get("1.0", tk.END)
-        parser = self.target_name.get()
-        if self.error_list:
-            error_level = max(e.code for e in self.error_list)
-        else:
-            error_level = 0
-        cases = { 'M1': source }
-        tests = { 'match': cases }
-        if error_level < ERROR:
-            for stage, result in self.all_results.items():
-                cases = { 'M1': result.serialize if isinstance(result, Node)
-                                else result }
-                tests[stage] = cases
-        unit = { parser: tests}
-        # TODO: generate config header; generate test-file
-        #       filedialog; either save or merge test-file
+        file = tk.filedialog.asksaveasfile(
+            title=f"Save or add case to test-ini-file..",
+            filetypes=[('.ini'), ('All', '*')]
+        )
+        if file:
+            # TODO: Determine file type: empty, config or test-file
+            source = self.source.get("1.0", tk.END)
+            parser = self.target_name.get()
+            if self.error_list:
+                error_level = max(e.code for e in self.error_list)
+            else:
+                error_level = 0
+            cases = { 'M1': source }
+            tests = { 'match': cases }
+            if error_level < ERROR:
+                for stage, result in self.all_results.items():
+                    cases = { 'M1': result.serialize if isinstance(result, Node)
+                                    else result }
+                    tests[stage] = cases
+            unit = { parser: tests}
+            cfg_data = dump_config_data('ts2python.*')
+            # TODO: generate config header; generate test-unit
+            #       filedialog; either save or merge test-file
 
     def on_cancel(self) -> bool:
         if self.worker:

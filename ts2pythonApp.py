@@ -17,7 +17,6 @@ from DHParser.configuration import dump_config_data
 from DHParser.error import Error, ERROR
 from DHParser.nodetree import Node, EMPTY_NODE
 from DHParser.pipeline import PipelineResult
-from DHParser.testing import unit_to_config, unit_from_file
 from DHParser.toolkit import MultiCoreManager
 
 try:
@@ -304,7 +303,10 @@ class ts2pythonApp(tk.Tk):
                 self.source.edit_modified(False)
             else:
                 self.adjust_button_status()
-                self.export_test['state'] = tk.DISABLED
+                if self.all_results:
+                    self.export_test['state'] = tk.DISABLED
+                else:
+                    self.export_test['state'] = tk.NORMAL
         else:
             self.source_modified_sentinel = 1
             self.source.edit_modified(False)
@@ -499,11 +501,14 @@ class ts2pythonApp(tk.Tk):
                 file.close()
 
     def on_export_test(self):
+        from configparser import ConfigParser
+        from DHParser.testing import unit_to_config, unit_from_file
         file = tk.filedialog.asksaveasfile(
             title=f"Save or add case to test-ini-file..",
-            filetypes=[('.ini'), ('All', '*')]
+            filetypes=[('Test', '.ini'), ('All', '*')]
         )
         if file:
+            fpath, fname = os.path.split(file.name)
             # TODO: Determine file type: empty, config or test-file
             source = self.source.get("1.0", tk.END)
             parser = self.target_name.get()

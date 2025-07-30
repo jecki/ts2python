@@ -509,6 +509,9 @@ class ts2pythonApp(tk.Tk):
         )
         if file:
             fpath, fname = os.path.split(file.name)
+            data = file.read()  # TODO: Ups, should read file first!!!
+            config = ConfigParser()
+
             # TODO: Determine file type: empty, config or test-file
             source = self.source.get("1.0", tk.END)
             parser = self.target_name.get()

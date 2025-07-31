@@ -141,7 +141,7 @@ class ts2pythonGrammar(Grammar):
     types = Forward()
     source_hash__ = "fb2b78695724eea7d699fda4697f7d6e"
     early_tree_reduction__ = CombinedParser.MERGE_TREETOPS
-    disposable__ = re.compile('(?:_top_level_literal$|FRAC$|_keyword$|_quoted_identifier$|EOF$|_top_level_assignment$|_namespace$|_part$|_reserved$|EXP$|NEG$|DOT$|INT$|_array_ellipsis$)')
+    disposable__ = re.compile('(?:_reserved$|_top_level_literal$|NEG$|DOT$|_keyword$|EOF$|_part$|INT$|FRAC$|_namespace$|_quoted_identifier$|_top_level_assignment$|_array_ellipsis$|EXP$)')
     static_analysis_pending__ = []  # type: List[bool]
     parser_initialization__ = ["upon instantiation"]
     COMMENT__ = r'(?://.*)\n?|(?:/\*(?:.|\n)*?\*/) *\n?'

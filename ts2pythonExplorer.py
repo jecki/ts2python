@@ -101,6 +101,14 @@ class ts2pythonApp(tk.Tk):
         family, size = font_properties['family'], font_properties['size']
         self.bold_label = ttk.Style()
         self.bold_label.configure("Bold.TLabel", font=(family, size, "bold"))
+        self.green_label = ttk.Style()
+        self.green_label.configure("Green.TLabel", foreground="green")
+        self.red_label = ttk.Style()
+        self.red_label.configure("Red.TLabel", foreground="red")
+        self.grey_label = ttk.Style()
+        self.grey_label.configure("Grey.TLabel", foreground="grey")
+        self.black_label = ttk.Style()
+        self.black_label.configure("Black.TLabel", foreground="black")
         self.bold_button = ttk.Style()
         self.bold_button.configure("BoldRed.TButton", font=(family, size, "bold"),
                                    foreground="red")
@@ -156,7 +164,7 @@ class ts2pythonApp(tk.Tk):
         self.progressbar = ttk.Progressbar(orient="horizontal", variable=self.progress)
         self.cancel = ttk.Button(text="Cancel", command=self.on_cancel)
         self.cancel['state'] = tk.DISABLED
-        self.message = ttk.Label(text='')
+        self.message = ttk.Label(text='', style="Black.TLabel")
         self.exit = ttk.Button(text="Quit", command=self.on_close)
 
     def connect_events(self):
@@ -218,6 +226,13 @@ class ts2pythonApp(tk.Tk):
         self.num_compiled += 1
         self.progress.set(min(100, int(100 * self.num_compiled / self.num_sources)))
         self.update()
+
+    def clear_message(self):
+        def clear():
+            self.message['text'] = ''
+            self.message['style'] = 'Black.TLabel'
+        self.message['style'] = 'Grey.TLabel'
+        self.after(1500, clear)
 
     def poll_worker(self):
         self.update_idletasks()
@@ -497,6 +512,9 @@ class ts2pythonApp(tk.Tk):
             result = self.result.get("1.0", tk.END)
             try:
                 file.write(result)
+                self.message['text'] =  f'"{file.name}" written to disk.'
+                self.message['style'] = "Green.TLabel"
+                self.after(3500, self.clear_message)
             finally:
                 file.close()
 
@@ -515,18 +533,18 @@ class ts2pythonApp(tk.Tk):
             ftype = 'config' if fname.lower().endswith('config.ini') \
                                 and not fname.lower().find('test_') >= 0 \
                     else 'test'
+            config = configparser.ConfigParser()
             if os.path.exists(path):
                 try:
                     with open(path, 'r', encoding='utf-8') as f:
                         data = f.read()
                     if data:
-                        config = configparser.ConfigParser()
                         config.optionxform = lambda option: option
                         config.read_string(data)
                         if ftype != 'test' and any(s.find(':') >= 0
                                                    for s in config.sections()):
                             ftype = 'test'
-                    else:
+                    elif ftype == 'test':
                         ftype = 'empty'
                 except (PermissionError, IOError, IsADirectoryError) as e:
                     tk.messagebox.showerror("IO Error", str(e))
@@ -538,11 +556,13 @@ class ts2pythonApp(tk.Tk):
                     return
             else:
                 data = ''
-                ftype = 'empty'
+                if ftype == 'test':  ftype = 'empty'
 
             if ftype == 'config':
-                if 'ts2python' not in config:
-                    config['tspython'] = {}
+                empty = len(config.sections()) == 0
+                ts2p_new = 'ts2python' not in config.sections()
+                if ts2p_new:
+                    config['ts2python'] = {}
                 cfg = get_config_values('ts2python.*')
                 i = len('ts2python.')
                 cfg = { k[i:]: str(v) for k, v in cfg.items() }
@@ -550,6 +570,13 @@ class ts2pythonApp(tk.Tk):
                 try:
                     with open(path, 'w', encoding='utf-8') as f:
                         config.write(f)
+                    if empty:
+                        self.message['text'] = f'Configuration written to "{fname}".'
+                    else:
+                        if ts2p_new:
+                            self.message['text'] = f'Configuration added to "{fname}".'
+                        else:
+                            self.message['text'] = f'Configuration updated in "{fname}".'
                 except (FileNotFoundError, PermissionError,
                         IsADirectoryError, IOError) as e:
                     tk.messagebox.showerror("IO Error", str(e))
@@ -598,9 +625,15 @@ class ts2pythonApp(tk.Tk):
                             f.write(cfg_data)
                             f.write('\n')
                         f.write(unit_to_config(suite))
+                    if ftype == "empty":
+                        self.message['text'] = f'Test-file "{fname}" written to disk.'
+                    elif ftype == "test":
+                        self.message['text'] = f'Test-case added to file "{fname}".'
                 except (FileNotFoundError, PermissionError,
                         IsADirectoryError, IOError) as e:
                     tk.messagebox.showerror("IO Error", str(e))
+            self.message['style'] = "Green.TLabel"
+            self.after(3500, self.clear_message)
 
     def on_cancel(self) -> bool:
         if self.worker:
@@ -616,6 +649,10 @@ class ts2pythonApp(tk.Tk):
                     self.update()
                     self.update_idletasks()
                     self.worker.join(5.0)
+                    if not self.worker.is_alive():
+                        self.message['text'] = "Parsing/Compilation canceled"
+                        self.message['style'] = "Red.TLabel"
+                        self.after(2500, self.clear_message)
                     self.errors.yview_moveto(1.0)
                     self.adjust_button_status()
                     return True

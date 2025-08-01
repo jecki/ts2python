@@ -318,6 +318,7 @@ class ts2pythonApp(tk.Tk):
                 self.source.edit_modified(False)
             else:
                 self.adjust_button_status()
+                self.line_numbers.redraw()
                 if self.all_results:
                     self.export_test['state'] = tk.DISABLED
                 else:
@@ -518,8 +519,69 @@ class ts2pythonApp(tk.Tk):
             finally:
                 file.close()
 
-    def on_export_test(self):
+    def read_config_or_test_file(self, path: str) \
+            -> Tuple[object, str, str, str, str, bool]:
+        """-> (ConfigParser-object, fname, fpath, ftype, fdata, failure)"""
         import configparser
+        fpath, fname = os.path.split(path)
+        ftype = 'config' if fname.lower().endswith('config.ini') \
+                            and not fname.lower().find('test_') >= 0 \
+            else 'test'
+        failure = not bool(path)
+        config = configparser.ConfigParser()
+        if os.path.exists(path):
+            try:
+                with open(path, 'r', encoding='utf-8') as f:
+                    fdata = f.read()
+                if fdata:
+                    config.optionxform = lambda option: option
+                    config.read_string(fdata)
+                    if ftype != 'test' and any(s.find(':') >= 0
+                                               for s in config.sections()):
+                        ftype = 'test'
+                elif ftype == 'test':
+                    ftype = 'empty'
+            except (PermissionError, IOError, IsADirectoryError) as e:
+                tk.messagebox.showerror("IO Error", str(e))
+                failure = True
+            except configparser.Error as e:
+                tk.messagebox.showerror(
+                    "File-format Error",
+                    f"Error in file {fname}+\n\n" + str(e))
+                failure = True
+        else:
+            fdata = ''
+            if ftype == 'test':  ftype = 'empty'
+        return (config, fname, fpath, ftype, fdata, failure)
+
+    def write_or_update_config_file(self, path, config) -> bool:
+        from DHParser.configuration import get_config_values
+        fname = os.path.basename(path)
+        empty = len(config.sections()) == 0
+        ts2p_new = 'ts2python' not in config.sections()
+        if ts2p_new:
+            config['ts2python'] = {}
+        cfg = get_config_values('ts2python.*')
+        i = len('ts2python.')
+        cfg = {k[i:]: str(v) for k, v in cfg.items()}
+        config['ts2python'].update(cfg)
+        try:
+            with open(path, 'w', encoding='utf-8') as f:
+                config.write(f)
+            if empty:
+                self.message['text'] = f'Configuration written to "{fname}".'
+            else:
+                if ts2p_new:
+                    self.message['text'] = f'Configuration added to "{fname}".'
+                else:
+                    self.message['text'] = f'Configuration updated in "{fname}".'
+        except (FileNotFoundError, PermissionError,
+                IsADirectoryError, IOError) as e:
+            tk.messagebox.showerror("IO Error", str(e))
+            return False
+        return True
+
+    def on_export_test(self):
         from DHParser.configuration import dump_config_data, \
             get_config_values
         from DHParser.testing import unit_to_config, unit_from_config, \
@@ -528,112 +590,65 @@ class ts2pythonApp(tk.Tk):
             title=f"Save or add case to test-ini-file..",
             filetypes=[('Test', '.ini'), ('All', '*')]
         )
-        if path:
-            fpath, fname = os.path.split(path)
-            ftype = 'config' if fname.lower().endswith('config.ini') \
-                                and not fname.lower().find('test_') >= 0 \
-                    else 'test'
-            config = configparser.ConfigParser()
-            if os.path.exists(path):
-                try:
-                    with open(path, 'r', encoding='utf-8') as f:
-                        data = f.read()
-                    if data:
-                        config.optionxform = lambda option: option
-                        config.read_string(data)
-                        if ftype != 'test' and any(s.find(':') >= 0
-                                                   for s in config.sections()):
-                            ftype = 'test'
-                    elif ftype == 'test':
-                        ftype = 'empty'
-                except (PermissionError, IOError, IsADirectoryError) as e:
-                    tk.messagebox.showerror("IO Error", str(e))
-                    return
-                except configparser.Error as e:
-                    tk.messagebox.showerror(
-                        "File-format Error",
-                        f"Error in file {fname}+\n\n" + str(e))
-                    return
+        config, fname, fpath, ftype, fdata, failure = \
+            self.read_config_or_test_file(path)
+        if failure:  return
+        if ftype == 'config':
+            self.write_or_update_config_file(path, config)
+        else:
+            if ftype == 'test':
+                stages = (UNIT_STAGES
+                    | frozenset(j.dst for j in ts2pythonParser.junctions))
+                suite = unit_from_config(fdata, fname, allowed_stages=stages)
+                if 'config__' in suite:
+                    cfg = get_config_values('ts2python.*')
+                    for k, v in suite['config__'].items():
+                        if k not in cfg or cfg[k] != eval(v):
+                            empty = '""'
+                            tk.messagebox.showerror(
+                                "Configuration mismatch",
+                                f'Configuration in file "{fname}" '
+                                "does not match current configuration, "
+                                f'e.g.\n{k}="{v}" instead of '
+                                f'"{cfg.get(k, empty)}"')
+                            return
+                    del suite['config__']
             else:
-                data = ''
-                if ftype == 'test':  ftype = 'empty'
-
-            if ftype == 'config':
-                empty = len(config.sections()) == 0
-                ts2p_new = 'ts2python' not in config.sections()
-                if ts2p_new:
-                    config['ts2python'] = {}
-                cfg = get_config_values('ts2python.*')
-                i = len('ts2python.')
-                cfg = { k[i:]: str(v) for k, v in cfg.items() }
-                config['ts2python'].update(cfg)
-                try:
-                    with open(path, 'w', encoding='utf-8') as f:
-                        config.write(f)
-                    if empty:
-                        self.message['text'] = f'Configuration written to "{fname}".'
-                    else:
-                        if ts2p_new:
-                            self.message['text'] = f'Configuration added to "{fname}".'
-                        else:
-                            self.message['text'] = f'Configuration updated in "{fname}".'
-                except (FileNotFoundError, PermissionError,
-                        IsADirectoryError, IOError) as e:
-                    tk.messagebox.showerror("IO Error", str(e))
+                suite = {}
+            source = self.source.get("1.0", tk.END)
+            parser = self.root_name.get()
+            if self.error_list:
+                error_level = max(e.code for e in self.error_list)
             else:
-                if ftype == 'test':
-                    stages = (UNIT_STAGES
-                        | frozenset(j.dst for j in ts2pythonParser.junctions))
-                    suite = unit_from_config(data, fname, allowed_stages=stages)
-                    if 'config__' in suite:
-                        cfg = get_config_values('ts2python.*')
-                        for k, v in suite['config__'].items():
-                            if k not in cfg or cfg[k] != eval(v):
-                                empty = '""'
-                                tk.messagebox.showerror(
-                                    "Configuration mismatch",
-                                    f'Configuration in file "{fname}"\n'
-                                    "does not match current configuration, "
-                                    f'e.g.\n{k}="{v}" instead of '
-                                    f'"{cfg.get(k, empty)}"')
-                                return
-                        del suite['config__']
-                else:
-                    suite = {}
-                source = self.source.get("1.0", tk.END)
-                parser = self.root_name.get()
-                if self.error_list:
-                    error_level = max(e.code for e in self.error_list)
-                else:
-                    error_level = 0
-                cases = { 'M1': source.replace('\t', '    ') }
-                tests = { 'match': cases }
-                if error_level < ERROR:
-                    for stage, result in self.all_results.items():
-                        if stage.upper() == 'CST':  continue
-                        cases = { 'M1': result[0].serialize()
-                                        if isinstance(result[0], Node)
-                                        else result[0] }
-                        tests[stage] = cases
-                unit = { parser: tests }
-                cfg_data = dump_config_data('ts2python.*', use_headings=False)
-                suite = merge_test_units(suite, unit)
-                try:
-                    with open(path, 'w', encoding='utf-8') as f:
-                        if cfg_data:
-                            f.write('[config]\n')
-                            f.write(cfg_data)
-                            f.write('\n')
-                        f.write(unit_to_config(suite))
-                    if ftype == "empty":
-                        self.message['text'] = f'Test-file "{fname}" written to disk.'
-                    elif ftype == "test":
-                        self.message['text'] = f'Test-case added to file "{fname}".'
-                except (FileNotFoundError, PermissionError,
-                        IsADirectoryError, IOError) as e:
-                    tk.messagebox.showerror("IO Error", str(e))
-            self.message['style'] = "Green.TLabel"
-            self.after(3500, self.clear_message)
+                error_level = 0
+            cases = { 'M1': source.replace('\t', '    ') }
+            tests = { 'match': cases }
+            if error_level < ERROR:
+                for stage, result in self.all_results.items():
+                    if stage.upper() == 'CST':  continue
+                    cases = { 'M1': result[0].serialize()
+                                    if isinstance(result[0], Node)
+                                    else result[0] }
+                    tests[stage] = cases
+            unit = { parser: tests }
+            cfg_data = dump_config_data('ts2python.*', use_headings=False)
+            suite = merge_test_units(suite, unit)
+            try:
+                with open(path, 'w', encoding='utf-8') as f:
+                    if cfg_data:
+                        f.write('[config]\n')
+                        f.write(cfg_data)
+                        f.write('\n')
+                    f.write(unit_to_config(suite))
+                if ftype == "empty":
+                    self.message['text'] = f'Test-file "{fname}" written to disk.'
+                elif ftype == "test":
+                    self.message['text'] = f'Test-case added to file "{fname}".'
+            except (FileNotFoundError, PermissionError,
+                    IsADirectoryError, IOError) as e:
+                tk.messagebox.showerror("IO Error", str(e))
+        self.message['style'] = "Green.TLabel"
+        self.after(3500, self.clear_message)
 
     def on_cancel(self) -> bool:
         if self.worker:

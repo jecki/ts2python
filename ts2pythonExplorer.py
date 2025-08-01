@@ -39,7 +39,7 @@ class TextLineNumbers(tk.Canvas):
         self.text_widget.bind('<MouseWheel>', self.redraw)
         self.text_widget.bind('<Button-1>', self.redraw)
         self.text_widget.bind('<Configure>', self.redraw)
-        self.redraw()
+        self.redraw()  # TODO: cheap check, if redraw is necessary
 
     def redraw(self, event=None):
         self.delete("all")
@@ -367,6 +367,7 @@ class ts2pythonApp(tk.Tk):
 
     def on_source_key(self, event):
         self.show_if_error_at(self.source.index(tk.INSERT))
+        self.line_numbers.redraw()
 
     def on_source_mouse(self, event):
         self.show_if_error_at(self.source.index(f"@{event.x},{event.y}"))

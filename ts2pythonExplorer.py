@@ -35,7 +35,7 @@ class TextLineNumbers(tk.Canvas):
     def __init__(self, text_widget, **kwargs):
         super().__init__(width=40, **kwargs)
         self.text_widget = text_widget
-        self.text_widget.bind('<KeyRelease>', self.redraw)
+        self.text_widget.bind('<KeyRelease>', self.redraw) # This is insufficient and does not work under all OSs
         self.text_widget.bind('<MouseWheel>', self.redraw)
         self.text_widget.bind('<Button-1>', self.redraw)
         self.text_widget.bind('<Configure>', self.redraw)

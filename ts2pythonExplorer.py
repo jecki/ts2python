@@ -119,7 +119,8 @@ class ts2pythonApp(tk.Tk):
 
         self.targets = [j.dst for j in ts2pythonParser.junctions]
         self.targets.sort(key=lambda s: s in ts2pythonParser.targets)
-        self.target_name = tk.StringVar(value=list(ts2pythonParser.targets)[0])
+        self.compilation_target = list(ts2pythonParser.targets)[0]
+        self.target_name = tk.StringVar(value=self.compilation_target)
         self.target_format = tk.StringVar(value="XML")
         self.error_list = []
 
@@ -160,6 +161,7 @@ class ts2pythonApp(tk.Tk):
         self.deiconify()
 
     def create_widgets(self):
+        # self.header = ttk.Label(text="")
         self.pick_source_info = ttk.Label(text="Paste source code below or...")
         self.pick_source = ttk.Button(text="Pick Source file(s)...",
                                       command=self.on_pick_source)
@@ -213,34 +215,42 @@ class ts2pythonApp(tk.Tk):
         padE = dict(sticky=(tk.E,), padx="5", pady="5")
         padWE = dict(sticky=(tk.W, tk.E), padx="5", pady="5")
         padAll = dict(sticky=(tk.N, tk.S, tk.W, tk.E), padx="5", pady="5")
-        padNW = dict(sticky=(tk.W, tk.N), padx="5", pady="5")
-        self.pick_source_info.grid(row=0, column=2, **padW)
-        self.pick_source.grid(row=0, column=3, **padW)
-        self.source_info.grid(row=0, column=0, **padW)
-        self.source_undo.grid(row=0, column=4, **padE)
-        self.source_clear.grid(row=0, column=5, **padE)
-        self.source.grid(row=1, column=1, columnspan=5, **padAll)
-        self.line_numbers.grid(row=1, column=0, **padAll)
-        self.root_parser.grid(row=2, column=2, **padE)
-        self.compile.grid(row=2, column=3, **padWE)
-        self.target_stage.grid(row=2, column=4, **padW)
-        self.target_choice.grid(row=2, column=5, **padE)
-        self.result_info.grid(row=2, column=0, **padW)
-        self.result.grid(row=3, column=0, columnspan=6, **padAll)
-        self.save_result.grid(row=4, column=3, **padWE)
-        self.export_test.grid(row=4, column=4, **padWE)
-        self.errors_info.grid(row=4, column=0, **padW)
-        self.errors.grid(row=5, column=0, columnspan=6, **padAll)
-        self.progressbar.grid(row=6, column=0, columnspan=5, **padWE)
-        self.cancel.grid(row=6, column=5, **padE)
-        self.message.grid(row=7, column=0, columnspan=5, **padWE)
-        self.exit.grid(row=7, column=5, **padE)
-        self.rowconfigure(1, weight=1)
-        self.rowconfigure(3, weight=1)
-        self.rowconfigure(5, weight=2)
+        # padNW = dict(sticky=(tk.W, tk.N), padx="5", pady="5")
+        # self.header.grid(row=0, column=0, columnspan=6, **padAll)
+        self.pick_source_info.grid(row=1, column=2, **padW)
+        self.pick_source.grid(row=1, column=3, **padW)
+        self.source_info.grid(row=1, column=0, **padW)
+        self.source_undo.grid(row=1, column=4, **padE)
+        self.source_clear.grid(row=1, column=5, **padE)
+        self.source.grid(row=2, column=1, columnspan=5, **padAll)
+        self.line_numbers.grid(row=2, column=0, **padAll)
+        self.root_parser.grid(row=3, column=2, **padE)
+        self.compile.grid(row=3, column=3, **padWE)
+        self.target_stage.grid(row=3, column=4, **padW)
+        self.target_choice.grid(row=3, column=5, **padE)
+        self.result_info.grid(row=3, column=0, **padW)
+        self.result.grid(row=4, column=0, columnspan=6, **padAll)
+        self.save_result.grid(row=5, column=3, **padWE)
+        self.export_test.grid(row=5, column=4, **padWE)
+        self.errors_info.grid(row=5, column=0, **padW)
+        self.errors.grid(row=6, column=0, columnspan=6, **padAll)
+        # self.progressbar.grid(row=7, column=0, columnspan=5, **padWE)
+        self.cancel.grid(row=7, column=5, **padE)
+        self.message.grid(row=8, column=0, columnspan=5, **padWE)
+        self.exit.grid(row=8, column=5, **padE)
+        self.rowconfigure(2, weight=1)
+        self.rowconfigure(4, weight=1)
+        self.rowconfigure(6, weight=2)
         self.columnconfigure(1, weight=1)
         self.columnconfigure(4, weight=1)
         self.source.focus_set()
+
+    def show_progressbar(self):
+        padWE = dict(sticky=(tk.W, tk.E), padx="5", pady="5")
+        self.progressbar.grid(row=7, column=0, columnspan=5, **padWE)
+
+    def hide_progressbar(self):
+        self.progressbar.grid_forget()
 
     def clear_result(self):
         with self.lock:
@@ -267,22 +277,29 @@ class ts2pythonApp(tk.Tk):
             if self.cancel['state'] != tk.NORMAL \
                     and not self.cancel_event.is_set():
                 self.cancel['state'] = tk.NORMAL
+                self.show_progressbar()
             self.after(500, self.poll_worker)
         else:
             self.cancel['state'] = tk.DISABLED
+            self.progressbar.stop()
             if self.cancel_event.is_set():
                 self.errors.insert(tk.END, "Canceled\n")
                 self.result.yview_moveto(1.0)
             elif self.compilation_units == 1:
                 self.finish_single_unit()
+                self.progressbar['mode'] = 'determinate'
+                self.progress.set(0)
             else:
                 self.finish_multiple_units()
             self.worker = None
             self.compilation_units = 0
             self.compilation_target = ""
+            self.after(500, self.hide_progressbar)
 
     def on_pick_source(self):
         if not self.worker or self.on_cancel():
+            self.progressbar.stop()
+            self.progressbar['mode'] = 'determinate'
             self.progress.set(0)
             self.names = list(tk.filedialog.askopenfilenames(
                 title="Chose files to parse/compile",
@@ -322,6 +339,7 @@ class ts2pythonApp(tk.Tk):
                     self.worker.start()
                     self.after(100, self.poll_worker)
                     self.compile['state'] = tk.DISABLED
+                    self.progressbar['mode'] = "determinate"
 
     def on_clear_source(self):
         self.source.delete('1.0', tk.END)
@@ -433,7 +451,9 @@ class ts2pythonApp(tk.Tk):
             args = (source, self.compilation_target, parser),
         )
         self.worker.start()
-        self.after(200, self.poll_worker)
+        self.progressbar['mode'] = 'indeterminate'
+        self.progressbar.start()
+        self.after(250, self.poll_worker)
         self.compile['state'] = tk.DISABLED
         self.save_result['state'] = tk.DISABLED
         self.export_test['state'] = tk.DISABLED

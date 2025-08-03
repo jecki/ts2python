@@ -34,24 +34,40 @@ class TextLineNumbers(tk.Canvas):
     """
     def __init__(self, text_widget, **kwargs):
         super().__init__(width=40, **kwargs)
+        self.first_line = ""
+        self.last_line = ""
         self.text_widget = text_widget
         self.text_widget.bind('<KeyRelease>', self.redraw)
         self.text_widget.bind('<MouseWheel>', self.redraw)
         self.text_widget.bind('<Button-1>', self.redraw)
         self.text_widget.bind('<Configure>', self.redraw)
-        self.redraw()  # TODO: cheap check, if redraw is necessary
+        self.redraw()
+
+    def redraw_needed(self):
+        """-> index of last line"""
+        first = self.text_widget.index("@0,0")
+        ysize = self.text_widget.winfo_height()
+        last = self.text_widget.index(f"@0,{ysize}")
+        if first != self.first_line or last != self.last_line:
+            return first, last
+        return "", ""
 
     def redraw(self, event=None):
-        self.delete("all")
-        i = self.text_widget.index("@0,0")
-        while True:
-            dline = self.text_widget.dlineinfo(i)
-            if dline is None:
-                break
-            y = dline[1]
-            linenum = str(i).split(".")[0]
-            self.create_text(2, y, anchor="nw", text=linenum)
-            i = self.text_widget.index(f"{i}+1line")
+        first, last = self.redraw_needed()
+        if first:
+            self.first_line = first
+            self.last_line = last
+            self.delete("all")
+            i = first
+            self.first_line = float(i)
+            while True:
+                dline = self.text_widget.dlineinfo(i)
+                if dline is None:
+                    break
+                y = dline[1]
+                linenum = str(i).split(".")[0]
+                self.create_text(2, y, anchor="nw", text=linenum)
+                i = self.text_widget.index(f"{i}+1line")
 
 
 class ts2pythonApp(tk.Tk):

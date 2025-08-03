@@ -185,8 +185,8 @@ class ts2pythonApp(tk.Tk):
 
     def connect_events(self):
         self.source.bind("<<Modified>>", self.on_source_change)
-        self.source.bind("<Control-v>", self.on_source_insert)
-        self.source.bind("<Command-v>", self.on_source_insert)
+        self.source.bind("<Control-v>", self.on_source_insert, add="+")
+        self.source.bind("<Command-v>", self.on_source_insert, add="+")
         self.source.bind("<KeyRelease>", self.on_source_key, add="+")
         self.source.bind("<Button-1>", self.on_source_mouse, add="+")
         self.target_stage.bind("<<ComboboxSelected>>", self.on_target_stage)
@@ -383,7 +383,7 @@ class ts2pythonApp(tk.Tk):
 
     def on_source_key(self, event):
         self.show_if_error_at(self.source.index(tk.INSERT))
-        self.line_numbers.redraw()
+        # self.line_numbers.redraw()
 
     def on_source_mouse(self, event):
         self.show_if_error_at(self.source.index(f"@{event.x},{event.y}"))

@@ -39,9 +39,20 @@ class TextLineNumbers(tk.Canvas):
         self.text_widget = text_widget
         self.text_widget.bind('<KeyRelease>', self.redraw) # This is insufficient and does not work under all OSs
         self.text_widget.bind('<MouseWheel>', self.redraw)
+        self.text_widget.bind('<B1-Motion>', self.redraw)
         self.text_widget.bind('<Button-1>', self.redraw)
         self.text_widget.bind('<Configure>', self.redraw)
+        self.text_widget['yscrollcommand'] = self.yscrollcommand
+        self.text_widget.vbar['command'] = self.yview
         self.redraw()
+
+    def yview(self, *args):
+        self.redraw()
+        self.text_widget.yview(*args)
+
+    def yscrollcommand(self, *args):
+        self.redraw()
+        return self.text_widget.vbar.set(*args)
 
     def redraw_needed(self):
         """-> index of last line"""

@@ -30,6 +30,13 @@ if scriptdir and scriptdir not in sys.path: sys.path.append(scriptdir)
 import ts2pythonParser
 
 
+padW = dict(sticky=(tk.W,), padx="5", pady="5")
+padE = dict(sticky=(tk.E,), padx="5", pady="5")
+padWE = dict(sticky=(tk.W, tk.E), padx="5", pady="5")
+padNW = dict(sticky=(tk.W, tk.N), padx="5", pady="5")
+padAll = dict(sticky=(tk.N, tk.S, tk.W, tk.E), padx="5", pady="5")
+
+
 class TextLineNumbers(tk.Canvas):
     """See https://stackoverflow.com/questions/16369470/tkinter-adding-line-number-to-text-widget
     and https://stackoverflow.com/questions/24896747/how-to-display-line-numbers-in-tkinter-text-widget
@@ -104,6 +111,7 @@ class OptionSelector(tk.Frame):
         self.cfg['AssumeDeferredEvaluation'] = tk.BooleanVar(value=False)
         self.cfg['KeepMultilineComments'] = tk.BooleanVar(value=True)
 
+        self.python_version_label = ttk.Label(text="Lowest required Python-version")
         self.python_version_selector = ttk.Combobox(
             self, values=PYTHON_VERSIONS, textvariable=self.python_version)
         self.cfg_widgets = {}
@@ -116,7 +124,7 @@ class OptionSelector(tk.Frame):
                     text=variable, variable=self.cfg[variable])
 
     def place_widgets(self):
-        pass
+        self.python_version_selector.grid(row=0, column=1, **padW)
 
 
 DEMO_TS = """interface CodeAction {
@@ -270,11 +278,6 @@ class ts2pythonApp(tk.Tk):
         # self.errors.bind('<Configure>', self.on_errors)
 
     def place_widgets(self):
-        padW = dict(sticky=(tk.W,), padx="5", pady="5")
-        padE = dict(sticky=(tk.E,), padx="5", pady="5")
-        padWE = dict(sticky=(tk.W, tk.E), padx="5", pady="5")
-        padAll = dict(sticky=(tk.N, tk.S, tk.W, tk.E), padx="5", pady="5")
-        # padNW = dict(sticky=(tk.W, tk.N), padx="5", pady="5")
         # self.header.grid(row=0, column=0, columnspan=6, **padAll)
         self.pick_source_info.grid(row=1, column=2, **padW)
         self.pick_source.grid(row=1, column=3, **padW)
@@ -305,7 +308,6 @@ class ts2pythonApp(tk.Tk):
         self.source.focus_set()
 
     def show_progressbar(self):
-        padWE = dict(sticky=(tk.W, tk.E), padx="5", pady="5")
         self.progressbar.grid(row=7, column=0, columnspan=5, **padWE)
 
     def hide_progressbar(self):

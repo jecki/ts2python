@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 
-"""ts2pythonApp.py - a simple GUI for the compilation of ts2python-files"""
+"""ts2pythonExplorer.py - a simple GUI for the compilation of ts2python-snippets"""
 
 import sys
 import os
@@ -85,7 +85,7 @@ class ts2pythonApp(tk.Tk):
     def __init__(self):
         super().__init__()
         self.withdraw()
-        self.title('ts2python App')
+        self.title('ts2python Explorer')
         self.minsize(800, 680)
         self.geometry("960x880")
         self.option_add('*tearOff', False)

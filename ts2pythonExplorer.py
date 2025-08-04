@@ -99,7 +99,7 @@ class ts2pythonApp(tk.Tk):
         # self.rowconfigure(0, weight=1)
         # self.columnconfigure(1, weight=1)
 
-        # widget-variables
+        # (widget-)variables
         self.num_sources = 0
         self.num_compiled = 0
         self.progress = tk.IntVar()
@@ -114,15 +114,18 @@ class ts2pythonApp(tk.Tk):
         # self.parser_names.insert(0, grammar.root__.pname)
         # self.root_name = tk.StringVar(value=grammar.root__.pname)
         self.root_name = tk.StringVar(value="document")
-
+        self.compilation_units = 0
+        self.outdir = ''
+        self.names = []
         self.all_results: PipelineResult = {}
+        self.error_list = []
 
+        # widgets
         self.targets = [j.dst for j in ts2pythonParser.junctions]
         self.targets.sort(key=lambda s: s in ts2pythonParser.targets)
         self.compilation_target = list(ts2pythonParser.targets)[0]
         self.target_name = tk.StringVar(value=self.compilation_target)
         self.target_format = tk.StringVar(value="XML")
-        self.error_list = []
 
         self.default_font = font.nametofont("TkDefaultFont")
         font_properties = self.default_font.actual()
@@ -148,15 +151,12 @@ class ts2pythonApp(tk.Tk):
         self.connect_events()
         self.place_widgets()
 
+        # multicore/-threading environement
         self.lock = threading.Lock()
         self.worker = None
-        self.compilation_units = 0
         self.mc_manager = MultiCoreManager()
         # self.mc_manager.start()
         self.cancel_event = self.mc_manager.Event()
-
-        self.outdir = ''
-        self.names = []
 
         self.deiconify()
 
@@ -195,6 +195,12 @@ class ts2pythonApp(tk.Tk):
         self.cancel['state'] = tk.DISABLED
         self.message = ttk.Label(text='', style="Black.TLabel")
         self.exit = ttk.Button(text="Quit", command=self.on_close)
+        #
+        # self.menubar = tk.Menu(self)
+        # self.file_menu = tk.Menu(self.menubar)
+        # self.menubar.add_cascade(menu=self.file_menu, label="File")
+        # self.file_menu.add_command(label="Open...", command=self.on_pick_source)
+        # self.file_menu.add_command(label="Save...", command=self.on_save_result)
 
     def connect_events(self):
         self.source.bind("<<Modified>>", self.on_source_change)

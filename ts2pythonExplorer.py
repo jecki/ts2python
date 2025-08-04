@@ -326,8 +326,12 @@ class ts2pythonApp(tk.Tk):
                             self.source.insert(tk.END, snippet)
                             self.export_test['state'] = tk.NORMAL
                     except (FileNotFoundError, PermissionError,
-                            IsADirectoryError, IOError) as e:
+                            IsADirectoryError, IOError, UnicodeDecodeError) as e:
                         self.result.insert(tk.END, str(e))
+                        tk.messagebox.showerror("IO Error", str(e))
+                        self.message['text'] = 'IOError: ' + e.__class__.__name__
+                        self.message['style'] = "Red.TLabel"
+                        self.after(3500, self.clear_message)
                 else:
                     self.cancel_event.clear()
                     self.num_sources = len(self.names)
@@ -595,7 +599,8 @@ class ts2pythonApp(tk.Tk):
                         ftype = 'test'
                 elif ftype == 'test':
                     ftype = 'empty'
-            except (PermissionError, IOError, IsADirectoryError) as e:
+            except (PermissionError, IOError, IsADirectoryError,
+                    UnicodeDecodeError) as e:
                 tk.messagebox.showerror("IO Error", str(e))
                 failure = True
             except configparser.Error as e:

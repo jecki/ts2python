@@ -82,26 +82,38 @@ class TextLineNumbers(tk.Canvas):
                 self.create_text(2, y, anchor="nw", text=linenum)
                 i = self.text_widget.index(f"{i}+1line")
 
+PYTHON_VERSIONS = ('3.14', '3.13', '3.12', '3.11', '3.10', '3.9', '3.8', '3.7')
+RENDER_ANONYMOUS_KINDS = ('toplevel', 'local', 'type', 'function')
+
 
 class OptionSelector(tk.Frame):
     def __init__(self):
         super().__init__()
-        self.python_versions = ['3.14', '3.13', '3.12', '3.11',
-                                '3.10', '3.9', '3.8', '3.7']
         self.python_version = tk.StringVar(value="3.11")
-        self.render_anonymous_vals = ['toplevel', 'local', 'type', 'function']
-        self.render_anonymous = tk.StringVar(value="toplevel")
-        self.use_enum = tk.BooleanVar(value=True)
-        self.use_postponed_evaluation = tk.BooleanVar(value=True)
-        self.use_literal_type = tk.BooleanVar(value=True)
-        self.use_type_union = tk.BooleanVar(value=True)
-        self.use_explicit_type_alias = tk.BooleanVar(value=True)
-        self.use_variadic_generics = tk.BooleanVar(value=False)
-        self.use_not_required = tk.BooleanVar(value=True)
-        self.use_type_parameters = tk.BooleanVar(value=False)
-        self.allow_read_only = tk.BooleanVar(value=False)
-        self.assume_deferred_evaluation = tk.BooleanVar(value=False)
-        self.keep_multiline_comments = tk.BooleanVar(value=True)
+        self.cfg = {}
+        self.cfg['RenderAnonymous'] = tk.StringVar(value="toplevel")
+        self.cfg['UseEnum'] = tk.BooleanVar(value=True)
+        self.cfg['UsePostponedEvaluation'] = tk.BooleanVar(value=True)
+        self.cfg['UseLiteralType'] = tk.BooleanVar(value=True)
+        self.cfg['UseTypeUnion'] = tk.BooleanVar(value=True)
+        self.cfg['UseExplicitTypeAlias'] = tk.BooleanVar(value=True)
+        self.cfg['UseVariadicGenerics'] = tk.BooleanVar(value=False)
+        self.cfg['UseNotrequired'] = tk.BooleanVar(value=True)
+        self.cfg['UseTypeParameters'] = tk.BooleanVar(value=False)
+        self.cfg['AllowReadOnly'] = tk.BooleanVar(value=False)
+        self.cfg['AssumeDeferredEvaluation'] = tk.BooleanVar(value=False)
+        self.cfg['KeepMultilineComments'] = tk.BooleanVar(value=True)
+
+        self.python_version_selector = ttk.Combobox(
+            self, values=PYTHON_VERSIONS, textvariable=self.python_version)
+        self.cfg_widgets = {}
+        self.cfg_widgets['RenderAnonymous'] = ttk.Combobox(self,
+            values=RENDER_ANONYMOUS_KINDS,
+            textvariable=self.cfg['RenderAnonymous'])
+        for variable in self.cfg.keys():
+            if variable != "RenderAnonymous":
+                self.cfg_widgets[variable] = ttk.Checkbutton(
+                    text=variable, variable=self.cfg[variable])
 
     def place_widgets(self):
         pass

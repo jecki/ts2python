@@ -453,7 +453,7 @@ class ts2pythonApp(tk.Tk):
         self.worker.start()
         self.progressbar['mode'] = 'indeterminate'
         self.progressbar.start()
-        self.after(250, self.poll_worker)
+        self.after(500, self.poll_worker)
         self.compile['state'] = tk.DISABLED
         self.save_result['state'] = tk.DISABLED
         self.export_test['state'] = tk.DISABLED

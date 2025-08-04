@@ -14,6 +14,8 @@ from tkinter import ttk
 from tkinter import filedialog, messagebox, scrolledtext, font
 
 from DHParser.error import Error, ERROR
+from DHParser.configuration import read_local_config, get_config_values, \
+    dump_config_data
 from DHParser.nodetree import Node, EMPTY_NODE
 from DHParser.pipeline import PipelineResult
 from DHParser.testing import merge_test_units
@@ -81,6 +83,29 @@ class TextLineNumbers(tk.Canvas):
                 i = self.text_widget.index(f"{i}+1line")
 
 
+class OptionSelector(tk.Frame):
+    def __init__(self):
+        super().__init__()
+        self.python_versions = ['3.14', '3.13', '3.12', '3.11',
+                                '3.10', '3.9', '3.8', '3.7']
+        self.python_version = tk.StringVar(value="3.11")
+        self.render_anonymous_vals = ['toplevel', 'local', 'type', 'function']
+        self.render_anonymous = tk.StringVar(value="toplevel")
+        self.use_enum = tk.BooleanVar(value=True)
+        self.use_postponed_evaluation = tk.BooleanVar(value=True)
+        self.use_literal_type = tk.BooleanVar(value=True)
+        self.use_type_union = tk.BooleanVar(value=True)
+        self.use_explicit_type_alias = tk.BooleanVar(value=True)
+        self.use_variadic_generics = tk.BooleanVar(value=False)
+        self.use_not_required = tk.BooleanVar(value=True)
+        self.use_type_parameters = tk.BooleanVar(value=False)
+        self.allow_read_only = tk.BooleanVar(value=False)
+        self.assume_deferred_evaluation = tk.BooleanVar(value=False)
+        self.keep_multiline_comments = tk.BooleanVar(value=True)
+
+    def place_widgets(self):
+        pass
+
 class ts2pythonApp(tk.Tk):
     def __init__(self):
         super().__init__()
@@ -111,7 +136,7 @@ class ts2pythonApp(tk.Tk):
         self.parser_names = grammar.parser_names__[:]
         # self.parser_names.remove(grammar.root__.pname)
         self.parser_names.sort(key=lambda s: s.lower().lstrip('_'))
-        # self.parser_names.insert(0, grammar.root__.pname)
+        self.parser_names.insert(0, "root_parser__")
         # self.root_name = tk.StringVar(value=grammar.root__.pname)
         self.root_name = tk.StringVar(value="document")
         self.compilation_units = 0
@@ -478,7 +503,10 @@ class ts2pythonApp(tk.Tk):
         if target not in self.all_results:
             target = self.compilation_target
             self.target_name.set(target)
-        result, self.error_list = self.all_results[target]
+        try:
+            result, self.error_list = self.all_results[target]
+        except KeyError:
+            result = ''
         self.compile['state'] = tk.DISABLED
         self.result.delete("1.0", tk.END)
         serialized = result.serialize(serialization_format) \
@@ -540,14 +568,14 @@ class ts2pythonApp(tk.Tk):
         elif isinstance(self.all_results.get(target, (EMPTY_NODE, []))[0], Node):
             self.target_choice['state'] = tk.DISABLED
         if not self.update_result():
-            self.compile['state'] = tk.NORMAL
+            self.adjust_button_status()
 
     def on_target_choice(self, event):
         self.update_result(if_tree=True)
 
     def on_root_parser(self, event):
         self.update_result(if_tree=True)
-        self.compile['state'] = tk.NORMAL
+        self.adjust_button_status()
 
     def on_errors_key(self, event):
         i = int(self.errors.index(tk.INSERT).split('.')[0])
@@ -587,6 +615,7 @@ class ts2pythonApp(tk.Tk):
             else 'test'
         failure = not bool(path)
         config = configparser.ConfigParser()
+        config.optionxform = lambda optionstr: optionstr
         if os.path.exists(path):
             try:
                 with open(path, 'r', encoding='utf-8') as f:
@@ -614,7 +643,6 @@ class ts2pythonApp(tk.Tk):
         return (config, fname, fpath, ftype, fdata, failure)
 
     def write_or_update_config_file(self, path, config) -> bool:
-        from DHParser.configuration import get_config_values
         fname = os.path.basename(path)
         empty = len(config.sections()) == 0
         ts2p_new = 'ts2python' not in config.sections()
@@ -641,8 +669,6 @@ class ts2pythonApp(tk.Tk):
         return True
 
     def on_export_test(self):
-        from DHParser.configuration import dump_config_data, \
-            get_config_values
         from DHParser.testing import unit_to_config, unit_from_config, \
             UNIT_STAGES
         path = tk.filedialog.asksaveasfilename(
@@ -745,9 +771,10 @@ class ts2pythonApp(tk.Tk):
 
 
 if __name__ == '__main__':
-    import multiprocessing
-    multiprocessing.freeze_support()
-
+    if sys.version_info < (3, 14, 0):
+        import multiprocessing
+        multiprocessing.freeze_support()
+    read_local_config(os.path.join(scriptdir, 'ts2pythonConfig.ini'))
     if not ts2pythonParser.main(called_from_app=True):
         app = ts2pythonApp()
         app.mainloop()

@@ -106,6 +106,21 @@ class OptionSelector(tk.Frame):
     def place_widgets(self):
         pass
 
+
+DEMO_TS = """interface CodeAction {
+  title: string;
+  kind?: CodeActionKind;
+  diagnostics?: Diagnostic[];
+  isPreferred?: boolean;
+  disabled?: {
+    reason: string;
+  };
+  edit?: WorkspaceEdit;
+  command?: Command;
+  data?: any;
+}"""
+
+
 class ts2pythonApp(tk.Tk):
     def __init__(self):
         super().__init__()
@@ -150,7 +165,7 @@ class ts2pythonApp(tk.Tk):
         self.targets.sort(key=lambda s: s in ts2pythonParser.targets)
         self.compilation_target = list(ts2pythonParser.targets)[0]
         self.target_name = tk.StringVar(value=self.compilation_target)
-        self.target_format = tk.StringVar(value="XML")
+        self.target_format = tk.StringVar(value="SXML")
 
         self.default_font = font.nametofont("TkDefaultFont")
         font_properties = self.default_font.actual()
@@ -173,6 +188,7 @@ class ts2pythonApp(tk.Tk):
                                      foreground="black")
 
         self.create_widgets()
+        self.source.insert(tk.END, DEMO_TS)
         self.connect_events()
         self.place_widgets()
 
@@ -198,7 +214,7 @@ class ts2pythonApp(tk.Tk):
         self.line_numbers = TextLineNumbers(self.source)
         self.root_parser = ttk.Combobox(self, values=self.parser_names, textvariable=self.root_name)
         self.compile = ttk.Button(text="Compile", style="BoldRed.TButton", command=self.on_compile)
-        self.compile['state'] = tk.DISABLED
+        self.compile['state'] = tk.NORMAL  # tk.DISABLED
         self.target_stage = ttk.Combobox(self, values=self.targets, textvariable=self.target_name)
         self.target_choice = ttk.Combobox(
             self, values=['XML', 'SXML', 'sxpr', 'xast', 'ndst', 'tree'],

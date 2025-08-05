@@ -375,7 +375,15 @@ class TestScriptCall:
         result = subprocess.run(['python3', 'testdata.py'])
         assert result.returncode == 0
         with open('testdata.py', 'r', encoding='utf-8') as f:
-            script = PATH_FIX + f.read()
+            orig_script = f.read()
+        i = orig_script.find('from __future__ import')
+        if i >= 0:
+            k = orig_script.find('\n', i)
+            from_future = orig_script[i:k + 1]
+            orig_script = orig_script[k:]
+        else:
+            from_future = ""
+        script = from_future + PATH_FIX + orig_script
         with open('testdata.py', 'w', encoding='utf-8') as f:
             f.write(script)
         result = subprocess.run(['python3', 'testdata.py'])

@@ -1750,7 +1750,7 @@ def main(called_from_app=False):
                 if pep == '695':  set_preset_value('ts2python.UseTypeParameters', **kwargs)
                 if pep == '705':  set_preset_value('ts2python.AllowReadOnly', **kwargs)
                 if pep in ('649', '749'):  set_preset_value('ts2python.AssumeDeferredEvaluation', **kwargs)
-        if args.comments: set_preset_value('ts2python.KeepMultilineComments', True)
+        if args.comments: set_preset_value('ts2python.KeepMultilineComments', True, allow_new_key=True)
         finalize_presets()
         # _ = get_config_values('ts2python.*')  # fill config value cache
 

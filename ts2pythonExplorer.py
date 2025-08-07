@@ -13,9 +13,10 @@ import webbrowser
 from tkinter import ttk
 from tkinter import filedialog, messagebox, scrolledtext, font
 
+from DHParser import set_preset_value
 from DHParser.error import Error, ERROR
 from DHParser.configuration import read_local_config, get_config_values, \
-    dump_config_data
+    dump_config_data, access_presets, finalize_presets, set_preset_value
 from DHParser.nodetree import Node, EMPTY_NODE
 from DHParser.pipeline import PipelineResult
 from DHParser.testing import merge_test_units
@@ -28,13 +29,6 @@ except NameError:
 if scriptdir and scriptdir not in sys.path: sys.path.append(scriptdir)
 
 import ts2pythonParser
-
-
-padW = dict(sticky=(tk.W,), padx="5", pady="5")
-padE = dict(sticky=(tk.E,), padx="5", pady="5")
-padWE = dict(sticky=(tk.W, tk.E), padx="5", pady="5")
-padNW = dict(sticky=(tk.W, tk.N), padx="5", pady="5")
-padAll = dict(sticky=(tk.N, tk.S, tk.W, tk.E), padx="5", pady="5")
 
 
 class TextLineNumbers(tk.Canvas):
@@ -89,45 +83,11 @@ class TextLineNumbers(tk.Canvas):
                 self.create_text(2, y, anchor="nw", text=linenum)
                 i = self.text_widget.index(f"{i}+1line")
 
-PYTHON_VERSIONS = ('3.14', '3.13', '3.12', '3.11', '3.10', '3.9', '3.8', '3.7')
-RENDER_ANONYMOUS_KINDS = ('toplevel', 'local', 'type', 'function')
 
+DEMO_TS = """// This is just an example. You can replace it by your own Typescript-code
+// or just click "compile" below to see how this interface look as Python-code.
 
-class OptionSelector(tk.Frame):
-    def __init__(self):
-        super().__init__()
-        self.python_version = tk.StringVar(value="3.11")
-        self.cfg = {}
-        self.cfg['RenderAnonymous'] = tk.StringVar(value="toplevel")
-        self.cfg['UseEnum'] = tk.BooleanVar(value=True)
-        self.cfg['UsePostponedEvaluation'] = tk.BooleanVar(value=True)
-        self.cfg['UseLiteralType'] = tk.BooleanVar(value=True)
-        self.cfg['UseTypeUnion'] = tk.BooleanVar(value=True)
-        self.cfg['UseExplicitTypeAlias'] = tk.BooleanVar(value=True)
-        self.cfg['UseVariadicGenerics'] = tk.BooleanVar(value=False)
-        self.cfg['UseNotrequired'] = tk.BooleanVar(value=True)
-        self.cfg['UseTypeParameters'] = tk.BooleanVar(value=False)
-        self.cfg['AllowReadOnly'] = tk.BooleanVar(value=False)
-        self.cfg['AssumeDeferredEvaluation'] = tk.BooleanVar(value=False)
-        self.cfg['KeepMultilineComments'] = tk.BooleanVar(value=True)
-
-        self.python_version_label = ttk.Label(text="Lowest required Python-version")
-        self.python_version_selector = ttk.Combobox(
-            self, values=PYTHON_VERSIONS, textvariable=self.python_version)
-        self.cfg_widgets = {}
-        self.cfg_widgets['RenderAnonymous'] = ttk.Combobox(self,
-            values=RENDER_ANONYMOUS_KINDS,
-            textvariable=self.cfg['RenderAnonymous'])
-        for variable in self.cfg.keys():
-            if variable != "RenderAnonymous":
-                self.cfg_widgets[variable] = ttk.Checkbutton(
-                    text=variable, variable=self.cfg[variable])
-
-    def place_widgets(self):
-        self.python_version_selector.grid(row=0, column=1, **padW)
-
-
-DEMO_TS = """interface CodeAction {
+interface CodeAction {
   title: string;
   kind?: CodeActionKind;
   diagnostics?: Diagnostic[];
@@ -167,13 +127,11 @@ class ts2pythonApp(tk.Tk):
 
         self.source_modified_sentinel = 0
         self.source_paste = False
-        grammar = ts2pythonParser.parsing.factory()
-        self.parser_names = grammar.parser_names__[:]
-        # self.parser_names.remove(grammar.root__.pname)
-        self.parser_names.sort(key=lambda s: s.lower().lstrip('_'))
-        self.parser_names.insert(0, "root_parser__")
-        # self.root_name = tk.StringVar(value=grammar.root__.pname)
-        self.root_name = tk.StringVar(value="document")
+        self.python_version = tk.StringVar(value="3.11")
+        self.preambel = ''
+        self.set_presets(version=(3, 11))
+        self.render_anonymous = tk.StringVar(value="as local class (!)")
+        self.root_parser = "document"
         self.compilation_units = 0
         self.outdir = ''
         self.names = []
@@ -223,37 +181,70 @@ class ts2pythonApp(tk.Tk):
 
     def create_widgets(self):
         # self.header = ttk.Label(text="")
-        self.pick_source_info = ttk.Label(text="Paste source code below or...")
+        combo_width = 12
+        self.pick_source_info = ttk.Label(text="Paste your source code below or...", style="Green.TLabel")
         self.pick_source = ttk.Button(text="Pick Source file(s)...",
                                       command=self.on_pick_source)
         self.source_info = ttk.Label(text='Source:', style="Bold.TLabel")
         self.source_undo = ttk.Button(text="Undo", command=self.on_source_undo)
         self.source_clear = ttk.Button(text="Clear source", command=self.on_clear_source)
         self.source_clear['state'] = tk.DISABLED
+
         self.source = scrolledtext.ScrolledText(undo=True)
         self.line_numbers = TextLineNumbers(self.source)
-        self.root_parser = ttk.Combobox(self, values=self.parser_names, textvariable=self.root_name)
-        self.compile = ttk.Button(text="Compile", style="BoldRed.TButton", command=self.on_compile)
+
+        self.options_label = ttk.Label(text="Options:", style="Bold.TLabel")
+        self.python_version_label = ttk.Label(text="Python-version compatibility:")
+        self.python_version_selector = ttk.Combobox(self,
+            values=('3.14 or higher', '3.13 or higher', '3.12 or higher',
+                    '3.11 or higher', '3.10 or higher', '3.9 or higher',
+                    '3.8 or higher', '3.7 or higher'),
+            textvariable=self.python_version, width=combo_width)
+        self.render_anonymous_label = ttk.Label(text="Handling of anonymous types:")
+        self.render_anonymous_table = {'as toplevel class': 'toplevel',
+                                       'as local class (!)': 'local',
+                                       'as inline type': 'type',
+                                       'as function call': 'functional'}
+        self.render_anonymous_selector = ttk.Combobox(
+            self, values = tuple(self.render_anonymous_table.keys()),
+            textvariable=self.render_anonymous, width=combo_width)
+
+        self.compile = ttk.Button(text="Compile", style="BoldRed.TButton",
+                                  command=self.on_compile)
         self.compile['state'] = tk.NORMAL  # tk.DISABLED
-        self.target_stage = ttk.Combobox(self, values=self.targets, textvariable=self.target_name)
-        self.target_choice = ttk.Combobox(
+        self.target_label = ttk.Label(text="Compilation stage:")
+        self.target_stage = ttk.Combobox(self,
+            values=self.targets, textvariable=self.target_name, width=combo_width)
+        self.output_label = ttk.Label(text="Output format:")
+        self.output_choice = ttk.Combobox(
             self, values=['XML', 'SXML', 'sxpr', 'xast', 'ndst', 'tree'],
-            textvariable=self.target_format)
+            textvariable=self.target_format, width=combo_width)
         if self.target_name.get() not in ('AST', 'CST'):
-            self.target_choice['state'] = tk.DISABLED
+            self.output_choice['state'] = tk.DISABLED
         self.result_info = ttk.Label(text='Result:', style="Bold.TLabel")
+
         self.result = scrolledtext.ScrolledText()
         # self.result['state'] = tk.DISABLED
-        self.save_result = ttk.Button(text="Save result...", command=self.on_save_result)
+
+        self.export_config = ttk.Button(text="Export configuration...",
+                                        command=self.on_export_config)
+        self.save_result = ttk.Button(text="Save result...",
+                                      command=self.on_save_result)
         self.save_result['state'] = tk.DISABLED
-        self.export_test = ttk.Button(text="Export as test case...", command=self.on_export_test)
+        self.export_test = ttk.Button(text="Export as test case...",
+                                      command=self.on_export_test)
         self.export_test['state'] = tk.DISABLED
+
         self.errors_info = ttk.Label(text='Errors:', style="Bold.TLabel")
+
         self.errors = scrolledtext.ScrolledText()
         # self.errors['state'] = tk.DISABLED
-        self.progressbar = ttk.Progressbar(orient="horizontal", variable=self.progress)
+
+        self.progressbar = ttk.Progressbar(orient="horizontal",
+                                           variable=self.progress)
         self.cancel = ttk.Button(text="Cancel", command=self.on_cancel)
         self.cancel['state'] = tk.DISABLED
+
         self.message = ttk.Label(text='', style="Black.TLabel")
         self.exit = ttk.Button(text="Quit", command=self.on_close)
         #
@@ -269,46 +260,76 @@ class ts2pythonApp(tk.Tk):
         self.source.bind("<Command-v>", self.on_source_insert, add="+")
         self.source.bind("<KeyRelease>", self.on_source_key, add="+")
         self.source.bind("<Button-1>", self.on_source_mouse, add="+")
+        self.python_version_selector.bind("<<ComboboxSelected>>",
+                                          self.on_version_selector)
+        self.render_anonymous_selector.bind("<<ComboboxSelected>>",
+                                            self.on_anonymous_selector)
         self.target_stage.bind("<<ComboboxSelected>>", self.on_target_stage)
-        self.target_choice.bind("<<ComboboxSelected>>", self.on_target_choice)
-        self.root_parser.bind("<<ComboboxSelected>>", self.on_root_parser)
+        self.output_choice.bind("<<ComboboxSelected>>", self.on_output_choice)
         self.errors.bind('<KeyRelease>', self.on_errors_key)
         # self.errors.bind('<MouseWheel>', self.on_errors_mouse)
         self.errors.bind('<Button-1>', self.on_errors_mouse)
         # self.errors.bind('<Configure>', self.on_errors)
 
     def place_widgets(self):
-        # self.header.grid(row=0, column=0, columnspan=6, **padAll)
-        self.pick_source_info.grid(row=1, column=2, **padW)
-        self.pick_source.grid(row=1, column=3, **padW)
-        self.source_info.grid(row=1, column=0, **padW)
-        self.source_undo.grid(row=1, column=4, **padE)
-        self.source_clear.grid(row=1, column=5, **padE)
-        self.source.grid(row=2, column=1, columnspan=5, **padAll)
-        self.line_numbers.grid(row=2, column=0, **padAll)
-        self.root_parser.grid(row=3, column=2, **padE)
-        self.compile.grid(row=3, column=3, **padWE)
-        self.target_stage.grid(row=3, column=4, **padW)
-        self.target_choice.grid(row=3, column=5, **padE)
-        self.result_info.grid(row=3, column=0, **padW)
-        self.result.grid(row=4, column=0, columnspan=6, **padAll)
-        self.save_result.grid(row=5, column=3, **padWE)
-        self.export_test.grid(row=5, column=4, **padWE)
-        self.errors_info.grid(row=5, column=0, **padW)
-        self.errors.grid(row=6, column=0, columnspan=6, **padAll)
-        # self.progressbar.grid(row=7, column=0, columnspan=5, **padWE)
-        self.cancel.grid(row=7, column=5, **padE)
-        self.message.grid(row=8, column=0, columnspan=5, **padWE)
-        self.exit.grid(row=8, column=5, **padE)
-        self.rowconfigure(2, weight=1)
-        self.rowconfigure(4, weight=1)
-        self.rowconfigure(6, weight=2)
+        padW = dict(sticky=(tk.W,), padx="5", pady="5")
+        padE = dict(sticky=(tk.E,), padx="5", pady="5")
+        padWE = dict(sticky=(tk.W, tk.E), padx="5", pady="5")
+        padNW = dict(sticky=(tk.W, tk.N), padx="5", pady="5")
+        padAll = dict(sticky=(tk.N, tk.S, tk.W, tk.E), padx="5", pady="5")
+        # self.header.grid(row=0, column=0, columnspan=5, **padAll)
+
+        self.source_info.grid(row=0, column=0, **padW)
+        self.pick_source_info.grid(row=0, column=1, **padW)
+        self.pick_source.grid(row=0, column=2, **padW)
+        self.source_undo.grid(row=0, column=3, **padE)
+        self.source_clear.grid(row=0, column=4, **padE)
+
+        self.source.grid(row=1, column=1, columnspan=4, **padAll)
+        self.line_numbers.grid(row=1, column=0, **padAll)
+
+        self.compile.grid(row=2, column=2, **padWE)
+
+        self.options_label.grid(row=3, column=0, **padW)
+        self.python_version_label.grid(row=3, column=1, **padE)
+        self.python_version_selector.grid(row=3, column=2, **padW)
+        self.render_anonymous_label.grid(row=3, column=3, **padE)
+        self.render_anonymous_selector.grid(row=3, column=4, **padW)
+
+        self.result_info.grid(row=4, column=0, **padW)
+        self.target_label.grid(row=4, column=1, **padE)
+        self.target_stage.grid(row=4, column=2, **padW)
+        self.output_label.grid(row=4, column=3, **padE)
+        self.output_choice.grid(row=4, column=4, **padW)
+
+        self.result.grid(row=5, column=0, columnspan=5, **padAll)
+
+        self.errors_info.grid(row=6, column=0, **padW)
+        self.export_config.grid(row=6, column=1, **padW)
+        self.save_result.grid(row=6, column=2, **padWE)
+        self.export_test.grid(row=6, column=3, **padE)
+
+        self.errors.grid(row=7, column=0, columnspan=5, **padAll)
+
+        # self.progressbar.grid(row=8, column=0, columnspan=5, **padWE)
+        self.cancel.grid(row=8, column=4, **padE)
+
+        self.message.grid(row=9, column=0, columnspan=4, **padWE)
+        self.exit.grid(row=9, column=4, **padE)
+
+        self.rowconfigure(1, weight=1)
+        self.rowconfigure(5, weight=1)
+        self.rowconfigure(7, weight=2)
+        self.columnconfigure(0, weight=1)
         self.columnconfigure(1, weight=1)
+        self.columnconfigure(2, weight=1)
+        self.columnconfigure(3, weight=1)
         self.columnconfigure(4, weight=1)
         self.source.focus_set()
 
     def show_progressbar(self):
-        self.progressbar.grid(row=7, column=0, columnspan=5, **padWE)
+        padWE = dict(sticky=(tk.W, tk.E), padx="5", pady="5")
+        self.progressbar.grid(row=8, column=0, columnspan=5, **padWE)
 
     def hide_progressbar(self):
         self.progressbar.grid_forget()
@@ -386,7 +407,7 @@ class ts2pythonApp(tk.Tk):
                         tk.messagebox.showerror("IO Error", str(e))
                         self.message['text'] = 'IOError: ' + e.__class__.__name__
                         self.message['style'] = "Red.TLabel"
-                        self.after(3500, self.clear_message)
+                        self.after(2500, self.clear_message)
                 else:
                     self.cancel_event.clear()
                     self.num_sources = len(self.names)
@@ -410,6 +431,7 @@ class ts2pythonApp(tk.Tk):
         self.source.delete('1.0', tk.END)
         self.compile['state'] = tk.DISABLED
         self.source_clear['state'] = tk.DISABLED
+        self.export_test['state'] = tk.DISABLED
         self.source_modified_sentinel = 2
 
     def adjust_button_status(self):
@@ -417,9 +439,11 @@ class ts2pythonApp(tk.Tk):
         if re.fullmatch(r'\s*', txt):
             self.compile['state'] = tk.DISABLED
             self.source_clear['state'] = tk.DISABLED
+            self.export_test['state'] = tk.DISABLED
         else:
             self.compile['state'] = tk.NORMAL
             self.source_clear['state'] = tk.NORMAL
+            self.export_test['state'] = tk.NORMAL
 
     def on_source_change(self, event):
         if self.source_modified_sentinel: # ignore call due to change of emit_modified
@@ -431,8 +455,6 @@ class ts2pythonApp(tk.Tk):
                 self.line_numbers.redraw()
                 if self.all_results:
                     self.export_test['state'] = tk.DISABLED
-                else:
-                    self.export_test['state'] = tk.NORMAL
         else:
             self.source_modified_sentinel = 1
             self.source.edit_modified(False)
@@ -505,7 +527,7 @@ class ts2pythonApp(tk.Tk):
         if source.find('\n') < 0:
             if re.fullmatch(r'\s*', source):  return
             source += '\n'
-        parser = self.root_name.get()
+        parser = self.root_parser
         self.compilation_target = self.target_name.get()
         self.compilation_units = 1
         # self.all_results = ts2pythonParser.pipeline(source, self.compilation_target, parser)
@@ -518,7 +540,7 @@ class ts2pythonApp(tk.Tk):
         self.worker.start()
         self.progressbar['mode'] = 'indeterminate'
         self.progressbar.start()
-        self.after(500, self.poll_worker)
+        self.after(100, self.poll_worker)
         self.compile['state'] = tk.DISABLED
         self.save_result['state'] = tk.DISABLED
         self.export_test['state'] = tk.DISABLED
@@ -528,6 +550,10 @@ class ts2pythonApp(tk.Tk):
         self.source.tag_delete("errorline")
         self.errors.tag_delete("currenterror")
         self.errors.tag_delete("error")
+        if self.preambel.strip():
+            self.all_results['py'] = ('\n\n'.join((self.preambel,
+                                                   self.all_results['py'][0])),
+                                      self.all_results['py'][1])
         serialization_format = self.target_format.get()
         target = self.target_name.get()
         if target not in self.all_results:
@@ -550,7 +576,8 @@ class ts2pythonApp(tk.Tk):
             err_str = str(e) + '\n'
             self.errors.insert(f"{i + 1}.0", err_str)
             if e.code >= ERROR:
-                self.errors.tag_add('error', f"{i + 1}.{0}", f"{i + 1}.{len(err_str)}")
+                self.errors.tag_add('error', f"{i + 1}.{0}",
+                                    f"{i + 1}.{len(err_str)}")
         self.errors.tag_config('error', foreground='red')
         # self.errors.insert("1.0", '\n'.join(str(e) for e in self.error_list))
         for e in self.error_list:
@@ -591,21 +618,66 @@ class ts2pythonApp(tk.Tk):
                 self.save_result['state'] = tk.NORMAL
         return bool(result[0]) or bool(result[1])
 
+    def set_presets(self, version=(3, 11)):
+        access_presets()
+        set_preset_value('ts2python.UsePostponedEvaluation', version < (3, 14), allow_new_key=True)
+        set_preset_value('ts2python.LiteralType', version >= (3, 8), allow_new_key=True)
+        set_preset_value('ts2python.UseTypeUnion', version >= (3, 10), allow_new_key=True)
+        set_preset_value('ts2python.UseExplicitTypeAlias', version >= (3, 10), allow_new_key=True)
+        set_preset_value('ts2python.UseVariadicGenerics', version >= (3, 11), allow_new_key=True)
+        set_preset_value('ts2python.NotRequired', True, allow_new_key=True)
+        set_preset_value('ts2python.UseTypeParameters', version >= (3, 12), allow_new_key=True)
+        set_preset_value('ts2python.AllowReadOnly', True, allow_new_key=True)
+        set_preset_value('ts2python.AssumeDeferredEvaluation', version >= (3, 14), allow_new_key=True)
+        set_preset_value('ts2python.KeepMultilineComments', True, allow_new_key=True)
+        finalize_presets()
+        preambel = []
+        if version < (3, 14):
+            preambel.append('from __future__ import annotations')
+        if version < (3, 13):
+            if version >= (3, 10):
+                preambel.append('ReadOnly: TypeAlias = Union')
+            else:
+                preambel.append('ReadOnly = Union')
+        if version < (3, 11):
+            if version >= (3, 10):
+                preambel.append('NotRequired: TypeAlias = Optional')
+            else:
+                preambel.append('NotRequired = Optional')
+        self.preambel = '\n'.join(preambel)
+
+    def on_version_selector(self, event):
+        version_string = self.python_version.get().split(' ')[0]
+        version = tuple(int(part) for part in version_string.split('.'))
+        self.set_presets(version)
+        self.compile['state'] = tk.NORMAL
+
+    def on_anonymous_selector(self, event):
+        method = self.render_anonymous_table[self.render_anonymous.get()]
+        access_presets()
+        set_preset_value('ts2python.RenderAnonymous', method, allow_new_key=True)
+        finalize_presets()
+        self.compile['state'] = tk.NORMAL
+        if method == 'local':
+            self.message['text'] = \
+                "Type checkers will complain about local types inside TypedDicts!"
+            self.message['style'] = "Red.TLabel"
+            self.after(5000, self.clear_message)
+        else:
+            self.message['text'] = ""
+
+
     def on_target_stage(self, event):
         target = self.target_name.get()
         if target in ('AST', 'CST'):
-            self.target_choice['state'] = tk.NORMAL
+            self.output_choice['state'] = tk.NORMAL
         elif isinstance(self.all_results.get(target, (EMPTY_NODE, []))[0], Node):
-            self.target_choice['state'] = tk.DISABLED
+            self.output_choice['state'] = tk.DISABLED
         if not self.update_result():
             self.adjust_button_status()
 
-    def on_target_choice(self, event):
+    def on_output_choice(self, event):
         self.update_result(if_tree=True)
-
-    def on_root_parser(self, event):
-        self.update_result(if_tree=True)
-        self.adjust_button_status()
 
     def on_errors_key(self, event):
         i = int(self.errors.index(tk.INSERT).split('.')[0])
@@ -617,7 +689,7 @@ class ts2pythonApp(tk.Tk):
 
     def on_save_result(self):
         target = self.target_name.get()
-        if self.target_choice['state'] == tk.NORMAL:
+        if self.output_choice['state'] == tk.NORMAL:
             format = 'in format ' + self.target_format.get()
         else:
             format = ''
@@ -632,6 +704,8 @@ class ts2pythonApp(tk.Tk):
                 self.message['text'] =  f'"{file.name}" written to disk.'
                 self.message['style'] = "Green.TLabel"
                 self.after(3500, self.clear_message)
+            except (PermissionError, IOError) as e:
+                tk.messagebox.showerror("IO Error", str(e))
             finally:
                 file.close()
 
@@ -698,6 +772,27 @@ class ts2pythonApp(tk.Tk):
             return False
         return True
 
+    def on_export_config(self):
+        path = tk.filedialog.asksaveasfilename(
+            title=f"Save configuration to project directory",
+            initialfile='ts2pythonConfig',
+            filetypes=[('.ini', '*.ini'), ('All', '*')]
+        )
+        if path:
+            config, fname, fpath, ftype, fdata, failure = \
+                self.read_config_or_test_file(path)
+            if failure:
+                return
+            if ftype != 'config':
+                tk.messagebox.showerror(
+                    "File-format Error",
+                    f"File {fname} is not a confiuguration file, "
+                    f"but a {ftype}-file")
+                return
+            if self.write_or_update_config_file(path, config):
+                self.message['style'] = "Green.TLabel"
+                self.after(2500, self.clear_message)
+
     def on_export_test(self):
         from DHParser.testing import unit_to_config, unit_from_config, \
             UNIT_STAGES
@@ -731,7 +826,7 @@ class ts2pythonApp(tk.Tk):
             else:
                 suite = {}
             source = self.source.get("1.0", tk.END)
-            parser = self.root_name.get()
+            parser = self.root_parser
             if self.error_list:
                 error_level = max(e.code for e in self.error_list)
             else:
@@ -762,8 +857,9 @@ class ts2pythonApp(tk.Tk):
             except (FileNotFoundError, PermissionError,
                     IsADirectoryError, IOError) as e:
                 tk.messagebox.showerror("IO Error", str(e))
+                return
         self.message['style'] = "Green.TLabel"
-        self.after(3500, self.clear_message)
+        self.after(2500, self.clear_message)
 
     def on_cancel(self) -> bool:
         if self.worker:

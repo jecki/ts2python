@@ -260,6 +260,8 @@ class ts2pythonApp(tk.Tk):
         self.menubar.add_cascade(menu=self.help_menu, label="Help")
         self.help_menu.add_command(label="ts2python Docs", command=self.open_docs)
         self.help_menu.add_command(label="ts2python Sources", command=self.open_github)
+        self.help_menu.add_command(label="License Info", command=self.open_license)
+        self.help_menu.add_separator()
         self.help_menu.add_command(label="About...", command=self.on_about)
         self.config(menu=self.menubar)
         # win = tk.Toplevel(self)
@@ -648,18 +650,29 @@ class ts2pythonApp(tk.Tk):
         set_preset_value('ts2python.KeepMultilineComments', True, allow_new_key=True)
         finalize_presets()
         preambel = []
+        t = 0
         if version < (3, 14):
             preambel.append('from __future__ import annotations')
+            t = 1
+        preambel.append('from typing import Union, Optional, Any, Generic, TypeVar, Callable \\\n'
+                        '    List, Iterable, Iterator, Tuple, Dict, Awaitable')
         if version < (3, 13):
-            if version >= (3, 10):
+            if version >= (3, 12):
+                preambel.append('type ReadOnly = Union')
+            elif version >= (3, 10):
+                preambel[t] += ', TypeAlias'
                 preambel.append('ReadOnly: TypeAlias = Union')
             else:
                 preambel.append('ReadOnly = Union')
+        else:
+            preambel[t] += ', ReadOnly'
         if version < (3, 11):
             if version >= (3, 10):
                 preambel.append('NotRequired: TypeAlias = Optional')
             else:
                 preambel.append('NotRequired = Optional')
+        else:
+            preambel[t] += ', NotRequired'
         self.preambel = '\n'.join(preambel)
 
     def on_version_selector(self, event):
@@ -909,6 +922,10 @@ class ts2pythonApp(tk.Tk):
     def open_github(self):
         import webbrowser
         webbrowser.open('https://github.com/jecki/ts2python/')
+
+    def open_license(self):
+        import webbrowser
+        webbrowser.open('https://github.com/jecki/ts2python/blob/master/LICENSE')
 
     def on_about(self):
         import random

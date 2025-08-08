@@ -288,6 +288,7 @@ ts2python_AST_transformation_table = {
                 convert_special_function],
     "function": apply_if(reduce_single_child, has_child('special')),
     "alias": reduce_single_child,
+    "declarations_block": [],  # ensures that the trasfomations under "*" are not applied, here!
     "*": move_fringes(lambda p: p[-1].name == "comment__"),
     ">>>": clear_flags
 }
@@ -722,8 +723,9 @@ class ts2pythonCompiler(Compiler):
         return ""
 
     def on_root(self, node) -> str:
-        assert len(node.children) == 1
-        return self.compile(node.children[0])
+        roots = [child for child in node.children if child.name != 'comment__']
+        assert len(roots) == 1, node.as_sxpr()
+        return self.compile(roots[0])
 
     def on_document(self, node) -> str:
         if 'module' in node and isinstance(node['module'], Sequence) > 1:
@@ -947,6 +949,8 @@ class ts2pythonCompiler(Compiler):
         raw_decls = [self.compile(nd) for nd in node
                      if nd.name in ('declaration', 'function', 'comment__')]
         declarations = '\n'.join(d for d in raw_decls if d)
+        if all(decl.lstrip()[0:1] == '#' for decl in raw_decls):
+            return "pass"
         return declarations or "pass"
 
     def on_declaration(self, node) -> str:
@@ -1130,13 +1134,17 @@ class ts2pythonCompiler(Compiler):
         else:
             preface = ''
         if self.use_literal_type and \
-                any(nd[0].name == 'literal' for nd in node.children):
-            if all(nd[0].name == 'literal' for nd in node.children):
+                any(nd[0].name == 'literal' for nd in node.children
+                    if nd.name != 'comment__'):
+            if all(nd[0].name == 'literal' for nd in node.children
+                   if nd.name != 'comment__'):
                 result = f"Literal[{', '.join(typ for typ in union)}]"
             else:
                 new_union = []
                 literal_package = []
                 for i, nd in enumerate(node.children):
+                    if nd.name == 'comment__':
+                        continue
                     if nd[0].name == 'literal':
                         literal_package.append(union[i])
                     else:
@@ -1811,7 +1819,7 @@ def main(called_from_app=False):
                 if pep == '695':  set_preset_value('ts2python.UseTypeParameters', **kwargs)
                 if pep == '705':  set_preset_value('ts2python.AllowReadOnly', **kwargs)
                 if pep in ('649', '749'):  set_preset_value('ts2python.AssumeDeferredEvaluation', **kwargs)
-        if args.comments: set_preset_value('ts2python.KeepMultilineComments', True)
+        if args.comments: set_preset_value('ts2python.KeepMultilineComments', True, allow_new_key=True)
         finalize_presets()
         # _ = get_config_values('ts2python.*')  # fill config value cache
 

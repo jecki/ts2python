@@ -509,7 +509,7 @@ export type DocumentSelector = DocumentFilter[];
  * and `${3:foo}`. `$0` defines the final tab stop, it defaults to
  * the end of the snippet. Variables are defined with `$name` and
  * `${name:default value}`.
- * 
+ *
  * @since 3.18.0
  */
 export interface StringValue {
@@ -625,7 +625,7 @@ export interface TextDocumentEdit {
 	 *
 	 * @since 3.16.0 - support for AnnotatedTextEdit. This is guarded by the
 	 * client capability `workspace.workspaceEdit.changeAnnotationSupport`
-	 * 
+	 *
 	 * @since 3.18.0 - support for SnippetTextEdit. This is guarded by the
 	 * client capability `workspace.workspaceEdit.snippetEditSupport`
 	 */
@@ -3883,7 +3883,7 @@ export interface FoldingRangeWorkspaceClientCapabilities {
 	 * folding ranges currently shown. It should be used with absolute care and is
 	 * useful for situation where a server, for example, detects a project wide
 	 * change that requires such a calculation.
-	 * 
+	 *
 	 * @since 3.18.0
 	 * @proposed
 	 */
@@ -5846,7 +5846,7 @@ export interface DiagnosticClientCapabilities {
 
 	/**
 	 * Whether the client supports `MarkupContent` in diagnostic messages.
-	 * 
+	 *
 	 * @since 3.18.0
 	 * @proposed
 	 */
@@ -6549,7 +6549,7 @@ export interface CodeActionClientCapabilities {
 		 * The tags supported by the client.
 		 */
 		valueSet: CodeActionTag[];
-	}; 
+	};
 }
 
 /**
@@ -6774,7 +6774,7 @@ export interface CodeActionContext {
 	 * for the given range. There is no guarantee that these accurately reflect
 	 * the error state of the resource. The primary parameter
 	 * to compute code actions is the provided range.
-	 * 
+	 *
 	 * Note that the client should check the `textDocument.diagnostic.markupMessageSupport`
 	 * server capability before sending diagnostics with markup messages to a server.
 	 * Diagnostics with markup messages should be excluded for servers that don't support

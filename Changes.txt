@@ -1,5 +1,6 @@
 Version 0.8.0
 -------------
+- ts2pythonExplorer: A GUI interfaces for exploring and using ts2python
 - Python 3.14 support (via the "--compatibility 3.14" switch)
 - Postponed evalaution (PEP 563) and deferred evaluation
   (Python 3.14 and higher) is now supported with the "--peps 563"

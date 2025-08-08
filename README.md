@@ -108,6 +108,15 @@ have been installed.
 
 ## Usage
 
+### ts2python GUI
+
+The easiest way to use ts2python is by running ts2pythonExplorer,
+which provides a simple graphical user interface to ts2python.
+You can just paste your Typescript-Interface definitions into
+the top text-area and click on the "Generate Python-Code"-button.
+
+### ts2python Command Line
+
 In order to generate TypedDict-classes from Typescript-Interfaces,
 run `ts2python` on the Typescript-Interface definitions:
 

@@ -40,17 +40,20 @@ classifiers = [
 
 packages = [
     { include = "ts2pythonParser.py" },
+    { include = "ts2pythonExplorer.py" },
+    { include = "ts2pythonConfig.ini" },
     { include = "ts2python.ebnf" },
     { include = "ts2python" }
 ]
 
 [tool.poetry.dependencies]
 python = "^3.7"
-DHParser = { version = "^1.8.3", optional = false }
+DHParser = { version = "^1.9.0", optional = false }
 typing_extensions = { version = "^4.0", optional = true }
 
 [tool.poetry.scripts]
 ts2python = 'ts2pythonParser:main'
+ts2pythonExplorer = 'ts2pythonExplorer:main'
 
 [build-system]
 requires = ["poetry-core>=1.0.0", "setuptools", "wheel"]

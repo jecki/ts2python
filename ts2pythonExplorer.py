@@ -209,7 +209,7 @@ class ts2pythonApp(tk.Tk):
             self, values = tuple(self.render_anonymous_table.keys()),
             textvariable=self.render_anonymous, width=combo_width)
 
-        self.compile = ttk.Button(text="Compile", style="BoldRed.TButton",
+        self.compile = ttk.Button(text="Generate Python Code", style="BoldRed.TButton",
                                   command=self.on_compile)
         self.compile['state'] = tk.NORMAL  # tk.DISABLED
         self.target_label = ttk.Label(text="Compilation stage:")
@@ -247,12 +247,23 @@ class ts2pythonApp(tk.Tk):
 
         self.message = ttk.Label(text='', style="Black.TLabel")
         self.exit = ttk.Button(text="Quit", command=self.on_close)
-        #
-        # self.menubar = tk.Menu(self)
-        # self.file_menu = tk.Menu(self.menubar)
-        # self.menubar.add_cascade(menu=self.file_menu, label="File")
-        # self.file_menu.add_command(label="Open...", command=self.on_pick_source)
-        # self.file_menu.add_command(label="Save...", command=self.on_save_result)
+
+        self.menubar = tk.Menu(self)
+        self.file_menu = tk.Menu(self.menubar, tearoff=0)
+        self.menubar.add_cascade(menu=self.file_menu, label="File")
+        self.file_menu.add_command(label="Load Typescript code...", command=self.on_pick_source)
+        self.file_menu.add_command(label="Save Python code...", command=self.on_save_result)
+        self.file_menu.entryconfig("Save Python code...", state=tk.DISABLED)
+        self.file_menu.add_separator()
+        self.file_menu.add_command(label="Exit", command=self.on_close)
+        self.help_menu = tk.Menu(self.menubar, tearoff=0)
+        self.menubar.add_cascade(menu=self.help_menu, label="Help")
+        self.help_menu.add_command(label="ts2python Docs", command=self.open_docs)
+        self.help_menu.add_command(label="ts2python Sources", command=self.open_github)
+        self.help_menu.add_command(label="About...", command=self.on_about)
+        self.config(menu=self.menubar)
+        # win = tk.Toplevel(self)
+        # win['menu'] = self.menubar
 
     def connect_events(self):
         self.source.bind("<<Modified>>", self.on_source_change)
@@ -395,6 +406,7 @@ class ts2pythonApp(tk.Tk):
                 self.errors.delete(1.0, tk.END)
                 self.export_test['state'] = tk.DISABLED
                 self.save_result['state'] = tk.DISABLED
+                self.file_menu.entryconfig("Save Python code...", state=tk.DISABLED)
                 if len(self.names) == 1:
                     try:
                         with open(self.names[0], 'r', encoding='utf-8') as f:
@@ -544,6 +556,7 @@ class ts2pythonApp(tk.Tk):
         self.compile['state'] = tk.DISABLED
         self.save_result['state'] = tk.DISABLED
         self.export_test['state'] = tk.DISABLED
+        self.file_menu.entryconfig("Save Python code...", state=tk.DISABLED)
 
     def finish_single_unit(self):
         self.source.tag_delete("error")
@@ -570,6 +583,7 @@ class ts2pythonApp(tk.Tk):
         self.result.insert("1.0", serialized)
         if not re.fullmatch(r'\s*', serialized):
             self.save_result['state'] = tk.NORMAL
+            self.file_menu.entryconfig("Save Python code...", state=tk.NORMAL)
         self.export_test['state'] = tk.NORMAL
         self.errors.delete("1.0", tk.END)
         for i, e in enumerate(self.error_list):
@@ -614,8 +628,10 @@ class ts2pythonApp(tk.Tk):
             self.result.insert(tk.END, result_txt)
             if re.fullmatch(r'\s*', result_txt):
                 self.save_result['state'] = tk.DISABLED
+                self.file_menu.entryconfig("Save Python code...", state=tk.DISABLED)
             else:
                 self.save_result['state'] = tk.NORMAL
+                self.file_menu.entryconfig("Save Python code...", state=tk.NORMAL)
         return bool(result[0]) or bool(result[1])
 
     def set_presets(self, version=(3, 11)):
@@ -886,6 +902,28 @@ class ts2pythonApp(tk.Tk):
                     return False
         return True
 
+    def open_docs(self):
+        import webbrowser
+        webbrowser.open('https://ts2python.readthedocs.io/')
+
+    def open_github(self):
+        import webbrowser
+        webbrowser.open('https://github.com/jecki/ts2python/')
+
+    def on_about(self):
+        import random
+        slogans = ("'cause it is the machines that bring order to life!",
+                   "We work hard to make your job expendable!",
+                   "We program pig systems that make your life difficult!",
+                   "8 bit can do it all!",
+                   "The apparatus is always right!")
+        tk.messagebox.showinfo(
+            title="About ts2python",
+            message=("ts2python was brought to you by:\n\n"
+                     "SLAVES TO THE MACHINE SOFTWARE\n\n"
+                     + slogans[random.randint(0, len(slogans) - 1)] + '\n\n')
+        )
+
     def on_close(self):
         if self.on_cancel():
             if self.worker and self.worker.is_alive():
@@ -896,12 +934,15 @@ class ts2pythonApp(tk.Tk):
             self.quit()
 
 
-if __name__ == '__main__':
-    if sys.version_info < (3, 14, 0):
-        import multiprocessing
-        multiprocessing.freeze_support()
+def main():
     read_local_config(os.path.join(scriptdir, 'ts2pythonConfig.ini'))
     if not ts2pythonParser.main(called_from_app=True):
         app = ts2pythonApp()
         app.mainloop()
+
+if __name__ == '__main__':
+    if sys.version_info < (3, 14, 0):
+        import multiprocessing
+        multiprocessing.freeze_support()
+    main()
 

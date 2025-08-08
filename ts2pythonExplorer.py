@@ -637,11 +637,11 @@ class ts2pythonApp(tk.Tk):
     def set_presets(self, version=(3, 11)):
         access_presets()
         set_preset_value('ts2python.UsePostponedEvaluation', version < (3, 14), allow_new_key=True)
-        set_preset_value('ts2python.LiteralType', version >= (3, 8), allow_new_key=True)
+        set_preset_value('ts2python.UseLiteralType', version >= (3, 8), allow_new_key=True)
         set_preset_value('ts2python.UseTypeUnion', version >= (3, 10), allow_new_key=True)
         set_preset_value('ts2python.UseExplicitTypeAlias', version >= (3, 10), allow_new_key=True)
         set_preset_value('ts2python.UseVariadicGenerics', version >= (3, 11), allow_new_key=True)
-        set_preset_value('ts2python.NotRequired', True, allow_new_key=True)
+        set_preset_value('ts2python.UseNotRequired', True, allow_new_key=True)
         set_preset_value('ts2python.UseTypeParameters', version >= (3, 12), allow_new_key=True)
         set_preset_value('ts2python.AllowReadOnly', True, allow_new_key=True)
         set_preset_value('ts2python.AssumeDeferredEvaluation', version >= (3, 14), allow_new_key=True)
@@ -799,7 +799,7 @@ class ts2pythonApp(tk.Tk):
                 self.read_config_or_test_file(path)
             if failure:
                 return
-            if ftype != 'config':
+            if ftype not in  ('config', 'empty'):
                 tk.messagebox.showerror(
                     "File-format Error",
                     f"File {fname} is not a confiuguration file, "

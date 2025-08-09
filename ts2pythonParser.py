@@ -49,7 +49,7 @@ except ImportError:
 from DHParser.compile import Compiler, compile_source, Junction, full_compile
 from DHParser.configuration import set_config_value, get_config_value, get_config_values, \
     access_presets, finalize_presets, set_preset_value, get_preset_value, NEVER_MATCH_PATTERN, \
-    get_config_values, read_local_config,ALLOWED_PRESET_VALUES
+    get_config_values, read_local_config,ALLOWED_PRESET_VALUES, dump_config_data
 from DHParser import dsl
 from DHParser.dsl import recompile_grammar, never_cancel
 from DHParser.ebnf import grammar_changed
@@ -288,8 +288,8 @@ ts2python_AST_transformation_table = {
                 convert_special_function],
     "function": apply_if(reduce_single_child, has_child('special')),
     "alias": reduce_single_child,
-    "declarations_block": [],  # ensures that the trasfomations under "*" are not applied, here!
-    "*": move_fringes(lambda p: p[-1].name == "comment__"),
+    "document, root": [],  # ensures that the trasfomations under "*" are not applied, here!
+    "*": move_fringes(lambda p: p[-1].name == "comment__", side="right"),
     ">>>": clear_flags
 }
 
@@ -1386,7 +1386,12 @@ class ts2pythonCompiler(Compiler):
         return {'true': 'True', 'false': 'False'}[node.content]
 
     def on_string(self, node) -> str:
-        return node.content
+        string_literal = node.content
+        if string_literal[0] == "'":
+            string_literal = f'"{string_literal[1:-1]}"'
+            # immunize string literal against removal of
+            # single quotes
+        return string_literal
 
     def on_array(self, node) -> str:
         return '[' + \

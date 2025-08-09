@@ -380,8 +380,7 @@ def set_compatibility_level(version_info: Tuple[int, ...] = (3, 7),
         set_value('ts2python.AllowReadOnly', True, allow_new_key=True)
     if version_info >= (3, 14):
         set_value('ts2python.AssumeDeferredEvaluation', True, allow_new_key=True)
-
-
+        set_value('ts2python.UsePostponedEvaluation', False, allow_new_key=True)
 
 
 def source_hash(source_text: str) -> str:

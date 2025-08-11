@@ -950,7 +950,7 @@ class ts2pythonCompiler(Compiler):
         raw_decls = [self.compile(nd) for nd in node
                      if nd.name in ('declaration', 'function', 'comment__')]
         declarations = '\n'.join(d for d in raw_decls if d)
-        if all(decl.lstrip()[0:1] == '#' for decl in raw_decls):
+        if all(decl.lstrip()[0:1] in ('#', '') for decl in raw_decls):
             return "pass"
         return declarations or "pass"
 

@@ -1464,7 +1464,8 @@ class ts2pythonCompiler(Compiler):
         unknown_types = set(tn.content for tn in node.select('type_name')
                             if not self.get_known_type(tn.content))
         type_expression = self.compile(type_node)
-        if self.assume_deferred_evaluation or self.use_postponed_evaluation:
+        if self.assume_deferred_evaluation or (
+                self.use_postponed_evaluation and self.use_type_parameters):
             type_expression = type_expression.replace("'", "")
         else:
             for typ in unknown_types:

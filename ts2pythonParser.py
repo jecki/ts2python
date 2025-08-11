@@ -288,7 +288,7 @@ ts2python_AST_transformation_table = {
                 convert_special_function],
     "function": apply_if(reduce_single_child, has_child('special')),
     "alias": reduce_single_child,
-    "document, root": [],  # ensures that the trasfomations under "*" are not applied, here!
+    "document, root": [],  # declarations_block? # ensures that the transfomations under "*" are not applied, here!
     "*": move_fringes(lambda p: p[-1].name == "comment__", side="right"),
     ">>>": clear_flags
 }
@@ -1078,7 +1078,8 @@ class ts2pythonCompiler(Compiler):
                     or (not self.use_type_parameters and
                         (not all(self.get_known_type(typ) for typ in union) \
                          and pick_from_path(self.path, 'type_alias'))):
-                union = [typ.replace("'", '').replace('"', '') for typ in union]
+                union = [typ.replace("'", '') for typ in union]
+                union = [typ.replace('"', '') for typ in union if not typ.find('Literal') >= 0] # rather crude criterion!
                 return f"{preface}'{' | '.join(union)}'"
             else:
                 return preface + ' | '.join(union)

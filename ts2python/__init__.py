@@ -17,10 +17,10 @@ permissions and limitations under the License.
 """
 
 import sys
-assert sys.version_info >= (3, 8, 0), "ts2python requires at least Python-Version 3.8!"
+assert sys.version_info >= (3, 7, 0), "ts2python requires at least Python-Version 3.7!"
 
 __title__ = "ts2python"
-__version__ = "0.8.0"
+__version__ = "0.8.1"
 __version_info__ = tuple(int(part) for part in __version__.split('.'))
 __description__ = "Python-Interoperability for Typescript-Interfaces"
 __author__ = "Eckhart Arnold"

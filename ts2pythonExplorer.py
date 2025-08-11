@@ -437,7 +437,7 @@ class ts2pythonApp(tk.Tk):
                                        ('cancel_func',
                                         self.cancel_event.is_set)]))
                     self.worker.start()
-                    self.after(100, self.poll_worker)
+                    self.after(150, self.poll_worker)
                     self.compile['state'] = tk.DISABLED
                     self.progressbar['mode'] = "determinate"
 

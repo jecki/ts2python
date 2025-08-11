@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "ts2python"
-version = "0.8.0"
+version = "0.8.1"
 description = "Python-Interoperability for Typescript-Interfaces"
 
 license = "Apache-2.0"
@@ -48,7 +48,7 @@ packages = [
 
 [tool.poetry.dependencies]
 python = "^3.8"
-DHParser = { version = "^1.9.0", optional = false }
+DHParser = { version = "^1.9.1", optional = false }
 typing_extensions = { version = "^4.0", optional = true }
 
 [tool.poetry.scripts]

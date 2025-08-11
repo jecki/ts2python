@@ -1,3 +1,8 @@
+Verions 0.8.1
+-------------
+- bugfixes, mostly related to the represnetation of comments with
+  the --comments comandline switch
+
 Version 0.8.0
 -------------
 - ts2pythonExplorer: A GUI interfaces for exploring and using ts2python

@@ -56,7 +56,8 @@ from DHParser.ebnf import grammar_changed
 from DHParser.error import ErrorCode, Error, canonical_error_strings, has_errors, NOTICE, \
     WARNING, ERROR, FATAL
 from DHParser.log import start_logging, suspend_logging, resume_logging
-from DHParser.nodetree import Node, WHITESPACE_PTYPE, TOKEN_PTYPE, RootNode, Path, pick_from_path
+from DHParser.nodetree import Node, WHITESPACE_PTYPE, TOKEN_PTYPE, RootNode, Path, pick_from_path, \
+    node_names
 from DHParser.parse import Grammar, PreprocessorToken, Whitespace, Drop, AnyChar, Parser, \
     Lookbehind, Lookahead, Alternative, Pop, Text, Synonym, Counted, Interleave, INFINITE, ERR, \
     Option, NegativeLookbehind, OneOrMore, RegExp, Retrieve, Series, Capture, TreeReduction, \
@@ -713,6 +714,7 @@ class ts2pythonCompiler(Compiler):
             comment = comment.strip()
             comment = re.sub(r'/\*+\s*|\s*\*/|//[ \t]*', '', comment)
             comment = re.sub(r'(?:\n|^)[ \t]*\* ?', '\n', comment).lstrip()
+            comment = comment.replace("'", chr(0x2bc))  # circumvent possible source of errors in compile_type_expression()!
             lines = comment.split('\n')
             for i in range(len(lines)):
                 line = lines[i].strip()
@@ -1461,13 +1463,23 @@ class ts2pythonCompiler(Compiler):
         return TYPE_NAME_SUBSTITUTION.get(name, name)
 
     def compile_type_expression(self, node, type_node) -> str:
+        def no_type_alias(path) -> bool:
+            names = [nd.name for nd in path[::-1]]
+            if 'type_alias' not in names:
+                return True
+            if ('declarations_block' in names and
+                names.index('declarations_block') < names.index('type_alias')):
+                return True
+            return False
+
         unknown_types = set(tn.content for tn in node.select('type_name')
                             if not self.get_known_type(tn.content))
         type_expression = self.compile(type_node)
         if self.assume_deferred_evaluation or (
-                self.use_postponed_evaluation and self.use_type_parameters):
+                self.use_postponed_evaluation and
+                (self.use_type_parameters or no_type_alias(self.path))):
             type_expression = type_expression.replace("'", "")
-        else:
+        elif not self.use_postponed_evaluation or type_expression[0:5] != 'class':
             for typ in unknown_types:
                 rx = re.compile(r"(?:(?<=[^\w'])|^)" + typ + r"(?:(?=[^\w'])|$)")
                 segments = type_expression.split("'")

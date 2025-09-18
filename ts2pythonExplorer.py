@@ -58,7 +58,7 @@ class TextLineNumbers(tk.Canvas):
         return self.text_widget.vbar.set(*args)
 
     def redraw_needed(self):
-        """-> index of last line"""
+        """-> index of the last line"""
         first = self.text_widget.index("@0,0")
         ysize = self.text_widget.winfo_height()
         last = self.text_widget.index(f"@0,{ysize}")

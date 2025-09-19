@@ -933,7 +933,8 @@ class ts2pythonApp(tk.Tk):
                    "We work hard to make your job expendable!",
                    "We program pig systems that make your life difficult!",
                    "8 bit can do it all!",
-                   "The apparatus is always right!")
+                   "The apparatus is always right!",
+                   "Everyone is replaceable and should be!")
         tk.messagebox.showinfo(
             title="About ts2python",
             message=("ts2python was brought to you by:\n\n"

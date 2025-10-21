@@ -58,7 +58,7 @@ class TextLineNumbers(tk.Canvas):
         return self.text_widget.vbar.set(*args)
 
     def redraw_needed(self):
-        """-> index of last line"""
+        """-> index of the last line"""
         first = self.text_widget.index("@0,0")
         ysize = self.text_widget.winfo_height()
         last = self.text_widget.index(f"@0,{ysize}")
@@ -933,7 +933,8 @@ class ts2pythonApp(tk.Tk):
                    "We work hard to make your job expendable!",
                    "We program pig systems that make your life difficult!",
                    "8 bit can do it all!",
-                   "The apparatus is always right!")
+                   "The apparatus is always right!",
+                   "Everyone is replaceable and should be!")
         tk.messagebox.showinfo(
             title="About ts2python",
             message=("ts2python was brought to you by:\n\n"

@@ -78,14 +78,13 @@ different tiers:
 Presently, Tier 1 support, i.e. transpilation of passive data 
 structures works quite well. So, for example, all Interfaces
 from the
-[language server protocol V3.16](https://microsoft.github.io/language-server-protocol/specifications/specification-3-16/) 
+[language server protocol V3.17](https://microsoft.github.io/language-server-protocol/specifications/lsp/3.17/specification/) 
 can be transpiled to Python Typed-Dicts. 
 
-Tier 2 support is still very much work in progress. I am 
-using "vscode.d.ts"-definition file as test-case. Some things work,
-but there are still some unsupported constructs, and the Python
-code emitted for features that go beyond Tier 1 may not even
-be valid Python all the time! Please, keep that in mind.
+Tier 2 support is and will remain work in progress. I am 
+using "vscode.d.ts"-definition file as test-case. Most things
+ins "vscode.d.ts" work, but there are still some unsupported 
+constructs. 
 
 The documentation presently only covers Tier 1 support. 
 

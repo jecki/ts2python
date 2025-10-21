@@ -284,6 +284,15 @@ class TestValidation:
                 assert False, "Type Error in nested return type not detected"
         except TypeError:
             pass
+        try:
+            _ = type_checked_func(0, {'jsonrpc': '2.0', 'method': 'check'},
+                                     Position(line=21, character=15))
+            assert False, "Type Error in parameter not detected"
+        except KeyError:
+            if sys.version_info >= (3, 8):
+                assert False, "Type Error in parameter not detected"
+        except TypeError:
+            pass
 
     def test_int_enum(self):
         try:

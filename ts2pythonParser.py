@@ -682,9 +682,8 @@ class ts2pythonCompiler(Compiler):
                            f'on {datetime.datetime.now()}\n# compatibility level: '
                            f'Python {c_major}.{c_minor} and above\n',
                            # f'# feature level: Python {f_major}.{f_minor}\n',
-                           ('from __future__ import annotations'
-                            '# WARNING: This can cause runtime type checks to fail!')
-                           if self.use_postponed_evaluation else '',
+                           'from __future__ import annotations' if
+                           self.use_postponed_evaluation else '',
                            GENERAL_IMPORTS] \
                 + type_imports \
                 + ([FUNCTOOLS_IMPORTS] if self.require_singledispatch else []) \

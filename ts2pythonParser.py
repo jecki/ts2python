@@ -140,9 +140,9 @@ class ts2pythonGrammar(Grammar):
     literal = Forward()
     type = Forward()
     types = Forward()
-    source_hash__ = "582498e801f2bd1c3f27dbda68c69b25"
+    source_hash__ = "9d5bdbecb0cad221edc54622e8a05e13"
     early_tree_reduction__ = CombinedParser.MERGE_TREETOPS
-    disposable__ = re.compile('(?:_top_level_assignment$|NEG$|EXP$|_keyword$|EOF$|_part$|DOT$|_array_ellipsis$|_quoted_identifier$|FRAC$|_namespace$|_top_level_literal$|_reserved$|INT$)')
+    disposable__ = re.compile('(?:_top_level_literal$|_namespace$|EOF$|NEG$|_reserved$|FRAC$|_quoted_identifier$|DOT$|EXP$|_part$|_array_ellipsis$|_top_level_assignment$|_keyword$|INT$)')
     static_analysis_pending__ = []  # type: List[bool]
     parser_initialization__ = ["upon instantiation"]
     COMMENT__ = r'(?://.*)\n?|(?:/\*(?:.|\n)*?\*/) *\n?'
@@ -682,8 +682,9 @@ class ts2pythonCompiler(Compiler):
                            f'on {datetime.datetime.now()}\n# compatibility level: '
                            f'Python {c_major}.{c_minor} and above\n',
                            # f'# feature level: Python {f_major}.{f_minor}\n',
-                           'from __future__ import annotations' if
-                           self.use_postponed_evaluation else '',
+                           ('from __future__ import annotations'
+                            '# WARNING: This can cause runtime type checks to fail!')
+                           if self.use_postponed_evaluation else '',
                            GENERAL_IMPORTS] \
                 + type_imports \
                 + ([FUNCTOOLS_IMPORTS] if self.require_singledispatch else []) \

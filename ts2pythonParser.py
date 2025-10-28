@@ -1274,7 +1274,7 @@ class ts2pythonCompiler(Compiler):
         else:
             self.add_to_known_types(node, name, 'virtual_enum')
         save = self.strip_type_from_const
-        if all(child.name == 'const' for child in node.children[1:]):
+        if all(child.name in ('const', 'comment__') for child in node.children[1:]):
             if all(nd['literal'][0].name == 'integer'
                    for nd in node.select_children('const') if 'literal' in nd):
                 header = f'class {name}(IntEnum):'
@@ -1285,7 +1285,7 @@ class ts2pythonCompiler(Compiler):
             header = ''
         namespace = []
         for child in node.children[1:]:
-            namespace.append(self.compile(child))
+            namespace.append(self.compile(child).replace('\n', '\n    '))
         if not header:
             header = self.render_class_header(name, '')[:-1]  # leave out the trailing "\n"
             # self.optional_keys.pop()?

@@ -1,4 +1,8 @@
-Verions 0.8.1
+Verison 0.8.2
+-------------
+- various bugfixes
+
+Version 0.8.1
 -------------
 - bugfixes, mostly related to the represnetation of comments with
   the --comments comandline switch

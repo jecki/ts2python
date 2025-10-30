@@ -114,6 +114,8 @@ which provides a simple graphical user interface to ts2python.
 You can just paste your Typescript-Interface definitions into
 the top text-area and click on the "Generate Python-Code"-button.
 
+![Screenshot of ts2pythonExplorer](screenshot.png)
+
 ### ts2python Command Line
 
 In order to generate TypedDict-classes from Typescript-Interfaces,

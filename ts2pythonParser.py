@@ -62,13 +62,13 @@ from DHParser.parse import Grammar, PreprocessorToken, Whitespace, Drop, AnyChar
     Lookbehind, Lookahead, Alternative, Pop, Text, Synonym, Counted, Interleave, INFINITE, ERR, \
     Option, NegativeLookbehind, OneOrMore, RegExp, Retrieve, Series, Capture, TreeReduction, \
     ZeroOrMore, Forward, NegativeLookahead, Required, CombinedParser, Custom, mixin_comment, \
-    last_value, matching_bracket, optional_last_value, SmartRE
+    last_value, matching_bracket, optional_last_value, SmartRE, RX_NEVER_MATCH
 from DHParser.pipeline import create_parser_junction, create_preprocess_junction, \
     create_junction, PseudoJunction, full_pipeline, end_points, PipelineResult
 from DHParser.preprocess import nil_preprocessor, PreprocessorFunc, PreprocessorResult, \
     gen_find_include_func, preprocess_includes, make_preprocessor, chain_preprocessors
 from DHParser.stringview import StringView
-from DHParser.toolkit import is_filename, load_if_file, cpu_count, RX_NEVER_MATCH, \
+from DHParser.toolkit import is_filename, load_if_file, cpu_count, \
     ThreadLocalSingletonFactory, expand_table, md5, as_list, static
 from DHParser.trace import set_tracer, resume_notices_on, trace_history
 from DHParser.transform import is_empty, remove_if, TransformationDict, TransformerFunc, \
@@ -87,7 +87,7 @@ from DHParser.transform import is_empty, remove_if, TransformationDict, Transfor
 from DHParser import parse as parse_namespace__
 
 
-version = "0.8.0"
+version = "0.8.2"
 
 
 #######################################################################
@@ -129,7 +129,12 @@ preprocessing: PseudoJunction = create_preprocess_junction(
 #######################################################################
 
 class ts2pythonGrammar(Grammar):
-    r"""Parser for a ts2python source file.
+    r"""Parser for a ts2python document.
+
+    Instantiate this class and then call the instance with the
+    source code as argument in order to use the parser, e.g.:
+        parser = ts2python()
+        syntax_tree = parser(source_code)
     """
     arg_list = Forward()
     declaration = Forward()
@@ -140,9 +145,9 @@ class ts2pythonGrammar(Grammar):
     literal = Forward()
     type = Forward()
     types = Forward()
-    source_hash__ = "9d5bdbecb0cad221edc54622e8a05e13"
+    source_hash__ = "95673a7df727cc16cf2fc10e84222160"
     early_tree_reduction__ = CombinedParser.MERGE_TREETOPS
-    disposable__ = re.compile('(?:_top_level_literal$|_namespace$|EOF$|NEG$|_reserved$|FRAC$|_quoted_identifier$|DOT$|EXP$|_part$|_array_ellipsis$|_top_level_assignment$|_keyword$|INT$)')
+    disposable__ = re.compile('(?:FRAC$|EXP$|EOF$|_top_level_literal$|INT$|_reserved$|NEG$|_part$|_top_level_assignment$|_quoted_identifier$|_keyword$|DOT$|_namespace$|_array_ellipsis$)')
     static_analysis_pending__ = []  # type: List[bool]
     parser_initialization__ = ["upon instantiation"]
     COMMENT__ = r'(?://.*)\n?|(?:/\*(?:.|\n)*?\*/) *\n?'

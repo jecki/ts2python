@@ -85,7 +85,7 @@ class TextLineNumbers(tk.Canvas):
 
 
 DEMO_TS = """// This is just an example. You can replace it by your own Typescript-code
-// or just click "compile" below to see how this interface look as Python-code.
+// or just click "compile" below to see how this interface looks as Python-code.
 
 interface CodeAction {
   title: string;
@@ -199,7 +199,8 @@ class ts2pythonApp(tk.Tk):
             values=('3.14 or higher', '3.13 or higher', '3.12 or higher',
                     '3.11 or higher', '3.10 or higher', '3.9 or higher',
                     '3.8 or higher', '3.7 or higher'),
-            textvariable=self.python_version, width=combo_width)
+            textvariable=self.python_version, width=combo_width,
+            state='readonly')
         self.render_anonymous_label = ttk.Label(text="Handling of anonymous types:")
         self.render_anonymous_table = {'as toplevel class': 'toplevel',
                                        'as local class (!)': 'local',
@@ -207,18 +208,21 @@ class ts2pythonApp(tk.Tk):
                                        'as function call': 'functional'}
         self.render_anonymous_selector = ttk.Combobox(
             self, values = tuple(self.render_anonymous_table.keys()),
-            textvariable=self.render_anonymous, width=combo_width)
+            textvariable=self.render_anonymous, width=combo_width,
+            state='readonly')
 
         self.compile = ttk.Button(text="Generate Python Code", style="BoldRed.TButton",
                                   command=self.on_compile)
         self.compile['state'] = tk.NORMAL  # tk.DISABLED
         self.target_label = ttk.Label(text="Compilation stage:")
         self.target_stage = ttk.Combobox(self,
-            values=self.targets, textvariable=self.target_name, width=combo_width)
+            values=self.targets, textvariable=self.target_name, width=combo_width,
+            state='readonly')
         self.output_label = ttk.Label(text="Output format:")
         self.output_choice = ttk.Combobox(
             self, values=['XML', 'SXML', 'sxpr', 'xast', 'ndst', 'tree'],
-            textvariable=self.target_format, width=combo_width)
+            textvariable=self.target_format, width=combo_width,
+            state='readonly')
         if self.target_name.get() not in ('AST', 'CST'):
             self.output_choice['state'] = tk.DISABLED
         self.result_info = ttk.Label(text='Result:', style="Bold.TLabel")
@@ -573,6 +577,9 @@ class ts2pythonApp(tk.Tk):
         target = self.target_name.get()
         if target not in self.all_results:
             target = self.compilation_target
+            if target not in self.all_results:
+                tk.messagebox.showerror("Error", f"Unknown target: {target}")
+                return
             self.target_name.set(target)
         try:
             result, self.error_list = self.all_results[target]
@@ -699,7 +706,7 @@ class ts2pythonApp(tk.Tk):
     def on_target_stage(self, event):
         target = self.target_name.get()
         if target in ('AST', 'CST'):
-            self.output_choice['state'] = tk.NORMAL
+            self.output_choice['state'] = 'readonly'  # tk.NORMAL
         elif isinstance(self.all_results.get(target, (EMPTY_NODE, []))[0], Node):
             self.output_choice['state'] = tk.DISABLED
         if not self.update_result():
@@ -718,7 +725,7 @@ class ts2pythonApp(tk.Tk):
 
     def on_save_result(self):
         target = self.target_name.get()
-        if self.output_choice['state'] == tk.NORMAL:
+        if self.output_choice['state'] in ('readonly', tk.NORMAL):
             format = 'in format ' + self.target_format.get()
         else:
             format = ''

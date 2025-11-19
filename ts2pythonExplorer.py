@@ -938,7 +938,7 @@ class ts2pythonApp(tk.Tk):
         import random
         slogans = ("'cause it is the machines that bring order to life!",
                    "We work hard to make your job expendable!",
-                   "We program pig systems that make your life difficult!",
+                   "We program pig systems that make your life hell!",
                    "8 bit can do it all!",
                    "The apparatus is always right!",
                    "Everyone is replaceable and should be!")

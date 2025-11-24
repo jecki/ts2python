@@ -38,6 +38,8 @@ the top text-area and click on the "Generate Python-Code"-button.
 You can then simply copy the generated code from the text-area
 below into you Python source code.
 
+.. image:: screenshot.png
+
 ts2pythonExplorer also allows you to experiment with different
 version-compatibility settings for the generated Python-Code.
 These settings can be saved as a configuration file to your

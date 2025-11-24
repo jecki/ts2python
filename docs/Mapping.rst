@@ -260,7 +260,7 @@ appended underscore is used as name for the local class. Although,
 this use of local-classes within TypedDict-classes is not in "legal"
 conformance with the specification of TypedDict-classes (see `PEP 589`_),
 it is technically sound and works perfectly well in practice
-(see :ref:`toplevel_switch` for how to
+(see :ref:`toplevelswitch` for how to
 enforce "legal" conformance, if needed) ::
 
     class InitializeParams(WorkDoneProgressParams, TypedDict):
@@ -337,6 +337,8 @@ becomes::
         TextDocumentContentChangeEvent_0, TextDocumentContentChangeEvent_1]
 
 
+.. _toplevelswitch:
+
 Alternative Representations for Anonymous Interfaces
 ----------------------------------------------------
 
@@ -371,8 +373,6 @@ anonymous interface in the above example as::
 However, this is not (yet) in conformance with the Python-Standard.
 (See this post on `inline TypedDict definitions`_). Still, it can be turned
 on with ``-a type``.
-
-.. _toplevel_switch:
 
 Finally, with ``--anonymous toplevel`` or ``-a toplevel``,
 the definition of classes inside classes

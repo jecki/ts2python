@@ -1,0 +1,50 @@
+
+class CalendarJSON(TypedDict):
+    class Fiscal_0(TypedDict):
+        class Quarter_0(TypedDict):
+            name: str
+            value: int
+        class Quarter_1(TypedDict):
+            name: str
+            value: int
+        class Quarter_2(TypedDict):
+            name: str
+            value: int
+        class Quarter_3(TypedDict):
+            name: str
+            value: int
+        month: 'MonthNumbers'
+        quarter: Union[Quarter_0, Quarter_1, Quarter_2, Quarter_3]
+        week: 'WeekNumbers'
+        year: 'CommonYears'
+    class Gregorian_0(TypedDict):
+        class Day_of_week_0(TypedDict):
+            name: str
+            value: int
+        class Day_of_week_1(TypedDict):
+            name: str
+            value: int
+        class Day_of_week_2(TypedDict):
+            name: str
+            value: int
+        class Day_of_week_3(TypedDict):
+            name: str
+            value: int
+        class Day_of_week_4(TypedDict):
+            name: str
+            value: int
+        class Day_of_week_5(TypedDict):
+            name: str
+            value: int
+        class Day_of_week_6(TypedDict):
+            name: str
+            value: int
+        day_of_week: Union[Day_of_week_0, Day_of_week_1, Day_of_week_2, Day_of_week_3, Day_of_week_4, Day_of_week_5, Day_of_week_6]
+        month: 'MonthNumbers'
+        quarter: 'QuarterNumbers'
+        week: 'WeekNumbers'
+        year: 'CommonYears'
+    date: str
+    fiscal: Fiscal_0
+    gregorian: Gregorian_0
+    id: str

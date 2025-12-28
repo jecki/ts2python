@@ -644,6 +644,7 @@ class ts2pythonApp(tk.Tk):
         return bool(result[0]) or bool(result[1])
 
     def set_presets(self, version=(3, 11)):
+        if len(version) > 2:  version = version[:2]
         access_presets()
         set_preset_value('ts2python.UsePostponedEvaluation', version < (3, 14), allow_new_key=True)
         set_preset_value('ts2python.UseLiteralType', version >= (3, 8), allow_new_key=True)

@@ -41,7 +41,7 @@ permissions and limitations under the License.
 
 import sys
 
-if sys.version_info >= (3, 14):
+if sys.version_info >= (3, 14, 0):
     from typing import (NotRequired, TypedDict, _TypedDictMeta,
                         ForwardRef, _GenericAlias, get_origin, get_args,
                         Literal, is_typeddict, Union, ReadOnly, TypeAlias)
@@ -87,7 +87,7 @@ __all__ = ['NotRequired', 'TypedDict', 'GenericTypedDict', '_TypedDictMeta',
            'ForwardRef', '_GenericAlias', 'ReadOnly', 'TypeAlias']
 
 
-if sys.version_info < (3,14):
+if sys.version_info < (3,14, 0):
     # The following functions have been copied from the Python
     # standard libraries typing-module. They have been adapted
     # to support a more flexible version of TypedDict
@@ -124,17 +124,17 @@ if sys.version_info < (3,14):
             raise TypeError(f"{arg} is not valid as type argument")
         if arg in (Any, NoReturn):
             return arg
-        if (sys.version_info >= (3, 7) and isinstance(arg, _SpecialForm)) \
+        if (sys.version_info >= (3, 7, 0) and isinstance(arg, _SpecialForm)) \
                 or arg in (Generic, Protocol):
             raise TypeError(f"Plain {arg} is not valid as type argument")
         if isinstance(arg, (type, TypeVar, ForwardRef)):
             return arg
-        if sys.version_info >= (3, 10):
+        if sys.version_info >= (3, 10, 0):
             from types import UnionType
             if isinstance(arg, UnionType):
                 return arg
         if not callable(arg):
-            print(sys.version_info, sys.version_info >= (3, 9))
+            print(sys.version_info, sys.version_info >= (3, 9, 0))
             raise TypeError(f"{msg} Got {arg!r:.100}.")
         return arg
 
@@ -222,12 +222,12 @@ if sys.version_info < (3,14):
 
     _is_pypy = hasattr(sys, 'pypy_version_info')
 
-    # if sys.version_info >= (3, 11) and not _is_pypy:
+    # if sys.version_info >= (3, 11, 0) and not _is_pypy:
     #     from typing import TypedDict
     #     GenericTypedDict = TypedDict
     # elif ...
 
-    if sys.version_info >= (3, 7) and not _is_pypy:
+    if sys.version_info >= (3, 7, 0) and not _is_pypy:
         def TypedDict(typename, fields=None, *, total=True, **kwargs):
             """An alternative implementation of typing.TypedDict that, instead of
             relying on the `total`-parameter, allows treating individual fields

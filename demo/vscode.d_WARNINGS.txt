@@ -1,0 +1,22 @@
+8349:25: Warning (310): Type intersections are not yet implemented. Any-type returned.
+9251:2: Warning (100): namespace tasks has already been defined earlier as namespace!
+10647:2: Warning (100): namespace env has already been defined earlier as namespace!
+10871:2: Warning (100): namespace commands has already been defined earlier as namespace!
+10967:2: Warning (100): namespace window has already been defined earlier as namespace!
+11316:98: Warning (310): Type intersections are not yet implemented. Any-type returned.
+11336:113: Warning (310): Type intersections are not yet implemented. Any-type returned.
+11452:16: Warning (310): Type intersections are not yet implemented. Any-type returned.
+13615:2: Warning (100): namespace workspace has already been defined earlier as namespace!
+14353:2: Warning (100): namespace languages has already been defined earlier as namespace!
+15981:2: Warning (100): namespace notebooks has already been defined earlier as namespace!
+16283:2: Warning (100): namespace scm has already been defined earlier as namespace!
+16914:2: Warning (100): namespace debug has already been defined earlier as namespace!
+17089:2: Warning (100): namespace extensions has already been defined earlier as namespace!
+17429:2: Warning (100): namespace comments has already been defined earlier as namespace!
+17691:2: Warning (100): namespace authentication has already been defined earlier as namespace!
+17705:86: Warning (310): Type intersections are not yet implemented. Any-type returned.
+17720:86: Warning (310): Type intersections are not yet implemented. Any-type returned.
+17782:2: Warning (100): namespace l10n has already been defined earlier as namespace!
+17861:2: Warning (100): namespace tests has already been defined earlier as namespace!
+19701:2: Warning (100): namespace chat has already been defined earlier as namespace!
+20007:2: Warning (100): namespace lm has already been defined earlier as namespace!

@@ -42,7 +42,7 @@ except (ImportError, ModuleNotFoundError):
         from .typeddict_shim import TypedDict, _TypedDictMeta, get_origin, \
             get_args, ForwardRef, _GenericAlias, is_typeddict, NotRequired
 
-if sys.version_info >= (3, 11):
+if sys.version_info >= (3, 11, 0):
     from typing import _GenericAlias, TypedDict, _TypedDictMeta, get_origin, get_args, ForwardRef
 
 
@@ -274,7 +274,7 @@ def validate_TypedDict(D: Dict, T: _TypedDictMeta):
             for union_typ in field_type.__args__:
                 union_typ = resolve_forward_refs(union_typ, T)
                 if isinstance(union_typ, ForwardRef):
-                    if sys.version_info >= (3, 9):
+                    if sys.version_info >= (3, 9, 0):
                         union_typ = union_typ._evaluate(globals(), sys.modules[T.__module__].__dict__,
                                                         recursive_guard=set())
                     else:

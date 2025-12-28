@@ -165,12 +165,12 @@ def _check_generic(cls, parameters, elen=_marker):
                         f" actual {alen}, expected {elen}")
 
 
-if sys.version_info >= (3, 10):
+if sys.version_info >= (3, 10, 0):
     def _should_collect_from_parameters(t):
         return isinstance(
             t, (typing._GenericAlias, _types.GenericAlias, _types.UnionType)
         )
-elif sys.version_info >= (3, 9):
+elif sys.version_info >= (3, 9, 0):
     def _should_collect_from_parameters(t):
         return isinstance(t, (typing._GenericAlias, _types.GenericAlias))
 else:
@@ -210,7 +210,7 @@ T_co = typing.TypeVar('T_co', covariant=True)  # Any type covariant containers.
 T_contra = typing.TypeVar('T_contra', contravariant=True)  # Ditto contravariant.
 
 
-if sys.version_info >= (3, 11):
+if sys.version_info >= (3, 11, 0):
     from typing import Any
 else:
 

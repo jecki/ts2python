@@ -1,0 +1,3 @@
+2629:1: Warning (100): interface TextDocumentSyncOptions has already been defined earlier as interface!
+3605:1: Warning (100): interface HoverParams has already been defined earlier as interface!
+8186:54: Warning (310): Type intersections are not yet implemented. Any-type returned.

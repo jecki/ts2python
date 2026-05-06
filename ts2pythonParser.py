@@ -127,8 +127,8 @@ preprocessing: PseudoJunction = create_preprocess_junction(
 class ts2pythonGrammar(Grammar):
     r"""Parser for a ts2python document.
 
-    Instantiate this class and then call the instance with the
-    source code as argument in order to use the parser, e.g.:
+    Instantiate this class and then call the instance with the source
+    code as the single argument in order to use the parser, e.g.:
         parser = ts2python()
         syntax_tree = parser(source_code)
     """
@@ -141,9 +141,9 @@ class ts2pythonGrammar(Grammar):
     literal = Forward()
     type = Forward()
     types = Forward()
-    source_hash__ = "95673a7df727cc16cf2fc10e84222160"
+    source_hash__ = "ae75401ba9d8df84c3d2835bf1822a95"
     early_tree_reduction__ = CombinedParser.MERGE_TREETOPS
-    disposable__ = re.compile('(?:FRAC$|EXP$|EOF$|_top_level_literal$|INT$|_reserved$|NEG$|_part$|_top_level_assignment$|_quoted_identifier$|_keyword$|DOT$|_namespace$|_array_ellipsis$)')
+    disposable__ = re.compile('(?:_namespace$|_keyword$|_reserved$|_part$|DOT$|_top_level_literal$|EOF$|_array_ellipsis$|EXP$|_top_level_assignment$|_quoted_identifier$|FRAC$|NEG$|INT$)')
     static_analysis_pending__ = []  # type: List[bool]
     parser_initialization__ = ["upon instantiation"]
     COMMENT__ = r'(?://.*)\n?|(?:/\*(?:.|\n)*?\*/) *\n?'
@@ -240,7 +240,8 @@ class ts2pythonGrammar(Grammar):
     root__ = root
     
 parsing: PseudoJunction = create_parser_junction(ts2pythonGrammar)
-get_grammar = parsing.factory # for backwards compatibility, only
+get_grammar = parsing.factory  # for backwards compatibility, only
+
 
 try:
     assert RE_INCLUDE == NEVER_MATCH_PATTERN or \
@@ -255,6 +256,7 @@ try:
         "preprocessor to ignore comments."
 except (AttributeError, NameError):
     pass
+
 
 
 #######################################################################

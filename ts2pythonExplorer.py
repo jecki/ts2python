@@ -570,9 +570,9 @@ class ts2pythonApp(tk.Tk):
         self.errors.tag_delete("currenterror")
         self.errors.tag_delete("error")
         if self.preambel.strip():
-            self.all_results['py'] = ('\n\n'.join((self.preambel,
-                                                   self.all_results['py'][0] or '')),
-                                      self.all_results['py'][1])
+            self.all_results['py'] = (
+                '\n\n'.join([self.preambel, str(self.all_results['py'][0])]),
+                self.all_results['py'][1])
         serialization_format = self.target_format.get()
         target = self.target_name.get()
         if target not in self.all_results:

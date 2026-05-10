@@ -1,0 +1,1 @@
+testdata.ts:110:1: Warning (100): Name SymbolTag has already been defined earlier as virtual_enum!

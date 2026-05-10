@@ -140,6 +140,7 @@ REPORT
 LOGS
 **/LOGS/*
 /DHParser/
+DHParser
 
 
 # Other

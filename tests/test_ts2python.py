@@ -206,7 +206,7 @@ class TestValidation:
         from DHParser.configuration import set_config_value, get_config_value
         not_required = get_config_value('ts2python.UseNotRequired', False)
         assumeDeferredEvaluation = get_config_value('ts2python.AssumeDeferredEvaluation', False)
-        if sys.version_info >= (3, 11):
+        if sys.version_info >= (3, 11, 0):
             pass
         set_config_value('ts2python.UseNotRequired', True, allow_new_key=True)
         if sys.version_info >= (3, 14, 0):
@@ -273,14 +273,14 @@ class TestValidation:
                                      Position(line=21, character=15))
             assert False, "Type Error in parameter not detected"
         except KeyError:
-            if sys.version_info >= (3, 8):
+            if sys.version_info >= (3, 8, 0):
                 assert False, "Type Error in parameter not detected"
         except TypeError:
             pass
         try:
             _ = type_checked_func(2, {'jsonrpc': '2.0', 'id': 21, 'method': 'check'},
                                      Position(line=21, character=15))
-            if sys.version_info >= (3, 8):
+            if sys.version_info >= (3, 8, 0):
                 assert False, "Type Error in nested return type not detected"
         except TypeError:
             pass
@@ -289,7 +289,7 @@ class TestValidation:
                                      Position(line=21, character=15))
             assert False, "Type Error in parameter not detected"
         except KeyError:
-            if sys.version_info >= (3, 8):
+            if sys.version_info >= (3, 8, 0):
                 assert False, "Type Error in parameter not detected"
         except TypeError:
             pass

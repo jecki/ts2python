@@ -45,7 +45,7 @@ __all__ = ['NotRequired', 'TypedDict', 'GenericTypedDict', '_TypedDictMeta',
            'GenericMeta', 'get_origin', 'get_args', 'Literal', 'is_typeddict',
            'ForwardRef', '_GenericAlias', 'ReadOnly', 'TypeAlias']
 
-if sys.version_info >= (3, 14):
+if sys.version_info >= (3, 14, 0):
     from typing import (NotRequired, TypedDict, _TypedDictMeta,
                         ForwardRef, _GenericAlias, get_origin, get_args,
                         Literal, is_typeddict, Union, ReadOnly, TypeAlias)
@@ -62,10 +62,10 @@ else:
         Protocol = Generic
         Final = type
 
-    if sys.version_info >= (3, 11):
+    if sys.version_info >= (3, 11, 0):
         from typing import (TypedDict, _TypedDictMeta, get_origin, get_args,
                             NotRequired, Literal, TypeAlias)
-        if sys.version_info >= (3,13):
+        if sys.version_info >= (3, 13, 0):
             from typing import ReadOnly
         else:
             ReadOnly = Union
@@ -73,12 +73,12 @@ else:
         GenericMeta = type
 
     else:
-        if sys.version_info >= (3, 10):
+        if sys.version_info >= (3, 10, 0):
             from typing import TypeAlias
         else:
             TypeAlias = Any
 
-        if sys.version_info >= (3, 8):
+        if sys.version_info >= (3, 8, 0):
             from typing import get_args, get_origin, Optional, Literal
         else:
             from typing import Optional
@@ -124,17 +124,17 @@ else:
             #     raise TypeError(f"{arg} is not valid as type argument")
             if arg in (Any, NoReturn):
                 return arg
-            if (sys.version_info >= (3, 7) and isinstance(arg, _SpecialForm)) \
+            if (sys.version_info >= (3, 7, 0) and isinstance(arg, _SpecialForm)) \
                     or arg in (Generic, Protocol):
                 raise TypeError(f"Plain {arg} is not valid as type argument")
             if isinstance(arg, (type, TypeVar, ForwardRef)):
                 return arg
-            if sys.version_info >= (3, 10):
+            if sys.version_info >= (3, 10, 0):
                 from types import UnionType
                 if isinstance(arg, UnionType):
                     return arg
             if not callable(arg):
-                print(sys.version_info, sys.version_info >= (3, 9))
+                print(sys.version_info, sys.version_info >= (3, 9, 0))
                 raise TypeError(f"{msg} Got {arg!r:.100}.")
             return arg
 

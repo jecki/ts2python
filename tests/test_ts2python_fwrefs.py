@@ -145,14 +145,14 @@ class TestValidation:
                                      Position(line=21, character=15))
             assert False, "Type Error in parameter not detected"
         except KeyError:
-            if sys.version_info >= (3, 8):
+            if sys.version_info >= (3, 8, 0):
                 assert False, "Type Error in parameter not detected"
         except TypeError as e:
             pass
         try:
             _ = type_checked_func(2, {'jsonrpc': '2.0', 'id': 21, 'method': 'check'},
                                      Position(line=21, character=15))
-            if sys.version_info >= (3, 8):
+            if sys.version_info >= (3, 8, 0):
                 assert False, "Type Error in nested return type not detected"
         except TypeError:
             pass

@@ -110,17 +110,17 @@ def _type_check(arg, msg, is_argument=True, module=None):
         raise TypeError(f"{arg} is not valid as type argument")
     if arg in (Any, NoReturn):
         return arg
-    if (sys.version_info >= (3, 7) and isinstance(arg, _SpecialForm)) \
+    if (sys.version_info >= (3, 7, 0) and isinstance(arg, _SpecialForm)) \
             or arg in (Generic, Protocol):
         raise TypeError(f"Plain {arg} is not valid as type argument")
     if isinstance(arg, (type, TypeVar, ForwardRef)):
         return arg
-    if sys.version_info >= (3, 10):
+    if sys.version_info >= (3, 10, 0):
         from types import UnionType
         if isinstance(arg, UnionType):
             return arg
     if not callable(arg):
-        print(sys.version_info, sys.version_info >= (3, 9))
+        print(sys.version_info, sys.version_info >= (3, 9, 0))
         raise TypeError(f"{msg} Got {arg!r:.100}.")
     return arg
 
@@ -207,12 +207,12 @@ class _TypedDictMeta(type):
 
 _is_pypy = hasattr(sys, 'pypy_version_info')
     
-# if sys.version_info >= (3, 11) and not _is_pypy:
+# if sys.version_info >= (3, 11, 0) and not _is_pypy:
 #     from typing import TypedDict
 #     GenericTypedDict = TypedDict
 # elif ...
 
-if sys.version_info >= (3, 7) and not _is_pypy:
+if sys.version_info >= (3, 7, 0) and not _is_pypy:
     def TypedDict(typename, fields=None, *, total=True, **kwargs):
         """An alternative implementation of typing.TypedDict that, instead of
         relying on the `total`-parameter, allows to treat individual fields

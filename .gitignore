@@ -146,5 +146,7 @@ DHParser
 # Other
 # scratch/
 
-/.run/
-/demo/ts2python_output/
+.venv/
+.run/
+.vscode/
+demo/ts2python_output/

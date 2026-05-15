@@ -18,7 +18,8 @@
 @ reduction   = merge_treetops  # anonymous nodes are being reduced where possible
 @ disposable  = INT, NEG, FRAC, DOT, EXP, EOF,
                 _array_ellipsis, _top_level_assignment, _top_level_literal,
-                _quoted_identifier, _namespace, _part, _reserved, _keyword
+                _quoted_identifier, _namespace, _part, _reserved, _keyword,
+                _string
 @ drop        = whitespace, no_comments, strings, EOF,
                 _array_ellipsis, _top_level_assignment, _top_level_literal,
                 _reserved, _keyword
@@ -73,8 +74,9 @@ extends     = ("extends" | "implements")
 
 declarations_block = "{" [ (function|declaration) { [";"|","] (function|declaration) } [";"|","] ]
                          [map_signature [";"|","] ] "}"
-declaration = ["export"] qualifiers ["let"|"var"] !_keyword identifier [optional] !`(` [":" §types]
-
+declaration = ["export"] qualifiers ["let"|"var"] !_keyword
+              (_quoted_identifier | pseudo_identifier) [optional] !`(`
+              [":" §types]
 
 # @function_resume = /(?=;)/
 
@@ -189,7 +191,7 @@ literal    = integer | number | boolean | string | array | object
 integer    = INT !/[.Ee]/ ~
 number     = INT FRAC EXP ~
 boolean    = (`true` | `false`) ~
-string     = /"[^"\n]*"/~ | /'[^'\n]*'/~
+string     = _string
 array      = "[" [ literal { "," literal } ] "]"
 object     = "{" [ association { "," association } ] [","] "}"
   association = key §":" literal
@@ -211,7 +213,9 @@ basic_type   = (`object` | `array` | `string` | `number` | `boolean` | `null`
 #######################################################################
 
 variable     = name
-_quoted_identifier = identifier | '"' identifier §'"' | "'" identifier §"'"
+_quoted_identifier = identifier | '"' identifier '"' | "'" identifier "'"
+pseudo_identifier = _string
+_string      = /"[^"\n]*"/~ | /'[^'\n]*'/~
 name         = !_reserved _part {`.` _part} ~
 identifier   = !_reserved _part ~
   _part      = /(?!\d)\w+/

@@ -13,10 +13,10 @@ import webbrowser
 from tkinter import ttk
 from tkinter import filedialog, messagebox, scrolledtext, font
 
-from DHParser import set_preset_value
 from DHParser.error import Error, ERROR
 from DHParser.configuration import read_local_config, get_config_values, \
-    dump_config_data, access_presets, finalize_presets, set_preset_value
+    dump_config_data, access_presets, finalize_presets, set_preset_value, \
+    get_preset_value
 from DHParser.nodetree import Node, EMPTY_NODE
 from DHParser.pipeline import PipelineResult
 from DHParser.testing import merge_test_units

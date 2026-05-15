@@ -141,9 +141,9 @@ class ts2pythonGrammar(Grammar):
     literal = Forward()
     type = Forward()
     types = Forward()
-    source_hash__ = "17b10ddd192754f0acb4f21112d5c96d"
+    source_hash__ = "49931ea765c4bc37e06e2dbce4d1e565"
     early_tree_reduction__ = CombinedParser.MERGE_TREETOPS
-    disposable__ = re.compile('(?:NEG$|_top_level_assignment$|EXP$|FRAC$|_quoted_identifier$|_namespace$|_array_ellipsis$|_reserved$|EOF$|_part$|_top_level_literal$|_keyword$|INT$|DOT$)')
+    disposable__ = re.compile('(?:FRAC$|DOT$|_quoted_identifier$|_top_level_assignment$|EXP$|_reserved$|NEG$|_keyword$|_string$|_namespace$|_array_ellipsis$|_top_level_literal$|INT$|EOF$|_part$)')
     static_analysis_pending__ = []  # type: List[bool]
     parser_initialization__ = ["upon instantiation"]
     COMMENT__ = r'(?://.*)\n?|(?:/\*(?:.|\n)*?\*/) *\n?'
@@ -162,14 +162,16 @@ class ts2pythonGrammar(Grammar):
     _part = RegExp('(?!\\d)\\w+')
     identifier = Series(NegativeLookahead(_reserved), _part, dwsp__)
     name = Series(NegativeLookahead(_reserved), _part, ZeroOrMore(Series(Text("."), _part)), dwsp__)
-    _quoted_identifier = Alternative(identifier, Series(Series(Drop(Text('"')), dwsp__), identifier, Series(Drop(Text('"')), dwsp__), mandatory=2), Series(Series(Drop(Text("\'")), dwsp__), identifier, Series(Drop(Text("\'")), dwsp__), mandatory=2))
+    _string = SmartRE(f'("[^"\\n]*")(?P<comment__>{WSP_RE__})|(\'[^\'\\n]*\')(?P<comment__>{WSP_RE__})', '/"[^"\\n]*"/ ~|/\'[^\'\\n]*\'/ ~')
+    pseudo_identifier = Synonym(_string)
+    _quoted_identifier = Alternative(identifier, Series(Series(Drop(Text('"')), dwsp__), identifier, Series(Drop(Text('"')), dwsp__)), Series(Series(Drop(Text("\'")), dwsp__), identifier, Series(Drop(Text("\'")), dwsp__)))
     variable = Synonym(name)
     basic_type = SmartRE(f'(?P<:Text>object|array|string|number|boolean|null|integer|uinteger|decimal|unknown|any|void)(?P<comment__>{WSP_RE__})', '`object`|`array`|`string`|`number`|`boolean`|`null`|`integer`|`uinteger`|`decimal`|`unknown`|`any`|`void` ~')
     key = Alternative(identifier, Series(Series(Drop(Text('"')), dwsp__), identifier, Series(Drop(Text('"')), dwsp__)))
     association = Series(key, Series(Drop(Text(":")), dwsp__), literal, mandatory=1)
     object = Series(Series(Drop(Text("{")), dwsp__), Option(Series(association, ZeroOrMore(Series(Series(Drop(Text(",")), dwsp__), association)))), Option(Series(Drop(Text(",")), dwsp__)), Series(Drop(Text("}")), dwsp__))
     array = Series(Series(Drop(Text("[")), dwsp__), Option(Series(literal, ZeroOrMore(Series(Series(Drop(Text(",")), dwsp__), literal)))), Series(Drop(Text("]")), dwsp__))
-    string = SmartRE(f'("[^"\\n]*")(?P<comment__>{WSP_RE__})|(\'[^\'\\n]*\')(?P<comment__>{WSP_RE__})', '/"[^"\\n]*"/ ~|/\'[^\'\\n]*\'/ ~')
+    string = Synonym(_string)
     boolean = SmartRE(f'(?P<:Text>true|false)(?P<comment__>{WSP_RE__})', '`true`|`false` ~')
     number = Series(INT, FRAC, EXP, dwsp__)
     integer = Series(INT, SmartRE(f'(?![.Ee])', '!/[.Ee]/'), dwsp__)
@@ -225,7 +227,7 @@ class ts2pythonGrammar(Grammar):
     types.set(Series(Option(Series(Drop(Text("|")), dwsp__)), Alternative(intersection, type), ZeroOrMore(Series(Series(Drop(Text("|")), dwsp__), Alternative(intersection, type)))))
     arg_list.set(Series(Alternative(Series(argument, ZeroOrMore(Series(Series(Drop(Text(",")), dwsp__), argument)), Option(Series(Series(Drop(Text(",")), dwsp__), arg_tail))), arg_tail), Option(Series(Drop(Text(",")), dwsp__))))
     function.set(Alternative(Series(Option(Series(Option(Series(Drop(Text("export")), dwsp__)), qualifiers, Option(Series(Drop(Text("function")), dwsp__)), NegativeLookahead(_keyword), identifier, Option(optional), Option(type_parameters))), Series(Drop(Text("(")), dwsp__), Option(arg_list), Series(Drop(Text(")")), dwsp__), Option(Series(Series(Drop(Text(":")), dwsp__), types, mandatory=1)), mandatory=2), special))
-    declaration.set(Series(Option(Series(Drop(Text("export")), dwsp__)), qualifiers, Option(SmartRE(f'(?:let)(?P<comment__>{WSP_RE__})|(?:var)(?P<comment__>{WSP_RE__})', '"let"|"var"')), NegativeLookahead(_keyword), identifier, Option(optional), NegativeLookahead(Text("(")), Option(Series(Series(Drop(Text(":")), dwsp__), types, mandatory=1))))
+    declaration.set(Series(Option(Series(Drop(Text("export")), dwsp__)), qualifiers, Option(SmartRE(f'(?:let)(?P<comment__>{WSP_RE__})|(?:var)(?P<comment__>{WSP_RE__})', '"let"|"var"')), NegativeLookahead(_keyword), Alternative(_quoted_identifier, pseudo_identifier), Option(optional), NegativeLookahead(Text("(")), Option(Series(Series(Drop(Text(":")), dwsp__), types, mandatory=1))))
     declarations_block.set(Series(Series(Drop(Text("{")), dwsp__), Option(Series(Alternative(function, declaration), ZeroOrMore(Series(Option(SmartRE(f'(?:;)(?P<comment__>{WSP_RE__})|(?:,)(?P<comment__>{WSP_RE__})', '";"|","')), Alternative(function, declaration))), Option(SmartRE(f'(?:;)(?P<comment__>{WSP_RE__})|(?:,)(?P<comment__>{WSP_RE__})', '";"|","')))), Option(Series(map_signature, Option(SmartRE(f'(?:;)(?P<comment__>{WSP_RE__})|(?:,)(?P<comment__>{WSP_RE__})', '";"|","')))), Series(Drop(Text("}")), dwsp__)))
     document.set(Series(dwsp__, ZeroOrMore(Alternative(interface, type_alias, _namespace, enum, const, module, _top_level_assignment, _array_ellipsis, _top_level_literal, Series(Import, Option(Series(Drop(Text(";")), dwsp__))), Series(function, Option(Series(Drop(Text(";")), dwsp__))), Series(declaration, Option(Series(Drop(Text(";")), dwsp__)))))))
     root = Series(document, EOF)
@@ -313,6 +315,10 @@ ASTTransformation: Junction = Junction(
 # COMPILER SECTION - Can be edited. Changes will be preserved.
 #
 #######################################################################
+
+
+RX_IDENTIFIER = re.compile(r'(?![\d.])[\w.]+')
+
 
 def dump_configuration() -> str:
     return f"""[ts2python]
@@ -958,7 +964,7 @@ class ts2pythonCompiler(Compiler):
         return declarations or "pass"
 
     def on_declaration(self, node) -> str:
-        identifier = self.compile(node['identifier'])
+        identifier = self.compile(node.get('identifier', node.get('pseudo_identifier', None)))
         self.obj_name.append(to_typename(identifier))
         T = self.compile_type_expression(node, node['types']) \
             if 'types' in node else 'Any'
@@ -1522,6 +1528,19 @@ class ts2pythonCompiler(Compiler):
         if keyword.iskeyword(identifier):
             identifier += '_'
         return identifier
+
+    def on_pseudo_identifier(self, node) -> str:
+        psd_ident = node.content.strip("'").strip('"')
+        # heavy sanitizer: not perfect, but duplication of identifiers
+        # extremely unlikely
+        result = []
+        if psd_ident[0].isdigit() or psd_ident[0] == '.' \
+                or not re.match(r'\w', psd_ident[0]):
+            result.append(hex(ord(psd_ident)))
+        for i in range(1, len(psd_ident)):
+            if not re.match(r'[\w.]', psd_ident[i]):
+                result.append(psd_ident[i])
+        return ''.join(result)
 
 compiling: Junction = create_junction(
     ts2pythonCompiler, 'AST', "py")

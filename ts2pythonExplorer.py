@@ -655,7 +655,7 @@ class ts2pythonApp(tk.Tk):
         set_preset_value('ts2python.UseTypeParameters', version >= (3, 12), allow_new_key=True)
         set_preset_value('ts2python.AllowReadOnly', True, allow_new_key=True)
         set_preset_value('ts2python.AssumeDeferredEvaluation', version >= (3, 14), allow_new_key=True)
-        set_preset_value('ts2python.KeepMultilineComments', True, allow_new_key=True)
+        set_preset_value('ts2python.KeepComments', True, allow_new_key=True)
         finalize_presets()
         preambel = []
         t = 0

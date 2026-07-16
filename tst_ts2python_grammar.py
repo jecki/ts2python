@@ -24,7 +24,6 @@ except (ImportError, ModuleNotFoundError):
         dhparserdir = scriptdir[:i + 10]  # 10 = len("/DHParser/")
         if dhparserdir not in sys.path:  sys.path.insert(0, dhparserdir)
 
-
 try:
     from DHParser.configuration import access_presets, set_preset_value, \
         finalize_presets, get_config_value, ALLOWED_PRESET_VALUES

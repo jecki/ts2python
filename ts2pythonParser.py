@@ -277,7 +277,7 @@ def convert_special_function(p: Path):
     identifier.result = SPECIAL_FUNCTIONS.get(identifier.content, "__unknown__")
 
 def add_flags(p: Path):
-    p[0].attr['keep_comments'] = get_config_value('ts2python.KeepMultilineComments', False)
+    p[0].attr['keep_comments'] = get_config_value('ts2python.KeepComments', False)
 
 def clear_flags(p: Path):
     p[0].attr = dict()
@@ -333,7 +333,7 @@ UseVariadicGenerics = {get_config_value('ts2python.UseVariadicGenerics', False)}
 UseNotRequired = {get_config_value('ts2python.UseNotRequired', False)}
 AllowReadOnly = {get_config_value('ts2python.AllowReadOnly', False)}
 AssumeDeferredEvaluation = {get_config_value('ts2python.AssumeDeferredEvaluation', False)}
-KeepMultilineComments = {get_config_value('ts2python.KeepMultilineComments', False)}"""
+KeepComments = {get_config_value('ts2python.KeepComments', False)}"""
 
 
 def required_python_version(ts2python_cfg: Dict[str, bool],
@@ -616,7 +616,7 @@ class ts2pythonCompiler(Compiler):
         self.use_not_required = ts2python_cfg.get('ts2python.UseNotRequired', False)
         self.allow_read_only = ts2python_cfg.get('ts2python.AllowReadOnly', False)
         self.assume_deferred_evaluation = ts2python_cfg.get('ts2python.AssumeDeferredEvaluation', False)
-        self.keep_comments = ts2python_cfg.get('ts2python.KeepMultilineComments', False)
+        self.keep_comments = ts2python_cfg.get('ts2python.KeepComments', False)
         self.compatibility_level = required_python_version(ts2python_cfg, "compatibility")
         self.feature_level = required_python_version(ts2python_cfg, "features")
         if self.use_type_parameters and not self.use_variadic_generics:
@@ -1781,8 +1781,11 @@ def main(called_from_app=False):
     parser.add_argument('-p', '--peps', nargs=1, action='extend', type=str,
                         help='Assume or ignore Python-PEPs, e.g. "655,~705" assume NotRequired '
                              '(PEP 655), but ignore ReadOnly (PEP 705)')
-    parser.add_argument('-k', '--comments', action='store_const', const="comments",
-                        help="Preserve (multiline) comments")
+    parser.add_argument('-k', '--comments', nargs='?', action='store', type=str,
+                        choices=['None', 'All', 'DocComments', 'asDocStrings', 'AllAsDocStrings',
+                                 'AllAndDocStrings', 'DocStrings'],
+                        default='None', const="comments",
+                        help="Preserve comments: None, All, DocComments, asDocStrings, AllAsDocStrings")
     parser.add_argument('-s', '--serialize', nargs=1, default=[],
                         help="Choose serialization format for abstract syntax tree. Available: "
                              + ', '.join(ALLOWED_PRESET_VALUES['default_serialization']))
@@ -1816,7 +1819,7 @@ def main(called_from_app=False):
             sys.exit(1)
         targets = chosen
 
-    if args.debug or args.compatibility or args.peps or args.anonymous:
+    if args.debug or args.compatibility or args.peps or args.anonymous or args.comments:
         access_presets()
         if args.debug is not None:
             log_dir = 'LOGS'
@@ -1859,7 +1862,21 @@ def main(called_from_app=False):
                 if pep == '695':  set_preset_value('ts2python.UseTypeParameters', **kwargs)
                 if pep == '705':  set_preset_value('ts2python.AllowReadOnly', **kwargs)
                 if pep in ('649', '749'):  set_preset_value('ts2python.AssumeDeferredEvaluation', **kwargs)
-        if args.comments: set_preset_value('ts2python.KeepMultilineComments', True, allow_new_key=True)
+        print(args.comments)
+        print(file_names)
+        if args.comments:
+            comments = args.comments.lower()
+            if comments == 'none':  comments = ''
+            elif comments in ('docsstrings', 'asdocstrings'):  comments = 'asdocstrings'
+            elif comments in ('allanddocstrings', 'allasdocstrings', 'alldocstrings'):
+                comments = 'allasdocstrings'
+            elif comments not in ('all', 'doccomments'):
+                print(f'Illegal value {comments} for parameter --comments. '
+                      'Allowed values are: all, none, doccomments, asdocstrings, allasdocstrings')
+                sys.exit(1)
+            set_preset_value('ts2python.KeepComments', comments, allow_new_key=True)
+        else:
+            set_preset_value('ts2python.KeepComments', '', allow_new_key=True)
         finalize_presets()
         # _ = get_config_values('ts2python.*')  # fill config value cache
 

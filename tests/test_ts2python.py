@@ -206,15 +206,20 @@ class TestValidation:
         from DHParser.configuration import set_config_value, get_config_value
         not_required = get_config_value('ts2python.UseNotRequired', False)
         assumeDeferredEvaluation = get_config_value('ts2python.AssumeDeferredEvaluation', False)
+        postponedEvaluation = get_config_value('ts2python.UsePostponedEvaluation', False)
         if sys.version_info >= (3, 11, 0):
             pass
         set_config_value('ts2python.UseNotRequired', True, allow_new_key=True)
         if sys.version_info >= (3, 14, 0):
             set_config_value('ts2python.AssumeDeferredEvaluation', True, allow_new_key=True)
         self.test_code, err = compile_src(TEST_DATA)
+        set_config_value('ts2python.UsePostponedEvaluation', False, allow_new_key=True)
         set_config_value('ts2python.AssumeDeferredEvaluation', assumeDeferredEvaluation, allow_new_key=True)
         set_config_value('ts2python.UseNotRequired', not_required, allow_new_key=True)
         self.test_code = PATH_FIX + self.test_code
+        if self.test_code.find('from __future__ import annotations') >= 0:
+            self.test_code = self.test_code.replace('from __future__ import annotations', '')
+            self.test_code = 'from __future__ import annotations\n' + self.test_code
         assert not err
         code = compile(self.test_code, '<string>', 'exec')
         exec(code, globals())

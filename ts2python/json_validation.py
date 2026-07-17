@@ -250,6 +250,7 @@ def validate_TypedDict(D: Dict, T: _TypedDictMeta):
     type_errors = []
     # X = T.__required_keys__
     missing = T.__required_keys__ - D.keys()
+    x = T.__required_keys__.copy()
     if missing:
         type_errors.append(f"Missing required keys: {missing}")
     unexpected = D.keys() - (T.__required_keys__ | T.__optional_keys__)

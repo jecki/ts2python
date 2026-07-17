@@ -319,21 +319,57 @@ ASTTransformation: Junction = Junction(
 
 RX_IDENTIFIER = re.compile(r'(?![\d.])[\w.]+')
 
+TS2PYTHON_CONFIG_DEFAULT = {
+    'RenderAnonymous': 'local',
+    'UseEnum': True,
+    'UsePostponedEvaluation': False,
+    'UseTypeUnion': False,
+    'UseExplicitTypeAlias': False,
+    'UseTypeParameters': False,
+    'UseLiteralType': False,
+    'UseVariadicGenerics': False,
+    'UseNotRequired': False,
+    'AllowReadOnly': False,
+    'AssumeDeferredEvaluation': False,
+    'KeepComments': False,
+    'DocComments': ''
+}
+
+TS2PYTHON_QUALIFIED_CONFIG_KEYS = frozenset(
+    'ts2python.' + k for k in TS2PYTHON_CONFIG_DEFAULT.keys())
+
+TS2PYTHON_CONFIG_ALLOWED_VALUES = {
+    'RenderAnonymous': ('type', 'functional', 'local', 'toplevel'),
+    'DocComments': ('', 'keep', 'drop', 'docstrings'),
+}
+
+
+def validate_configuration(ts2python_cfg):
+    accepted_keys = TS2PYTHON_QUALIFIED_CONFIG_KEYS
+    if not (ts2python_cfg.keys() <= accepted_keys):
+        raise ValueError('Illegal configuration option(s): '
+                         f'{", ".join(ts2python_cfg.keys() - accepted_keys)}\n'
+                         'Allowed options are {", ".join(ts2python_cfg.keys()}')
+    for key in ts2python_cfg:
+        if not key.startswith('ts2python.'):
+            raise ValueError(
+                f'Unexpected prefix of configuration option "{key}". Should be "ts2python."')
+        option = key[len('ts2python.'):]
+        if option in TS2PYTHON_CONFIG_ALLOWED_VALUES and \
+                ts2python_cfg[key] not in TS2PYTHON_CONFIG_ALLOWED_VALUES[option]:
+            raise ValueError(f'Illegal value "{ts2python_cfg[key]}" for '
+                             f'ts2python.{key}. Must be one of '
+                             f'{", ".join(TS2PYTHON_CONFIG_ALLOWED_VALUES[key])}')
+
 
 def dump_configuration() -> str:
-    return f"""[ts2python]
-RenderAnonymous = {get_config_value('ts2python.RenderAnonymous', 'local')}
-UseEnum = {get_config_value('ts2python.UseEnum', True)}
-UsePostponedEvaluation = {get_config_value('ts2python.UsePostponedEvaluation', True)}
-UseTypeUnion = {get_config_value('ts2python.UseTypeUnion', False)}
-UseExplicitTypeAlias = {get_config_value('ts2python.UseExplicitTypeAlias', False)}
-UseTypeParameters = {get_config_value('ts2python.UseTypeParameters', False)}
-UseLiteralType = {get_config_value('ts2python.UseLiteralType', False)}
-UseVariadicGenerics = {get_config_value('ts2python.UseVariadicGenerics', False)}
-UseNotRequired = {get_config_value('ts2python.UseNotRequired', False)}
-AllowReadOnly = {get_config_value('ts2python.AllowReadOnly', False)}
-AssumeDeferredEvaluation = {get_config_value('ts2python.AssumeDeferredEvaluation', False)}
-KeepComments = {get_config_value('ts2python.KeepComments', False)}"""
+    cfg_list = ['[ts2python]']
+    for key, value in TS2PYTHON_CONFIG_DEFAULT.items():
+        cfg_list.append(f"{key} = {repr(value)}")
+        if key in TS2PYTHON_CONFIG_ALLOWED_VALUES:
+            cfg_list[-1] += (f"  # allowed values: {repr(TS2PYTHON_CONFIG_ALLOWED_VALUES[key])}")
+    cfg_list.append('')
+    return '\n'.join(cfg_list)
 
 
 def required_python_version(ts2python_cfg: Dict[str, bool],
@@ -603,20 +639,32 @@ class ts2pythonCompiler(Compiler):
                 f'Illegal value "{self.render_anonymous}" for '
                 f'ts2python.RenderAnonymous. Must be one of "type", '
                 f'"functional", "local", "toplevel".')
+        defaults = TS2PYTHON_CONFIG_DEFAULT
         ts2python_cfg = get_config_values('ts2python.*')
-        self.use_enums = ts2python_cfg.get('ts2python.UseEnum', True)
-        self.use_postponed_evaluation = ts2python_cfg.get('ts2python.UsePostponedEvaluation', False)
-        self.use_type_union = ts2python_cfg.get('ts2python.UseTypeUnion', False)
-        self.use_explicit_type_alias = ts2python_cfg.get('ts2python.UseExplicitTypeAlias', False)
-        self.use_type_parameters = ts2python_cfg.get('ts2python.UseTypeParameters', False)
+        validate_configuration(ts2python_cfg)
+        self.use_enums = ts2python_cfg.get('ts2python.UseEnum', defaults['UseEnum'])
+        self.use_postponed_evaluation = ts2python_cfg.get(
+            'ts2python.UsePostponedEvaluation', defaults['UsePostponedEvaluation'])
+        self.use_type_union = ts2python_cfg.get(
+            'ts2python.UseTypeUnion', defaults['UseTypeUnion'])
+        self.use_explicit_type_alias = ts2python_cfg.get(
+            'ts2python.UseExplicitTypeAlias', defaults['UseExplicitTypeAlias'])
+        self.use_type_parameters = ts2python_cfg.get(
+            'ts2python.UseTypeParameters', defaults['UseTypeParameters'])
         if self.use_type_parameters:
             self.use_explicit_type_alias = False
-        self.use_literal_type = ts2python_cfg.get('ts2python.UseLiteralType', False)
-        self.use_variadic_generics = ts2python_cfg.get('ts2python.UseVariadicGenerics', False)
-        self.use_not_required = ts2python_cfg.get('ts2python.UseNotRequired', False)
-        self.allow_read_only = ts2python_cfg.get('ts2python.AllowReadOnly', False)
-        self.assume_deferred_evaluation = ts2python_cfg.get('ts2python.AssumeDeferredEvaluation', False)
-        self.keep_comments = ts2python_cfg.get('ts2python.KeepComments', False)
+        self.use_literal_type = ts2python_cfg.get(
+            'ts2python.UseLiteralType', defaults['UseLiteralType'])
+        self.use_variadic_generics = ts2python_cfg.get(
+            'ts2python.UseVariadicGenerics', defaults['UseVariadicGenerics'])
+        self.use_not_required = ts2python_cfg.get(
+            'ts2python.UseNotRequired', defaults['UseNotRequired'])
+        self.allow_read_only = ts2python_cfg.get(
+            'ts2python.AllowReadOnly', defaults['AllowReadOnly'])
+        self.assume_deferred_evaluation = ts2python_cfg.get(
+            'ts2python.AssumeDeferredEvaluation', defaults['AssumeDeferredEvaluation'])
+        self.keep_comments = ts2python_cfg.get(
+            'ts2python.KeepComments', defaults['KeepComments'])
         self.compatibility_level = required_python_version(ts2python_cfg, "compatibility")
         self.feature_level = required_python_version(ts2python_cfg, "features")
         if self.use_type_parameters and not self.use_variadic_generics:
@@ -1781,11 +1829,8 @@ def main(called_from_app=False):
     parser.add_argument('-p', '--peps', nargs=1, action='extend', type=str,
                         help='Assume or ignore Python-PEPs, e.g. "655,~705" assume NotRequired '
                              '(PEP 655), but ignore ReadOnly (PEP 705)')
-    parser.add_argument('-k', '--comments', nargs='?', action='store', type=str,
-                        choices=['None', 'All', 'DocComments', 'asDocStrings', 'AllAsDocStrings',
-                                 'AllAndDocStrings', 'DocStrings'],
-                        default='None', const="comments",
-                        help="Preserve comments: None, All, DocComments, asDocStrings, AllAsDocStrings")
+    parser.add_argument('-k', '--comments', action='store_const', const="comments",
+                        help="Preserve (multiline) comments")
     parser.add_argument('-s', '--serialize', nargs=1, default=[],
                         help="Choose serialization format for abstract syntax tree. Available: "
                              + ', '.join(ALLOWED_PRESET_VALUES['default_serialization']))
@@ -1797,6 +1842,8 @@ def main(called_from_app=False):
     file_names, out, log_dir = args.files, args.out[0], ''
 
     read_local_config(os.path.join(scriptpath, 'ts2pythonConfig.ini'))
+    ts2python_cfg = get_config_values('ts2python.*')
+    validate_configuration(ts2python_cfg)
 
     if args.serialize:
         if (args.serialize[0].lower() not in
@@ -1819,7 +1866,7 @@ def main(called_from_app=False):
             sys.exit(1)
         targets = chosen
 
-    if args.debug or args.compatibility or args.peps or args.anonymous or args.comments:
+    if args.debug or args.compatibility or args.peps or args.anonymous:
         access_presets()
         if args.debug is not None:
             log_dir = 'LOGS'
@@ -1862,21 +1909,7 @@ def main(called_from_app=False):
                 if pep == '695':  set_preset_value('ts2python.UseTypeParameters', **kwargs)
                 if pep == '705':  set_preset_value('ts2python.AllowReadOnly', **kwargs)
                 if pep in ('649', '749'):  set_preset_value('ts2python.AssumeDeferredEvaluation', **kwargs)
-        print(args.comments)
-        print(file_names)
-        if args.comments:
-            comments = args.comments.lower()
-            if comments == 'none':  comments = ''
-            elif comments in ('docsstrings', 'asdocstrings'):  comments = 'asdocstrings'
-            elif comments in ('allanddocstrings', 'allasdocstrings', 'alldocstrings'):
-                comments = 'allasdocstrings'
-            elif comments not in ('all', 'doccomments'):
-                print(f'Illegal value {comments} for parameter --comments. '
-                      'Allowed values are: all, none, doccomments, asdocstrings, allasdocstrings')
-                sys.exit(1)
-            set_preset_value('ts2python.KeepComments', comments, allow_new_key=True)
-        else:
-            set_preset_value('ts2python.KeepComments', '', allow_new_key=True)
+        if args.comments: set_preset_value('ts2python.KeepComments', True, allow_new_key=True)
         finalize_presets()
         # _ = get_config_values('ts2python.*')  # fill config value cache
 

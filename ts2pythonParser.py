@@ -141,9 +141,9 @@ class ts2pythonGrammar(Grammar):
     literal = Forward()
     type = Forward()
     types = Forward()
-    source_hash__ = "abac422a55b351d81e1f7a570e76eb52"
+    source_hash__ = "066feb67897b8ae6ee78f89344e89148"
     early_tree_reduction__ = CombinedParser.MERGE_TREETOPS
-    disposable__ = re.compile('(?:EOF$|FRAC$|INT$|EXP$|_array_ellipsis$|_top_level_literal$|_namespace$|_part$|_reserved$|_string$|NEG$|DOT$|_quoted_identifier$|_keyword$|_top_level_assignment$)')
+    disposable__ = re.compile('(?:_top_level_assignment$|_keyword$|INT$|_namespace$|_part$|FRAC$|EOF$|_array_ellipsis$|EXP$|NEG$|_top_level_literal$|DOT$|_string$|_reserved$|_quoted_identifier$)')
     static_analysis_pending__ = []  # type: List[bool]
     parser_initialization__ = ["upon instantiation"]
     COMMENT__ = r'(?://.*)\n?|(?:/\*(?:.|\n)*?\*/) *\n?'
@@ -287,22 +287,29 @@ def is_doccomment(p: Path):
     return (p[-1].name == "doc_comment__" or
             (p[-1].name == "comment__" and p[-1].content.lstrip().startswith('/**')))
 
-def shift_doccomments(p: Path):
+def shift_docstrings(p: Path):
     cl = list(p[-1].children)
+    modified = False
     for i in range(len(cl) - 2, -1, -1):
-        if cl[i].name == "doc_comment__":
+        if cl[i].name == "docstring__":
             dc = cl[i]
-            if cl[i + 1].name == 'declaration':
-                # swap doc coment with decelation so that the docstring appears after the declaraion
-                cl[i] = cl[i + 1]
-                cl[i + 1] = dc
-            elif cl[i + 1].name == 'interface':
-                k = cl[i + 1].index('declarations_block')
-                cl[i + 1].insert(k, dc)
+            if cl[i + 1].name == 'interface':
+                cl[i + 1]['declarations_block'].insert(0, dc)
                 del cl[i]
             elif cl[i + 1].name == 'namespace':
                 cl[i + 1].insert(0, dc)
                 del cl[i]
+            elif cl[i + 1].name == 'virtual_enum':
+                k = cl[i + 1].index('identifier')
+                cl[i + 1].insert(k + 1, dc)
+                del cl[i]
+            else:  # if cl[i + 1].name == 'declaration':
+                # assert cl[i + 1].name in ('declaration', 'type_alias'), cl[i + 1].name
+                cl[i] = cl[i + 1]
+                cl[i + 1] = dc
+            modified = True
+    if modified:
+        p[-1].result = tuple(cl)
 
 ts2python_AST_transformation_table = {
     # AST Transformations for the ts2python-grammar
@@ -312,17 +319,16 @@ ts2python_AST_transformation_table = {
     "comment__": apply_ifelse(
         remove_if(lambda p: not p[0].attr['keep_comments']
                             or (is_doccomment(p) and p[0].attr['doc_comments'] == 'drop')),
-        apply_if(change_name('doc_comment__'), lambda p: p[0].attr['doc_comments'] == 'docstrings'),
-        any_of({neg(is_doccomment), lambda p: p[0].attr['doc_comments'] in ('', 'drop')}),
-        ),
+        apply_if(change_name('docstring__'), lambda p: p[0].attr['doc_comments'] == 'docstrings'),
+        any_of({neg(is_doccomment), lambda p: p[0].attr['doc_comments'] in ('', 'drop')})),
     "special": [apply_if(add_error("Unknown special function"),
                          lambda p: p[-1]['name'].content not in SPECIAL_FUNCTIONS),
                 convert_special_function],
     "function": apply_if(reduce_single_child, has_child('special')),
     "alias": reduce_single_child,
     "document, root": [],  # declarations_block? # ensures that the transfomations under "*" are not applied, here!
-    "*": move_fringes(lambda p: p[-1].name in ("comment__", "doc_comment__"), side="right"),
-    ">": shift_doccomments,
+    "*": move_fringes(lambda p: p[-1].name in ("comment__", "docstring__"), side="right", merge=False),
+    ">": shift_docstrings,
     ">>>": clear_flags
 }
 
@@ -808,19 +814,18 @@ class ts2pythonCompiler(Compiler):
             return f"\n{comment}" if multiline else comment
         return ""
 
-    def on_doc_comment__(self, node) -> str:
-        if self.doc_comments == 'docstrings':
-            comment = node.content
-            comment = comment.strip()
-            comment = re.sub(r'/\*+\s*|\s*\*/|//[ \t]*', '', comment)
-            comment = re.sub(r'(?:\n|^)[ \t]*\* ?', '\n', comment).lstrip()
-            comment = comment.replace("'", chr(0x2bc))
-            return f'"""{comment}\n"""'
-        else:
-            return self.on_comment__(node)
+    def on_docstring__(self, node) -> str:
+        assert self.doc_comments == 'docstrings'
+        comment = node.content
+        comment = comment.strip()
+        comment = re.sub(r'/\*+\s*|\s*\*/|//[ \t]*', '', comment)
+        comment = re.sub(r'(?:\n|^)[ \t]*\* ?', '\n', comment).lstrip()
+        comment = comment.replace("'", chr(0x2bc))
+
+        return f'"""{comment}"""'
 
     def on_root(self, node) -> str:
-        roots = [child for child in node.children if child.name not in ('comment__', 'doc_comment__')]
+        roots = [child for child in node.children if child.name not in ('comment__', 'docstring__')]
         assert len(roots) == 1, node.as_sxpr()
         return self.compile(roots[0])
 
@@ -832,8 +837,9 @@ class ts2pythonCompiler(Compiler):
                 'be transpiled for now.', NOT_YET_IMPLEMENTED_WARNING)
             return self.compile(node['module'][0]['document'])
         self.mark_overloaded_functions(node)
-        return '\n\n'.join(self.compile(child) for child in node.children
+        code = '\n\n'.join(self.compile(child) for child in node.children
                            if child.name != 'declaration')
+        return code.replace('\n\n"""', '\n"""')
 
     def on_module(self, node) -> str:
         name = self.compile(node['identifier'])
@@ -1008,7 +1014,7 @@ class ts2pythonCompiler(Compiler):
                 del self.known_types[-1][alias]
         else:
             code = ''
-        if node[-1].name in ('comment__', 'doc_comment__'):
+        if node[-1].name in ('comment__', 'docstring__'):
             code += '\n\n' + self.compile(node[-1])
         self.obj_name.pop()
         return code
@@ -1044,7 +1050,7 @@ class ts2pythonCompiler(Compiler):
                 if 'optional' in nd:
                     nd.attr['force_optional'] = True
         raw_decls = [self.compile(nd) for nd in node
-                     if nd.name in ('declaration', 'function', 'comment__', 'doc_comment__')]
+                     if nd.name in ('declaration', 'function', 'comment__', 'docstring__')]
         declarations = '\n'.join(d for d in raw_decls if d)
         if all(decl.lstrip()[0:1] in ('#', '') for decl in raw_decls):
             return "pass"
@@ -1233,15 +1239,15 @@ class ts2pythonCompiler(Compiler):
             preface = ''
         if self.use_literal_type and \
                 any(nd[0].name == 'literal' for nd in node.children
-                    if nd.name not in  ('comment__', 'doc_comment__')):
+                    if nd.name not in  ('comment__', 'docstring__')):
             if all(nd[0].name == 'literal' for nd in node.children
-                   if nd.name not in ('comment__', 'doc_comment__')):
+                   if nd.name not in ('comment__', 'docstring__')):
                 result = f"Literal[{', '.join(typ for typ in union)}]"
             else:
                 new_union = []
                 literal_package = []
                 for i, nd in enumerate(node.children):
-                    if nd.name in ('comment__', 'doc_comment__'):
+                    if nd.name in ('comment__', 'docstring__'):
                         continue
                     if nd[0].name == 'literal':
                         literal_package.append(union[i])
@@ -1370,7 +1376,7 @@ class ts2pythonCompiler(Compiler):
         else:
             self.add_to_known_types(node, name, 'virtual_enum')
         save = self.strip_type_from_const
-        if all(child.name in ('const', 'comment__', 'doc_comment__')
+        if all(child.name in ('const', 'comment__', 'docstring__')
                for child in node.children[1:]):
             if all(nd['literal'][0].name == 'integer'
                    for nd in node.select_children('const') if 'literal' in nd):

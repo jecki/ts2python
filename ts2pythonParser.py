@@ -141,9 +141,9 @@ class ts2pythonGrammar(Grammar):
     literal = Forward()
     type = Forward()
     types = Forward()
-    source_hash__ = "7c14e2a02ea4adfa8e7776082a52195e"
+    source_hash__ = "abac422a55b351d81e1f7a570e76eb52"
     early_tree_reduction__ = CombinedParser.MERGE_TREETOPS
-    disposable__ = re.compile('(?:FRAC$|_reserved$|_top_level_assignment$|NEG$|_top_level_literal$|EOF$|_part$|DOT$|EXP$|_string$|_array_ellipsis$|INT$|_namespace$|_quoted_identifier$|_keyword$)')
+    disposable__ = re.compile('(?:EOF$|FRAC$|INT$|EXP$|_array_ellipsis$|_top_level_literal$|_namespace$|_part$|_reserved$|_string$|NEG$|DOT$|_quoted_identifier$|_keyword$|_top_level_assignment$)')
     static_analysis_pending__ = []  # type: List[bool]
     parser_initialization__ = ["upon instantiation"]
     COMMENT__ = r'(?://.*)\n?|(?:/\*(?:.|\n)*?\*/) *\n?'
@@ -278,24 +278,51 @@ def convert_special_function(p: Path):
 
 def add_flags(p: Path):
     p[0].attr['keep_comments'] = get_config_value('ts2python.KeepComments', False)
+    p[0].attr['doc_comments'] = get_config_value('ts2python.DocComments', '')
 
 def clear_flags(p: Path):
     p[0].attr = dict()
+
+def is_doccomment(p: Path):
+    return (p[-1].name == "doc_comment__" or
+            (p[-1].name == "comment__" and p[-1].content.lstrip().startswith('/**')))
+
+def shift_doccomments(p: Path):
+    cl = list(p[-1].children)
+    for i in range(len(cl) - 2, -1, -1):
+        if cl[i].name == "doc_comment__":
+            dc = cl[i]
+            if cl[i + 1].name == 'declaration':
+                # swap doc coment with decelation so that the docstring appears after the declaraion
+                cl[i] = cl[i + 1]
+                cl[i + 1] = dc
+            elif cl[i + 1].name == 'interface':
+                k = cl[i + 1].index('declarations_block')
+                cl[i + 1].insert(k, dc)
+                del cl[i]
+            elif cl[i + 1].name == 'namespace':
+                cl[i + 1].insert(0, dc)
+                del cl[i]
 
 ts2python_AST_transformation_table = {
     # AST Transformations for the ts2python-grammar
     # "<": flatten,
     "<<<": add_flags,
     ":Text": change_name('TEXT'),
-    "comment__": remove_if(lambda p: p[-1].content.rfind('\n') < 0 \
-                                     or not p[0].get_attr('keep_comments', True)),
+    "comment__": apply_ifelse(
+        remove_if(lambda p: not p[0].attr['keep_comments']
+                            or (is_doccomment(p) and p[0].attr['doc_comments'] == 'drop')),
+        apply_if(change_name('doc_comment__'), lambda p: p[0].attr['doc_comments'] == 'docstrings'),
+        any_of({neg(is_doccomment), lambda p: p[0].attr['doc_comments'] in ('', 'drop')}),
+        ),
     "special": [apply_if(add_error("Unknown special function"),
                          lambda p: p[-1]['name'].content not in SPECIAL_FUNCTIONS),
                 convert_special_function],
     "function": apply_if(reduce_single_child, has_child('special')),
     "alias": reduce_single_child,
     "document, root": [],  # declarations_block? # ensures that the transfomations under "*" are not applied, here!
-    "*": move_fringes(lambda p: p[-1].name == "comment__", side="right"),
+    "*": move_fringes(lambda p: p[-1].name in ("comment__", "doc_comment__"), side="right"),
+    ">": shift_doccomments,
     ">>>": clear_flags
 }
 
@@ -665,6 +692,8 @@ class ts2pythonCompiler(Compiler):
             'ts2python.AssumeDeferredEvaluation', defaults['AssumeDeferredEvaluation'])
         self.keep_comments = ts2python_cfg.get(
             'ts2python.KeepComments', defaults['KeepComments'])
+        self.doc_comments = ts2python_cfg.get(
+            'ts2python.DocComments', defaults['DocComments'])
         self.compatibility_level = required_python_version(ts2python_cfg, "compatibility")
         self.feature_level = required_python_version(ts2python_cfg, "features")
         if self.use_type_parameters and not self.use_variadic_generics:
@@ -764,7 +793,6 @@ class ts2pythonCompiler(Compiler):
         # raise ValueError('Malformed syntax-tree!')
 
     def on_comment__(self, node) -> str:
-        assert node.content.rfind("\n") >= 0  # inline comments should have been removed
         if self.keep_comments:
             comment = node.content
             multiline = True if re.match(' *\n', comment) else False
@@ -780,8 +808,19 @@ class ts2pythonCompiler(Compiler):
             return f"\n{comment}" if multiline else comment
         return ""
 
+    def on_doc_comment__(self, node) -> str:
+        if self.doc_comments == 'docstrings':
+            comment = node.content
+            comment = comment.strip()
+            comment = re.sub(r'/\*+\s*|\s*\*/|//[ \t]*', '', comment)
+            comment = re.sub(r'(?:\n|^)[ \t]*\* ?', '\n', comment).lstrip()
+            comment = comment.replace("'", chr(0x2bc))
+            return f'"""{comment}\n"""'
+        else:
+            return self.on_comment__(node)
+
     def on_root(self, node) -> str:
-        roots = [child for child in node.children if child.name != 'comment__']
+        roots = [child for child in node.children if child.name not in ('comment__', 'doc_comment__')]
         assert len(roots) == 1, node.as_sxpr()
         return self.compile(roots[0])
 
@@ -969,7 +1008,7 @@ class ts2pythonCompiler(Compiler):
                 del self.known_types[-1][alias]
         else:
             code = ''
-        if node[-1].name == 'comment__':
+        if node[-1].name in ('comment__', 'doc_comment__'):
             code += '\n\n' + self.compile(node[-1])
         self.obj_name.pop()
         return code
@@ -1005,7 +1044,7 @@ class ts2pythonCompiler(Compiler):
                 if 'optional' in nd:
                     nd.attr['force_optional'] = True
         raw_decls = [self.compile(nd) for nd in node
-                     if nd.name in ('declaration', 'function', 'comment__')]
+                     if nd.name in ('declaration', 'function', 'comment__', 'doc_comment__')]
         declarations = '\n'.join(d for d in raw_decls if d)
         if all(decl.lstrip()[0:1] in ('#', '') for decl in raw_decls):
             return "pass"
@@ -1194,15 +1233,15 @@ class ts2pythonCompiler(Compiler):
             preface = ''
         if self.use_literal_type and \
                 any(nd[0].name == 'literal' for nd in node.children
-                    if nd.name != 'comment__'):
+                    if nd.name not in  ('comment__', 'doc_comment__')):
             if all(nd[0].name == 'literal' for nd in node.children
-                   if nd.name != 'comment__'):
+                   if nd.name not in ('comment__', 'doc_comment__')):
                 result = f"Literal[{', '.join(typ for typ in union)}]"
             else:
                 new_union = []
                 literal_package = []
                 for i, nd in enumerate(node.children):
-                    if nd.name == 'comment__':
+                    if nd.name in ('comment__', 'doc_comment__'):
                         continue
                     if nd[0].name == 'literal':
                         literal_package.append(union[i])
@@ -1331,7 +1370,8 @@ class ts2pythonCompiler(Compiler):
         else:
             self.add_to_known_types(node, name, 'virtual_enum')
         save = self.strip_type_from_const
-        if all(child.name in ('const', 'comment__') for child in node.children[1:]):
+        if all(child.name in ('const', 'comment__', 'doc_comment__')
+               for child in node.children[1:]):
             if all(nd['literal'][0].name == 'integer'
                    for nd in node.select_children('const') if 'literal' in nd):
                 header = f'class {name}(IntEnum):'
@@ -1826,11 +1866,14 @@ def main(called_from_app=False):
     parser.add_argument('-a', '--anonymous', nargs=1, action='extend', type=str,
                         help='How to render anonymous interfaces: "local" (default), '
                              '"toplevel", "functional", "type"')
+    parser.add_argument('-d', '--doccomments', nargs=1, action='extend', type=str,
+                        choices=['keep', 'drop', 'docstrings'],
+                        help='How to handle documentation comments: "keep", "drop", "docstrings"')
     parser.add_argument('-p', '--peps', nargs=1, action='extend', type=str,
                         help='Assume or ignore Python-PEPs, e.g. "655,~705" assume NotRequired '
                              '(PEP 655), but ignore ReadOnly (PEP 705)')
     parser.add_argument('-k', '--comments', action='store_const', const="comments",
-                        help="Preserve (multiline) comments")
+                        help="Preserve comments")
     parser.add_argument('-s', '--serialize', nargs=1, default=[],
                         help="Choose serialization format for abstract syntax tree. Available: "
                              + ', '.join(ALLOWED_PRESET_VALUES['default_serialization']))
@@ -1866,7 +1909,8 @@ def main(called_from_app=False):
             sys.exit(1)
         targets = chosen
 
-    if args.debug or args.compatibility or args.peps or args.anonymous:
+    if args.debug or args.compatibility or args.peps or args.anonymous \
+            or args.comments or args.doccomments:
         access_presets()
         if args.debug is not None:
             log_dir = 'LOGS'
@@ -1877,6 +1921,7 @@ def main(called_from_app=False):
             version_info = tuple(int(part) for part in args.compatibility[0].split('.'))
             set_compatibility_level(version_info, "preset")
         if args.anonymous:  set_preset_value('ts2python.RenderAnonymous', args.anonymous[0].strip())
+        if args.doccomments:  set_preset_value('ts2python.DocComments', args.doccomments[0].strip())
         if args.peps:
             args_peps = [pep.strip() for pep in args.peps[0].split(',')]
             all_peps = { '435',  '563',  '584',  '586',  '604', '613',

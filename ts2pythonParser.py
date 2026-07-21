@@ -340,7 +340,7 @@ def shift_docstrings(p: Path):
                 cl[i + 1].insert(k + 1, dc)
                 del cl[i]
             else:  # if cl[i + 1].name == 'declaration':
-                # assert cl[i + 1].name in ('declaration', 'type_alias'), cl[i + 1].name
+                # assert cl[i + 1].name in ('declaration', 'type_alias', 'const', 'map_signature', 'enum', 'item'), cl[i + 1].as_sxpr()
                 cl[i] = cl[i + 1]
                 cl[i + 1] = dc
             modified = True

@@ -208,10 +208,6 @@ interface Position {
 	character: uinteger;
 }
 
-{
-    start: { line: 5, character: 23 },
-    end : { line: 6, character: 0 }
-}
 
 interface Range {
 	/**
@@ -828,8 +824,6 @@ interface TextDocumentPositionParams {
 	position: Position;
 }
 
-{ language: 'typescript', scheme: 'file' }
-{ language: 'json', pattern: '**/package.json' }
 
 export interface DocumentFilter {
 	/**
@@ -838,7 +832,7 @@ export interface DocumentFilter {
 	language?: string;
 
 	/**
-	 * A Uri [scheme](#Uri.scheme), like `file` or `untitled`.
+	 * A Uri scheme, like `file` or `untitled`.
 	 */
 	scheme?: string;
 
@@ -2236,6 +2230,12 @@ interface WorkspaceSymbolParams extends WorkDoneProgressParams,
 	/**
 	 * A query string to filter symbols by. Clients may send an empty
 	 * string here to request all symbols.
+	 *
+	 * The `query`-parameter should be interpreted in a *relaxed way* as editors
+	 * will apply their own highlighting and scoring on the results. A good rule
+	 * of thumb is to match case-insensitive and to simply check that the
+	 * characters of *query* appear in their order in a candidate symbol.
+	 * Servers shouldn't use prefix, substring, or similar strict matching.
 	 */
 	query: string;
 }
@@ -3982,8 +3982,8 @@ export interface DocumentSymbol {
 	/**
 	 * The range enclosing this symbol not including leading/trailing whitespace
 	 * but everything else like comments. This information is typically used to
-	 * determine if the clients cursor is inside the symbol to reveal in the
-	 * symbol in the UI.
+	 * determine if the clients cursor is inside the symbol to reveal it in the
+	 * UI.
 	 */
 	range: Range;
 
@@ -4371,9 +4371,6 @@ export interface CodeAction {
 
 textDocument.codeAction.resolveSupport = { properties: ['edit'] };
 
-{
-    "title": "Do Foo"
-}
 
 export interface CodeLensClientCapabilities {
 	/**
@@ -5116,36 +5113,12 @@ export interface SemanticTokensLegend {
 	tokenModifiers: string[];
 }
 
-{ line: 2, startChar:  5, length: 3, tokenType: "property",
-	tokenModifiers: ["private", "static"]
-},
-{ line: 2, startChar: 10, length: 4, tokenType: "type", tokenModifiers: [] },
-{ line: 5, startChar:  2, length: 7, tokenType: "class", tokenModifiers: [] }
 
-{
-   tokenTypes: ['property', 'type', 'class'],
-   tokenModifiers: ['private', 'static']
-}
 
-{ line: 2, startChar:  5, length: 3, tokenType: 0, tokenModifiers: 3 },
-{ line: 2, startChar: 10, length: 4, tokenType: 1, tokenModifiers: 0 },
-{ line: 5, startChar:  2, length: 7, tokenType: 2, tokenModifiers: 0 }
 
-{ deltaLine: 2, deltaStartChar: 5, length: 3, tokenType: 0, tokenModifiers: 3 },
-{ deltaLine: 0, deltaStartChar: 5, length: 4, tokenType: 1, tokenModifiers: 0 },
-{ deltaLine: 3, deltaStartChar: 2, length: 7, tokenType: 2, tokenModifiers: 0 }
 
-// 1st token,  2nd token,  3rd token
-[  2,5,3,0,3,  0,5,4,1,0,  3,2,7,2,0 ]
 
-{ line: 3, startChar:  5, length: 3, tokenType: "property",
-	tokenModifiers: ["private", "static"]
-},
-{ line: 3, startChar: 10, length: 4, tokenType: "type", tokenModifiers: [] },
-{ line: 6, startChar:  2, length: 7, tokenType: "class", tokenModifiers: [] }
 
-// 1st token,  2nd token,  3rd token
-[  3,5,3,0,3,  0,5,4,1,0,  3,2,7,2,0]
 
 interface SemanticTokensClientCapabilities {
 	/**

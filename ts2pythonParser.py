@@ -141,9 +141,9 @@ class ts2pythonGrammar(Grammar):
     literal = Forward()
     type = Forward()
     types = Forward()
-    source_hash__ = "23a13ab1526bd8dc827c2d7236989042"
+    source_hash__ = "7c14e2a02ea4adfa8e7776082a52195e"
     early_tree_reduction__ = CombinedParser.MERGE_TREETOPS
-    disposable__ = re.compile('(?:_namespace$|_array_ellipsis$|_keyword$|DOT$|NEG$|FRAC$|EOF$|_top_level_assignment$|_reserved$|_top_level_literal$|_part$|EXP$|_quoted_identifier$|INT$|_string$)')
+    disposable__ = re.compile('(?:_string$|INT$|_top_level_literal$|DOT$|NEG$|_top_level_assignment$|_array_ellipsis$|_namespace$|_reserved$|FRAC$|EXP$|EOF$|_quoted_identifier$|_part$|_keyword$)')
     static_analysis_pending__ = []  # type: List[bool]
     parser_initialization__ = ["upon instantiation"]
     COMMENT__ = r'(?://.*)\n?|(?:/\*(?:.|\n)*?\*/) *\n?'
@@ -267,7 +267,10 @@ except (AttributeError, NameError):
 #
 #######################################################################
 
+RX_COMMENT=re.compile(r'/\*(?:.|\n)*?\*/')
+
 SPECIAL_FUNCTIONS = {"Symbol.iterator": "__iter__"}
+
 
 def convert_special_function(p: Path):
     node = p[-1]
@@ -276,16 +279,49 @@ def convert_special_function(p: Path):
     identifier.name = "identifier"
     identifier.result = SPECIAL_FUNCTIONS.get(identifier.content, "__unknown__")
 
+
 def add_flags(p: Path):
     p[0].attr['keep_comments'] = get_config_value('ts2python.KeepComments', False)
     p[0].attr['doc_comments'] = get_config_value('ts2python.DocComments', '')
 
+
 def clear_flags(p: Path):
     p[0].attr = dict()
 
-def is_doccomment(p: Path):
-    return (p[-1].name == "doc_comment__" or
-            (p[-1].name == "comment__" and p[-1].content.lstrip().startswith('/**')))
+
+def last_comment_is_doc(p: Path):
+    if p[-1].name == 'doc_comment__' or p[-1].get_attr('comments', False):
+        return True
+    if p[-1].name == 'comment__':
+        comments = list(RX_COMMENT.finditer(p[-1].content))
+        if comments:
+            p[-1].attr['comments'] = comments
+            return comments[-1].group(0)[:3] == '/**'
+    return False
+    # return (p[-1].name == "doc_comment__" or
+    #         (p[-1].name == "comment__"
+    #          and list(RX_COMMENT.finditer(p[-1].content))[-1].group(0)[:3] == '/**'))
+
+
+def split_last_doccomment(p: Path):
+    nd = p[-1]
+    assert nd.name == "comment__"
+    comments = nd.get_attr('comments', [])
+    if comments:
+        m = comments[-1]
+        if m.group(0)[:3] == '/**':
+            if len(comments) > 1:
+                m = comments[-1]
+                nd.result = (Node('comment__', nd.content[:m.start()]).with_pos(nd.pos),
+                    Node('docstring__', nd.content[m.start():m.end()]).with_pos(nd.pos + m.start()))
+            else:
+                nd.name = 'docstring__'
+
+
+def clear_comments_attr(p: Path):
+    if p[-1].has_attr('comments'):
+        del p[-1].attr['comments']
+
 
 def shift_docstrings(p: Path):
     cl = list(p[-1].children)
@@ -311,16 +347,19 @@ def shift_docstrings(p: Path):
     if modified:
         p[-1].result = tuple(cl)
 
+
 ts2python_AST_transformation_table = {
     # AST Transformations for the ts2python-grammar
     # "<": flatten,
     "<<<": add_flags,
     ":Text": change_name('TEXT'),
-    "comment__": apply_ifelse(
+    "comment__": [apply_ifelse(
         remove_if(lambda p: not p[0].attr['keep_comments']
-                            or (is_doccomment(p) and p[0].attr['doc_comments'] == 'drop')),
-        apply_if(change_name('docstring__'), lambda p: p[0].attr['doc_comments'] == 'docstrings'),
-        any_of({neg(is_doccomment), lambda p: p[0].attr['doc_comments'] in ('', 'drop')})),
+                            or (p[0].attr['doc_comments'] == 'drop') and last_comment_is_doc(p)),
+        apply_if((split_last_doccomment, replace_by_children),
+                 lambda p: p[0].attr['doc_comments'] == 'docstrings'),
+        any_of({neg(last_comment_is_doc), lambda p: p[0].attr['doc_comments'] in ('', 'drop')})),
+        clear_comments_attr],
     "special": [apply_if(add_error("Unknown special function"),
                          lambda p: p[-1]['name'].content not in SPECIAL_FUNCTIONS),
                 convert_special_function],

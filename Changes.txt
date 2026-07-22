@@ -39,7 +39,7 @@ Version 0.7.5
 -------------
 - bugfixes related to comments
 - bugs #21, #19
-- several changes to make ts2python digest the current vscode.d.ts
+- several changes to make ts2python digest the current vscode.d.ts_old
 
 
 Version 0.7.4

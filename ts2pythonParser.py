@@ -141,9 +141,9 @@ class ts2pythonGrammar(Grammar):
     literal = Forward()
     type = Forward()
     types = Forward()
-    source_hash__ = "7c14e2a02ea4adfa8e7776082a52195e"
+    source_hash__ = "f58af14c778d5db86f652a7ff135d68a"
     early_tree_reduction__ = CombinedParser.MERGE_TREETOPS
-    disposable__ = re.compile('(?:_string$|INT$|_top_level_literal$|DOT$|NEG$|_top_level_assignment$|_array_ellipsis$|_namespace$|_reserved$|FRAC$|EXP$|EOF$|_quoted_identifier$|_part$|_keyword$)')
+    disposable__ = re.compile('(?:_top_level_literal$|_quoted_identifier$|FRAC$|NEG$|INT$|_top_level_assignment$|EOF$|_string$|_namespace$|_keyword$|_array_ellipsis$|DOT$|EXP$|_part$|_reserved$)')
     static_analysis_pending__ = []  # type: List[bool]
     parser_initialization__ = ["upon instantiation"]
     COMMENT__ = r'(?://.*)\n?|(?:/\*(?:.|\n)*?\*/) *\n?'
@@ -180,7 +180,7 @@ class ts2pythonGrammar(Grammar):
     _array_ellipsis = Drop(Series(literal, ZeroOrMore(Series(Series(Drop(Text(",")), dwsp__), literal))))
     assignment = Series(variable, Series(Drop(Text("=")), dwsp__), Alternative(literal, variable), Option(Series(Drop(Text(";")), dwsp__)))
     _top_level_assignment = Drop(Synonym(assignment))
-    const = Series(Option(Series(Drop(Text("export")), dwsp__)), Series(Drop(Text("const")), dwsp__), declaration, Option(Series(Series(Drop(Text("=")), dwsp__), Alternative(literal, identifier))), Option(Series(Drop(Text(";")), dwsp__)), mandatory=2)
+    const = Series(Option(Series(Drop(Text("export")), dwsp__)), Series(Drop(Text("const")), dwsp__), declaration, Option(Series(Series(Drop(Text("=")), dwsp__), Alternative(literal, identifier))), Option(Series(Series(Drop(Text("as")), dwsp__), Series(Drop(Text("const")), dwsp__))), Option(Series(Drop(Text(";")), dwsp__)), mandatory=2)
     item = Series(_quoted_identifier, Option(Series(Series(Drop(Text("=")), dwsp__), literal)))
     enum = Series(Option(Series(Drop(Text("export")), dwsp__)), Series(Drop(Text("enum")), dwsp__), identifier, Series(Drop(Text("{")), dwsp__), item, ZeroOrMore(Series(Series(Drop(Text(",")), dwsp__), item)), Option(Series(Drop(Text(",")), dwsp__)), Series(Drop(Text("}")), dwsp__), mandatory=3)
     keyof = Series(Text("keyof"), dwsp__)
@@ -335,12 +335,12 @@ def shift_docstrings(p: Path):
             elif cl[i + 1].name == 'namespace':
                 cl[i + 1].insert(0, dc)
                 del cl[i]
-            elif cl[i + 1].name == 'virtual_enum':
+            elif cl[i + 1].name in ('virtual_enum', 'enum'):
                 k = cl[i + 1].index('identifier')
                 cl[i + 1].insert(k + 1, dc)
                 del cl[i]
             else:  # if cl[i + 1].name == 'declaration':
-                # assert cl[i + 1].name in ('declaration', 'type_alias', 'const', 'map_signature', 'enum', 'item'), cl[i + 1].as_sxpr()
+                # assert cl[i + 1].name in ('declaration', 'type_alias', 'const', 'map_signature', item'), cl[i + 1].as_sxpr()
                 cl[i] = cl[i + 1]
                 cl[i + 1] = dc
             modified = True
@@ -860,8 +860,8 @@ class ts2pythonCompiler(Compiler):
         comment = re.sub(r'/\*+\s*|\s*\*/|//[ \t]*', '', comment)
         comment = re.sub(r'(?:\n|^)[ \t]*\* ?', '\n', comment).lstrip()
         comment = comment.replace("'", chr(0x2bc))
-
-        return f'"""{comment}"""'
+        lf = "\n" if comment.find('\n') != -1 else ""
+        return f'"""{comment}"""{lf}'
 
     def on_root(self, node) -> str:
         roots = [child for child in node.children if child.name not in ('comment__', 'docstring__')]
@@ -1222,7 +1222,7 @@ class ts2pythonCompiler(Compiler):
                         (not all(self.get_known_type(typ) for typ in union) \
                          and pick_from_path(self.path, 'type_alias'))):
                 union = [typ.replace("'", '') for typ in union]
-                union = [typ.replace('"', '') for typ in union if not typ.find('Literal') >= 0] # rather crude criterion!
+                union = [typ.replace('"', '') if not typ.find('Literal') >= 0 else typ for typ in union] # rather crude criterion!
                 return f"{preface}'{' | '.join(union)}'"
             else:
                 return preface + ' | '.join(union)
@@ -1488,8 +1488,8 @@ class ts2pythonCompiler(Compiler):
         name = self.compile(node['identifier'])
         self.add_to_known_types(node, name, 'enum')
         enum = ['class ' + name + base_class + ':']
-        for item in node.select_children('item'):
-            enum.append(self.compile(item))
+        for item in node.select_children({'item', 'docstring__'}):
+            enum.append(self.compile(item).replace('\n', '\n    '))
         return '\n    '.join(enum)
 
     def on_item(self, node) -> str:

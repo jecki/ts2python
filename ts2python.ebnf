@@ -174,7 +174,7 @@ enum        = ["export"] "enum" identifier §"{" item { "," item } [","] "}"
 #
 #######################################################################
 
-const       = ["export"] "const" §declaration ["=" (literal | identifier)] [";"]
+const       = ["export"] "const" §declaration ["=" (literal | identifier)] ["as" "const"] [";"]
 _top_level_assignment = assignment
 assignment  = variable "=" (literal | variable) [";"]  # no expressions, yet
 

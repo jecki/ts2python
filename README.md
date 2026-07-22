@@ -82,8 +82,8 @@ from the
 can be transpiled to Python Typed-Dicts. 
 
 Tier 2 support is and will remain work in progress. I am 
-using "vscode.d.ts"-definition file as test-case. Most things
-ins "vscode.d.ts" work, but there are still some unsupported 
+using "vscode.d.ts_old"-definition file as test-case. Most things
+ins "vscode.d.ts_old" work, but there are still some unsupported 
 constructs. 
 
 The documentation presently only covers Tier 1 support. 

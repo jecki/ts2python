@@ -2,8 +2,14 @@
 
 export PYTHONPATH=../:$PYTHONPATH
 
+echo "Testing python3.15 compatibility"
+rm vscode.d.py
+python3.15 ../ts2pythonParser.py --compatibility 3.15 vscode.d.ts
+python3.15 patch_vscode_d.py
+python3.15 vscode.d.py
 
 echo "Testing python3.14 compatibility"
+rm vscode.d.py
 python3.14 ../ts2pythonParser.py --compatibility 3.14 vscode.d.ts
 python3.14 patch_vscode_d.py
 python3.14 vscode.d.py
@@ -32,9 +38,9 @@ python3.10 ../ts2pythonParser.py --compatibility 3.10 vscode.d.ts
 python3.10 patch_vscode_d.py
 python3.10 vscode.d.py
 
-echo "Testing pypy3 (3.10) compatibility"
+echo "Testing pypy3 (3.11) compatibility"
 rm vscode.d.py
-pypy3 ../ts2pythonParser.py --compatibility 3.10 vscode.d.ts
+pypy3 ../ts2pythonParser.py --compatibility 3.11 vscode.d.ts
 pypy3 patch_vscode_d.py
 pypy3 vscode.d.py
 
@@ -50,8 +56,4 @@ python3.8 ../ts2pythonParser.py --compatibility 3.8 vscode.d.ts
 python3.8 patch_vscode_d.py
 python3.8 vscode.d.py
 
-echo "Testing python3.7 compatibility"
-rm vscode.d.py
-python3.8 ../ts2pythonParser.py --compatibility 3.7 vscode.d.ts
-python3.8 patch_vscode_d.py
-python3.7 vscode.d.py
+

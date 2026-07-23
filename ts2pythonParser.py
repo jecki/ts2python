@@ -404,7 +404,8 @@ TS2PYTHON_CONFIG_DEFAULT = {
     'AllowReadOnly': False,
     'AssumeDeferredEvaluation': False,
     'KeepComments': False,
-    'DocComments': ''
+    'DocComments': '',
+    'ExtraItems': False
 }
 
 TS2PYTHON_QUALIFIED_CONFIG_KEYS = frozenset(
@@ -421,7 +422,7 @@ def validate_configuration(ts2python_cfg):
     if not (ts2python_cfg.keys() <= accepted_keys):
         raise ValueError('Illegal configuration option(s): '
                          f'{", ".join(ts2python_cfg.keys() - accepted_keys)}\n'
-                         'Allowed options are {", ".join(ts2python_cfg.keys()}')
+                         f'Allowed options are {", ".join(ts2python_cfg.keys())}')
     for key in ts2python_cfg:
         if not key.startswith('ts2python.'):
             raise ValueError(
@@ -466,6 +467,8 @@ def required_python_version(ts2python_cfg: Dict[str, bool],
         min_version = (3, 13)
     if ts2python_cfg.get('ts2python.AssumeDeferredEvaluation', False):
         min_version = (3, 14)
+    if ts2python_cfg.get('ts2python.ExtraItems', False):
+        min_version = (3, 15)
     # Neither UseReadOnly nor UseNotRequired place any demand on the
     # Python version, because:
     # ReadOnly can be defined as Union for Python-version < 3.13
@@ -480,8 +483,8 @@ def set_compatibility_level(version_info: Tuple[int, ...] = (3, 7),
     else:
         assert config_or_preset == "config"
         set_value = set_config_value
-    if not version_info >= (3, 7):
-        print('Compatibility version must be >= 3.7')
+    if not version_info >= (3, 7):  # TODO: Eventually change this to 3.8
+        print('Compatibility version must be >= 3.8')
         sys.exit(1)
     if version_info >= (3, 8):
         set_value('ts2python.UseLiteralType', True, allow_new_key=True)
@@ -499,6 +502,8 @@ def set_compatibility_level(version_info: Tuple[int, ...] = (3, 7),
     if version_info >= (3, 14):
         set_value('ts2python.AssumeDeferredEvaluation', True, allow_new_key=True)
         set_value('ts2python.UsePostponedEvaluation', False, allow_new_key=True)
+    if version_info >= (3, 15):
+        set_value('ts2python.ExtraItems', True, allow_new_key=True)
 
 
 def source_hash(source_text: str) -> str:
@@ -739,6 +744,8 @@ class ts2pythonCompiler(Compiler):
             'ts2python.KeepComments', defaults['KeepComments'])
         self.doc_comments = ts2python_cfg.get(
             'ts2python.DocComments', defaults['DocComments'])
+        self.extra_items = ts2python_cfg.get(
+            'ts2python.ExtraItems', defaults['ExtraItems'])
         self.compatibility_level = required_python_version(ts2python_cfg, "compatibility")
         self.feature_level = required_python_version(ts2python_cfg, "features")
         if self.use_type_parameters and not self.use_variadic_generics:
@@ -1090,6 +1097,7 @@ class ts2pythonCompiler(Compiler):
                     nd.attr['force_optional'] = True
         raw_decls = [self.compile(nd) for nd in node
                      if nd.name in ('declaration', 'function', 'comment__', 'docstring__')]
+        # TODO: Interpret Map-Signatures (map_signature) at the end!
         declarations = '\n'.join(d for d in raw_decls if d)
         if all(decl.lstrip()[0:1] in ('#', '') for decl in raw_decls):
             return "pass"
@@ -1970,9 +1978,9 @@ def main(called_from_app=False):
         if args.peps:
             args_peps = [pep.strip() for pep in args.peps[0].split(',')]
             all_peps = { '435',  '563',  '584',  '586',  '604', '613',
-                         '646',  '649',  '655',  '695',  '705',  '749',
+                         '646',  '649',  '655',  '695',  '705', '728', '749',
                         '~435', '~563', '~584', '~586', '~604', '~613',
-                        '~646', '~649', '~655', '~695', '~705', '~749'}
+                        '~646', '~649', '~655', '~695', '~705', '~728', '~749'}
             if not all(pep in all_peps for pep in args_peps):
                 print(f'Unsupported PEPs specified: {args_peps}\n'
                       'Allowed PEP arguments are:\n'
@@ -1985,7 +1993,8 @@ def main(called_from_app=False):
                       '  649 or 749 - assume deferred type evaluation (Python 3.14)\n'
                       '  655  - use NotRequired instead of Optional (Python3.11)\n'
                       '  695  - use type parameters (Python 3.12)\n'
-                      '  705  - allow ReadOnly (Python 3.13)\n')
+                      '  705  - allow ReadOnly (Python 3.13)\n'
+                      '  728  - extra items (Python 3.15)\n')
                 sys.exit(1)
             for pep in args_peps:
                 kwargs= {'value': pep[0] != '~', 'allow_new_key': True}
@@ -1998,6 +2007,7 @@ def main(called_from_app=False):
                 if pep == '655':  set_preset_value('ts2python.UseNotRequired', **kwargs)
                 if pep == '695':  set_preset_value('ts2python.UseTypeParameters', **kwargs)
                 if pep == '705':  set_preset_value('ts2python.AllowReadOnly', **kwargs)
+                if pep == '728':  set_preset_value('ts2python.ExtraItems', **kwargs)
                 if pep in ('649', '749'):  set_preset_value('ts2python.AssumeDeferredEvaluation', **kwargs)
         if args.comments: set_preset_value('ts2python.KeepComments', True, allow_new_key=True)
         finalize_presets()

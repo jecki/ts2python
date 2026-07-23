@@ -141,7 +141,8 @@ LOGS
 **/LOGS/*
 /DHParser/
 DHParser
-
+DHParser/**
+DHParser/*
 
 # Other
 # scratch/

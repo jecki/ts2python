@@ -405,7 +405,7 @@ TS2PYTHON_CONFIG_DEFAULT = {
     'AssumeDeferredEvaluation': False,
     'KeepComments': False,
     'DocComments': '',
-    'ExtraItems': False
+    'UseExtraItems': False
 }
 
 TS2PYTHON_QUALIFIED_CONFIG_KEYS = frozenset(
@@ -467,7 +467,7 @@ def required_python_version(ts2python_cfg: Dict[str, bool],
         min_version = (3, 13)
     if ts2python_cfg.get('ts2python.AssumeDeferredEvaluation', False):
         min_version = (3, 14)
-    if ts2python_cfg.get('ts2python.ExtraItems', False):
+    if ts2python_cfg.get('ts2python.UseExtraItems', False):
         min_version = (3, 15)
     # Neither UseReadOnly nor UseNotRequired place any demand on the
     # Python version, because:
@@ -503,7 +503,7 @@ def set_compatibility_level(version_info: Tuple[int, ...] = (3, 7),
         set_value('ts2python.AssumeDeferredEvaluation', True, allow_new_key=True)
         set_value('ts2python.UsePostponedEvaluation', False, allow_new_key=True)
     if version_info >= (3, 15):
-        set_value('ts2python.ExtraItems', True, allow_new_key=True)
+        set_value('ts2python.UseExtraItems', True, allow_new_key=True)
 
 
 def source_hash(source_text: str) -> str:
@@ -744,8 +744,8 @@ class ts2pythonCompiler(Compiler):
             'ts2python.KeepComments', defaults['KeepComments'])
         self.doc_comments = ts2python_cfg.get(
             'ts2python.DocComments', defaults['DocComments'])
-        self.extra_items = ts2python_cfg.get(
-            'ts2python.ExtraItems', defaults['ExtraItems'])
+        self.use_extra_items = ts2python_cfg.get(
+            'ts2python.UseExtraItems', defaults['UseExtraItems'])
         self.compatibility_level = required_python_version(ts2python_cfg, "compatibility")
         self.feature_level = required_python_version(ts2python_cfg, "features")
         if self.use_type_parameters and not self.use_variadic_generics:
@@ -772,7 +772,7 @@ class ts2pythonCompiler(Compiler):
         self.func_name: str = ''  # name of the current functions header or ''
         self.func_type_parameters: str = ''  # type parameters of the current function header, if any
         self.strip_type_from_const = False
-
+        self.extra_items_type = 'None'
 
     def compile(self, node) -> str:
         result = super().compile(node)
@@ -918,10 +918,18 @@ class ts2pythonCompiler(Compiler):
                            f"{td_name}, total={total}):\n"
             else:
                 tps = generic_types if self.use_type_parameters else ''
-                if self.use_not_required or total:
-                    return f"class {name}{tps}(TypedDict):\n"
+                total_str = f", total={total}" if self.use_not_required or total else ''
+                if self.use_extra_items:
+                    if self.extra_items_type == 'None':
+                        extra_str = ", closed=True"
+                    elif self.extra_items_type == 'Any':
+                        extra_str = ", closed=False"
+                    else:
+                        extra_str = f", extra_items={self.extra_items_type}"
+                    self.extra_items_type = 'None'  # revert to default
                 else:
-                    return f"class {name}{tps}(TypedDict, total={total}):\n"
+                    extra_str = ''
+                return f"class {name}{tps}(TypedDict{total_str}{extra_str}):\n"
         else:
             if base_classes:
                 if base_class_name:
@@ -1097,7 +1105,13 @@ class ts2pythonCompiler(Compiler):
                     nd.attr['force_optional'] = True
         raw_decls = [self.compile(nd) for nd in node
                      if nd.name in ('declaration', 'function', 'comment__', 'docstring__')]
-        # TODO: Interpret Map-Signatures (map_signature) at the end!
+        if self.use_extra_items and 'map_signature' in node:
+            index_type = self.compile(node['map_signature']['index_signature'])
+            if index_type == 'str':
+                self.extra_items_type = self.compile(node['map_signature']['types'])
+            else:
+                self.extra_items_type = 'Any'
+
         declarations = '\n'.join(d for d in raw_decls if d)
         if all(decl.lstrip()[0:1] in ('#', '') for decl in raw_decls):
             return "pass"
@@ -2007,7 +2021,7 @@ def main(called_from_app=False):
                 if pep == '655':  set_preset_value('ts2python.UseNotRequired', **kwargs)
                 if pep == '695':  set_preset_value('ts2python.UseTypeParameters', **kwargs)
                 if pep == '705':  set_preset_value('ts2python.AllowReadOnly', **kwargs)
-                if pep == '728':  set_preset_value('ts2python.ExtraItems', **kwargs)
+                if pep == '728':  set_preset_value('ts2python.UseExtraItems', **kwargs)
                 if pep in ('649', '749'):  set_preset_value('ts2python.AssumeDeferredEvaluation', **kwargs)
         if args.comments: set_preset_value('ts2python.KeepComments', True, allow_new_key=True)
         finalize_presets()

@@ -918,7 +918,7 @@ class ts2pythonCompiler(Compiler):
                            f"{td_name}, total={total}):\n"
             else:
                 tps = generic_types if self.use_type_parameters else ''
-                total_str = f", total={total}" if self.use_not_required or total else ''
+                total_str = '' if self.use_not_required or total else f", total={total}"
                 if self.use_extra_items:
                     if self.extra_items_type == 'None':
                         extra_str = ", closed=True"

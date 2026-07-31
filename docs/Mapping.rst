@@ -196,6 +196,19 @@ becomes::
             None]
         changeAnnotations: NotRequired[Dict[str, 'ChangeAnnotation']]
 
+Map signatures at the end of an interfaces definition::
+
+    type Foo = {
+        a: string
+        [key: string]: string
+    }
+
+are either ignored or, if Python compatibility is set to 3.15.
+converted to an "extra_items"-Parameter (see PEP `728`_)::
+
+    class Foo(TypedDict, total=True, extra_items=str):
+        a: str
+
 
 Mapping of Tuple Types
 ----------------------
@@ -514,3 +527,4 @@ these constructs can be added in the future, if desired.
 .. _inline TypedDict definitions: https://discuss.python.org/t/allow-local-class-type-definitions-inside-typeddict/41611/3
 .. _Creating Types from Types: https://www.typescriptlang.org/docs/handbook/2/types-from-types.html
 .. _Records: https://www.typescriptlang.org/docs/handbook/utility-types.html#recordkeys-type
+.. _728: https://peps.python.org/pep-0728/

@@ -126,6 +126,7 @@ command line-switches:
    * `655`_  - use NotRequired instead of Optional (Python3.11)
    * `695`_  - use type parameters (Python 3.12)
    * `705`_  - allow ReadOnly (Python 3.13)
+   * `728`_  - use "extra_items" for map signatures  # PEP 728, Python 3.15
 
    Setting a Python Version-Number with the ``-c`` switch also
    automatically sets all PEPs
@@ -135,8 +136,12 @@ command line-switches:
    with the ``from future import __annotation__`` statement at the beginnig
    of the generated source code.
 
-* ``-k`` preserves Typescript-multiline comments and adds them as
-  Python-comments to the generated source-code
+* ``-k`` preserves Typescript comments and adds them as Python-comments
+  ("#...") to the generated source-code
+
+* ``-d`` with the argument ``docstrings`` converts Typescript documentation
+  comments (marked by a double asterix at the beginning i.e. "/** ... */")
+  to Python docstrings (i.e. """ ... """). "-d" overrides "-k".
 
 * ``-a`` followed by one of the four possible keywords ``local`` (default),
   ``toplevel``, ``functional``, ``type``. These are four different styles
@@ -218,7 +223,9 @@ ndst, json or simply an indented tree.
 .. _655: https://peps.python.org/pep-0655/
 .. _695: https://peps.python.org/pep-0695/
 .. _705: https://peps.python.org/pep-0705/
+.. _728: https://peps.python.org/pep-0728/
 .. _749: https://peps.python.org/pep-0749/
+
 
 .. toctree::
    :maxdepth: 2

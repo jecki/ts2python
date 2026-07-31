@@ -1106,11 +1106,8 @@ class ts2pythonCompiler(Compiler):
         raw_decls = [self.compile(nd) for nd in node
                      if nd.name in ('declaration', 'function', 'comment__', 'docstring__')]
         if self.use_extra_items and 'map_signature' in node:
-            index_type = self.compile(node['map_signature']['index_signature'])
-            if index_type == 'str':
-                self.extra_items_type = self.compile(node['map_signature']['types'])
-            else:
-                self.extra_items_type = 'Any'
+            index_type, item_type = self.compile_map_signature(node['map_signature'])
+            self.extra_items_type = item_type if index_type == 'str' else 'Any'
 
         declarations = '\n'.join(d for d in raw_decls if d)
         if all(decl.lstrip()[0:1] in ('#', '') for decl in raw_decls):
@@ -1396,9 +1393,16 @@ class ts2pythonCompiler(Compiler):
     def on_mapped_type(self, node) -> str:
         return self.compile(node['map_signature'])
 
+    def compile_map_signature(self, node) -> Tuple[str, str]:
+        signature = self.compile(node['index_signature'])
+        self.obj_name.append('INDEX_SIGNATURE_TYPE_NAME_SURROGATE')
+        types = self.compile(node['types'])
+        self.obj_name.pop()
+        return signature, types
+
     def on_map_signature(self, node) -> str:
-        return "Dict[%s, %s]" % (self.compile(node['index_signature']),
-                                 self.compile(node['types']))
+        signature, types = self.compile_map_signature(node)
+        return f"Dict[{signature}, {types}]"
 
     def on_indexed_type(self, node) -> str:
         assert node[0].name == "type_name"

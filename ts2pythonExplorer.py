@@ -569,7 +569,7 @@ class ts2pythonApp(tk.Tk):
         self.source.tag_delete("errorline")
         self.errors.tag_delete("currenterror")
         self.errors.tag_delete("error")
-        if self.preambel.strip():
+        if self.preambel.strip() and 'py' in self.all_results:
             self.all_results['py'] = (
                 '\n\n'.join([self.preambel, str(self.all_results['py'][0])]),
                 self.all_results['py'][1])

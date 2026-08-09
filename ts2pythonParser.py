@@ -1007,6 +1007,7 @@ class ts2pythonCompiler(Compiler):
         if decls_block.children and decls_block[0].name == 'docstring__':
             ds = ('    ' + self.on_docstring__(decls_block.result[0])
                   .replace('\n', '\n    ').rstrip(' '))
+            if ds[-2:] != '\n\n':  ds += '\n'
             decls_block.result = decls_block.result[1:]
         else:
             ds = ''
@@ -1016,7 +1017,7 @@ class ts2pythonCompiler(Compiler):
         if self.base_class_name == "TypedDict" and self.render_anonymous == "toplevel":
             interface = self.render_local_classes() + '\n' + interface + ds
         else:
-            interface += (ds + '\n    ' + self.render_local_classes()
+            interface += (ds + '    ' + self.render_local_classes()
                           .replace('\n', '\n    ')).rstrip(' ')
         self.render_anonymous = save_render_anonymous
         self.optional_keys.pop()

@@ -1004,13 +1004,20 @@ class ts2pythonCompiler(Compiler):
         if force_base_class:
             self.render_anonymous = "local"
             decls_block.attr['no_typed_dict'] = True
+        if decls_block.children and decls_block[0].name == 'docstring__':
+            ds = ('    ' + self.on_docstring__(decls_block.result[0])
+                  .replace('\n', '\n    ').rstrip(' '))
+            decls_block.result = decls_block.result[1:]
+        else:
+            ds = ''
         decls = self.compile(decls_block)
         interface = self.render_class_header(name, base_classes, force_base_class, tps)
         self.base_classes[name] = base_class_list
         if self.base_class_name == "TypedDict" and self.render_anonymous == "toplevel":
-            interface = self.render_local_classes() + '\n' + interface
+            interface = self.render_local_classes() + '\n' + interface + ds
         else:
-            interface += ('    ' + self.render_local_classes().replace('\n', '\n    ')).rstrip(' ')
+            interface += (ds + '\n    ' + self.render_local_classes()
+                          .replace('\n', '\n    ')).rstrip(' ')
         self.render_anonymous = save_render_anonymous
         self.optional_keys.pop()
         self.local_classes.pop()
@@ -1055,7 +1062,7 @@ class ts2pythonCompiler(Compiler):
             self.local_classes.append([])
             self.optional_keys.append([])
             types = self.compile(node['types'])
-            preface += self.render_local_classes()
+            preface += self.render_local_classes()  # TODO: worry about movind docstring in front of local classes?
             self.optional_keys.pop()
             self.local_classes.pop()
             if self.use_type_parameters:  self.known_types.pop()
@@ -1480,7 +1487,7 @@ class ts2pythonCompiler(Compiler):
         declaration = self.compile(node[1])
         declaration = declaration.lstrip('\n')
         declarations.extend(declaration.split('\n'))
-        for nd in node[2:]:
+        for nd in node[2:]:  # TODO: Worry about docstrings following local classes
             declaration = self.compile(nd)
             declarations.extend(declaration.split('\n'))
         local_classes = self.render_local_classes()

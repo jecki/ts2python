@@ -267,7 +267,7 @@ except (AttributeError, NameError):
 #
 #######################################################################
 
-RX_COMMENT=re.compile(r'/\*(?:.|\n)*?\*/')
+RX_COMMENT=re.compile(r'/\*(?:.|\n)*?\*/|//[^\n]*(?:\n//[^\n]*)')
 
 SPECIAL_FUNCTIONS = {"Symbol.iterator": "__iter__"}
 

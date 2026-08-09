@@ -87,7 +87,14 @@ class TextLineNumbers(tk.Canvas):
 DEMO_TS = """// This is just an example. You can replace it by your own Typescript-code
 // or just click "compile" below to see how this interface looks as Python-code.
 
-interface CodeAction {
+/**
+ * A code action represents a change that can be performed in code, e.g. to fix
+ * a problem or to refactor code.
+ *
+ * A CodeAction must set either `edit` and/or a `command`. If both are supplied,
+ * the `edit` is applied first, then the `command` is executed.
+ */
+export interface CodeAction {
   title: string;
   kind?: CodeActionKind;
   diagnostics?: Diagnostic[];
@@ -106,7 +113,7 @@ class ts2pythonApp(tk.Tk):
         super().__init__()
         self.withdraw()
         self.title('ts2python Explorer')
-        self.minsize(800, 680)
+        self.minsize(900, 680)
         self.geometry("960x880")
         self.option_add('*tearOff', False)
 

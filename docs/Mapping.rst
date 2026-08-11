@@ -490,6 +490,26 @@ introduced with Python 3.12::
     type ProviderResult[T] = T | None | Coroutine[T | None]
 
 
+String identifiers
+------------------
+
+Like Javascript, Typescript allows to use arbitrary strings as keys in interfaces, e.g.::
+
+    interface payload {
+        'payload-kv': PayloadKv;
+    }
+
+ts2python simply converts any character of a string key that is illegal in an identifier to
+the underscore character `_`::
+
+    class Payload(TypedDict):
+        payload_kv: 'PayloadKv'
+
+.. caution:: The very simple substitution algorithm that ts2python uses for string keys can lead
+    to ambiguous identifiers in case another identifiers or string key matches a substituted
+    name!
+
+
 Imports
 -------
 

@@ -773,7 +773,6 @@ class ts2pythonCompiler(Compiler):
         self.func_type_parameters: str = ''  # type parameters of the current function header, if any
         self.strip_type_from_const = False
         self.extra_items_type = 'None'
-        self.pseudo_identifiers: Dict[str, str] = dict()
 
     def compile(self, node) -> str:
         result = super().compile(node)
@@ -1698,19 +1697,13 @@ class ts2pythonCompiler(Compiler):
         return identifier
 
     def on_pseudo_identifier(self, node) -> str:
-        unsanitized = node.content.strip("'").strip('"')
-        if unsanitized in self.pseudo_identifiers:
-            return self.pseudo_identifiers[unsanitized]
-        psd_ident = unsanitized
+        psd_ident = node.content.strip("'").strip('"')
         if len(psd_ident) == 0:
             return '_'
         psd_ident = re.sub(r'[^\w.]', '_', psd_ident)
         if psd_ident[0].isdigit() or psd_ident[0] == '.' \
                 or not re.match(r'\w', psd_ident[0]):
             psd_ident = '_' + psd_ident[1:]
-        while psd_ident in self.pseudo_identifiers.keys():
-            psd_ident += '_'
-        self.pseudo_identifiers[unsanitized] = psd_ident
         return psd_ident
 
 

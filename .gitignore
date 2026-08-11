@@ -133,6 +133,7 @@ dmypy.json
 .idea/misc.xml
 .idea/*
 .idea/**
+.idea
 
 # DHParser-stuff
 REPORT
@@ -150,4 +151,5 @@ DHParser/*
 .venv/
 .run/
 .vscode/
+.vscode
 demo/ts2python_output/

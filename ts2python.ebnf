@@ -119,7 +119,8 @@ generic_type = type_name type_parameters
   parameter_type  = [readonly]
                   ( array_of | basic_type | generic_type     # actually, only a subset of array_of
                   | indexed_type | type_name [extends_type] [equals_type]
-                  | declarations_block | type_tuple | declarations_tuple )
+                  | declarations_block | type_tuple | declarations_tuple
+                  | literal )
   extends_type = "extends" [keyof] (basic_type | type_name | mapped_type )
   equals_type  = "=" (basic_type|type_name)
 

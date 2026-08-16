@@ -908,13 +908,13 @@ class ts2pythonCompiler(Compiler):
         if base_class_name == 'TypedDict':
             total = not bool(optional_key_list) or self.use_not_required
             if base_classes:
-                td_name = 'TypedDict' if (self.use_variadic_generics or
-                                          base_classes.find('Generic[') < 0) \
-                                      else 'GenericTypedDict'
+                td_name = '' if (self.use_variadic_generics or
+                                 base_classes.find('Generic[') < 0) \
+                                else ', GenericTypedDict'
                 if self.use_not_required or total:
-                    return f"class {name}{tps}({base_classes}, {td_name}):\n"
+                    return f"class {name}{tps}({base_classes}{td_name}):\n"
                 else:
-                    return f"class {name}{tps}({base_classes}, "\
+                    return f"class {name}{tps}({base_classes}"\
                            f"{td_name}, total={total}):\n"
             else:
                 tps = generic_types if self.use_type_parameters else ''

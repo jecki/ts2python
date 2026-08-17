@@ -1,11 +1,18 @@
+Version 0.8.3
+-------------
+- can now emit Python docstrings (via --doccomments docstrings)
+- support for literal generic types (e.g. PayloadKvSelect<false> -> PayloadKvSelect[Literal[False]])
+- support for TypedDict extraitems-parameter (Python 3.15)
+- no redundant TypeDict base class anymore (i.e. in classes that already derive from TypedDict bases)
+
 Verison 0.8.2
 -------------
 - various bugfixes
 
 Version 0.8.1
 -------------
-- bugfixes, mostly related to the represnetation of comments with
-  the --comments comandline switch
+- bugfixes, mostly related to the representation of comments with
+  the --comments commandline switch
 
 Version 0.8.0
 -------------

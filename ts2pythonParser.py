@@ -83,7 +83,7 @@ from DHParser.transform import is_empty, remove_if, TransformationDict, Transfor
 from DHParser import parse as parse_namespace__
 
 
-version = "0.8.2"
+version = "0.8.3"
 
 
 #######################################################################
@@ -143,7 +143,7 @@ class ts2pythonGrammar(Grammar):
     types = Forward()
     source_hash__ = "5db79750276447328236c8a0913e4a14"
     early_tree_reduction__ = CombinedParser.MERGE_TREETOPS
-    disposable__ = re.compile('(?:FRAC$|DOT$|EOF$|_namespace$|_string$|_array_ellipsis$|NEG$|_top_level_literal$|_quoted_identifier$|_reserved$|_keyword$|EXP$|_part$|_top_level_assignment$|INT$)')
+    disposable__ = re.compile('(?:INT$|FRAC$|_top_level_literal$|EOF$|EXP$|_namespace$|_part$|_reserved$|_top_level_assignment$|_string$|DOT$|NEG$|_quoted_identifier$|_array_ellipsis$|_keyword$)')
     static_analysis_pending__ = []  # type: List[bool]
     parser_initialization__ = ["upon instantiation"]
     COMMENT__ = r'(?://.*)\n?|(?:/\*(?:.|\n)*?\*/) *\n?'

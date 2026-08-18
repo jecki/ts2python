@@ -83,7 +83,7 @@ from DHParser.transform import is_empty, remove_if, TransformationDict, Transfor
 from DHParser import parse as parse_namespace__
 
 
-version = "0.8.3"
+version = "0.8.4"
 
 
 #######################################################################

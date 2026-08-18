@@ -134,7 +134,7 @@ class ts2pythonApp(tk.Tk):
 
         self.source_modified_sentinel = 0
         self.source_paste = False
-        self.python_version = tk.StringVar(value="3.11")
+        self.python_version = tk.StringVar(value="3.11 or higher")
         self.preambel = ''
         self.set_presets(version=(3, 11))
         self.render_anonymous = tk.StringVar(value="as local class (!)")

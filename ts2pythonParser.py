@@ -73,7 +73,7 @@ from DHParser.transform import is_empty, remove_if, TransformationDict, Transfor
     remove_whitespace, replace_by_children, remove_empty, remove_tokens, flatten, all_of, \
     any_of, transformer, merge_adjacent, collapse, collapse_children_if, transform_result, \
     remove_children, remove_content, remove_brackets, change_name, remove_anonymous_tokens, \
-    keep_children, is_one_of, not_one_of, content_matches, apply_if, peek, \
+    keep_children, is_one_of, not_one_of, content_matches, apply_if, peek, remove, \
     remove_anonymous_empty, keep_nodes, traverse_locally, strip, lstrip, rstrip, \
     replace_content_with, forbid, assert_content, remove_infix_operator, add_error, error_on, \
     left_associative, lean_left, node_maker, has_descendant, neg, has_ancestor, insert, \
@@ -141,9 +141,9 @@ class ts2pythonGrammar(Grammar):
     literal = Forward()
     type = Forward()
     types = Forward()
-    source_hash__ = "5db79750276447328236c8a0913e4a14"
+    source_hash__ = "160d73281ad19280802f1481cb43ad48"
     early_tree_reduction__ = CombinedParser.MERGE_TREETOPS
-    disposable__ = re.compile('(?:INT$|FRAC$|_top_level_literal$|EOF$|EXP$|_namespace$|_part$|_reserved$|_top_level_assignment$|_string$|DOT$|NEG$|_quoted_identifier$|_array_ellipsis$|_keyword$)')
+    disposable__ = re.compile('(?:_string$|DOT$|_quoted_identifier$|_part$|FRAC$|_top_level_literal$|EXP$|_top_level_assignment$|_keyword$|EOF$|_array_ellipsis$|_namespace$|INT$|NEG$|_reserved$)')
     static_analysis_pending__ = []  # type: List[bool]
     parser_initialization__ = ["upon instantiation"]
     COMMENT__ = r'(?://.*)\n?|(?:/\*(?:.|\n)*?\*/) *\n?'
@@ -166,6 +166,7 @@ class ts2pythonGrammar(Grammar):
     pseudo_identifier = Synonym(_string)
     _quoted_identifier = Alternative(identifier, Series(Series(Drop(Text('"')), dwsp__), identifier, Series(Drop(Text('"')), dwsp__)), Series(Series(Drop(Text("\'")), dwsp__), identifier, Series(Drop(Text("\'")), dwsp__)))
     variable = Synonym(name)
+    export = Series(Text("export"), dwsp__)
     basic_type = SmartRE(f'(?P<:Text>object|array|string|number|boolean|null|integer|uinteger|decimal|unknown|any|void)(?P<comment__>{WSP_RE__})', '`object`|`array`|`string`|`number`|`boolean`|`null`|`integer`|`uinteger`|`decimal`|`unknown`|`any`|`void` ~')
     key = Alternative(identifier, Series(Series(Drop(Text('"')), dwsp__), identifier, Series(Drop(Text('"')), dwsp__)))
     association = Series(key, Series(Drop(Text(":")), dwsp__), literal, mandatory=1)
@@ -180,9 +181,9 @@ class ts2pythonGrammar(Grammar):
     _array_ellipsis = Drop(Series(literal, ZeroOrMore(Series(Series(Drop(Text(",")), dwsp__), literal))))
     assignment = Series(variable, Series(Drop(Text("=")), dwsp__), Alternative(literal, variable), Option(Series(Drop(Text(";")), dwsp__)))
     _top_level_assignment = Drop(Synonym(assignment))
-    const = Series(Option(Series(Drop(Text("export")), dwsp__)), Series(Drop(Text("const")), dwsp__), declaration, Option(Series(Series(Drop(Text("=")), dwsp__), Alternative(literal, identifier))), Option(Series(Series(Drop(Text("as")), dwsp__), Series(Drop(Text("const")), dwsp__))), Option(Series(Drop(Text(";")), dwsp__)), mandatory=2)
+    const = Series(Option(export), Series(Drop(Text("const")), dwsp__), declaration, Option(Series(Series(Drop(Text("=")), dwsp__), Alternative(literal, identifier))), Option(Series(Series(Drop(Text("as")), dwsp__), Series(Drop(Text("const")), dwsp__))), Option(Series(Drop(Text(";")), dwsp__)), mandatory=2)
     item = Series(_quoted_identifier, Option(Series(Series(Drop(Text("=")), dwsp__), literal)))
-    enum = Series(Option(Series(Drop(Text("export")), dwsp__)), Series(Drop(Text("enum")), dwsp__), identifier, Series(Drop(Text("{")), dwsp__), item, ZeroOrMore(Series(Series(Drop(Text(",")), dwsp__), item)), Option(Series(Drop(Text(",")), dwsp__)), Series(Drop(Text("}")), dwsp__), mandatory=3)
+    enum = Series(Option(export), Series(Drop(Text("enum")), dwsp__), identifier, Series(Drop(Text("{")), dwsp__), item, ZeroOrMore(Series(Series(Drop(Text(",")), dwsp__), item)), Option(Series(Drop(Text(",")), dwsp__)), Series(Drop(Text("}")), dwsp__), mandatory=3)
     keyof = Series(Text("keyof"), dwsp__)
     optional = Series(Text("?"), dwsp__)
     readonly = Series(Text("readonly"), dwsp__)
@@ -202,15 +203,15 @@ class ts2pythonGrammar(Grammar):
     parameter_type = Series(Option(readonly), Alternative(array_of, basic_type, generic_type, indexed_type, Series(type_name, Option(extends_type), Option(equals_type)), declarations_block, type_tuple, declarations_tuple, literal))
     parameter_types = Series(Option(Series(Drop(Text("|")), dwsp__)), parameter_type, ZeroOrMore(Series(Series(Drop(Text("|")), dwsp__), parameter_type)))
     type_parameters = Series(Series(Drop(Text("<")), dwsp__), parameter_types, ZeroOrMore(Series(Series(Drop(Text(",")), dwsp__), parameter_types)), Series(Drop(Text(">")), dwsp__), mandatory=1)
-    type_alias = Series(Option(Series(Drop(Text("export")), dwsp__)), Series(Drop(Text("type")), dwsp__), identifier, Option(type_parameters), Series(Drop(Text("=")), dwsp__), types, Option(Series(Drop(Text(";")), dwsp__)), mandatory=2)
+    type_alias = Series(Option(export), Series(Drop(Text("type")), dwsp__), identifier, Option(type_parameters), Series(Drop(Text("=")), dwsp__), types, Option(Series(Drop(Text(";")), dwsp__)), mandatory=2)
     alias = Synonym(identifier)
     wildcard = Series(Series(Drop(Text("*")), dwsp__), Series(Drop(Text("as")), dwsp__), alias)
     intersection = Series(type, OneOrMore(Series(Series(Drop(Text("&")), dwsp__), type, mandatory=1)))
     symbol = Series(Option(Series(Drop(Text("type")), dwsp__)), identifier, Option(Series(Series(Drop(Text("as")), dwsp__), alias)))
-    interface = Series(Option(Series(Drop(Text("export")), dwsp__)), Option(Series(Drop(Text("declare")), dwsp__)), SmartRE(f'(?:interface)(?P<comment__>{WSP_RE__})|(?:class)(?P<comment__>{WSP_RE__})', '"interface"|"class"'), identifier, Option(type_parameters), Option(extends), declarations_block, Option(Series(Drop(Text(";")), dwsp__)), mandatory=3)
-    namespace = Series(Option(Series(Drop(Text("export")), dwsp__)), Series(Drop(Text("namespace")), dwsp__), identifier, Series(Drop(Text("{")), dwsp__), ZeroOrMore(Alternative(interface, type_alias, enum, const, Series(declaration, Option(Series(Drop(Text(";")), dwsp__))), Series(function, Option(Series(Drop(Text(";")), dwsp__))))), Series(Drop(Text("}")), dwsp__), mandatory=2)
+    interface = Series(Option(export), Option(Series(Drop(Text("declare")), dwsp__)), SmartRE(f'(?:interface)(?P<comment__>{WSP_RE__})|(?:class)(?P<comment__>{WSP_RE__})', '"interface"|"class"'), identifier, Option(type_parameters), Option(extends), declarations_block, Option(Series(Drop(Text(";")), dwsp__)), mandatory=3)
+    namespace = Series(Option(export), Series(Drop(Text("namespace")), dwsp__), identifier, Series(Drop(Text("{")), dwsp__), ZeroOrMore(Alternative(interface, type_alias, enum, const, Series(declaration, Option(Series(Drop(Text(";")), dwsp__))), Series(function, Option(Series(Drop(Text(";")), dwsp__))))), Series(Drop(Text("}")), dwsp__), mandatory=2)
     static = Series(Text("static"), dwsp__)
-    virtual_enum = Series(Option(Series(Drop(Text("export")), dwsp__)), Series(Drop(Text("namespace")), dwsp__), identifier, Series(Drop(Text("{")), dwsp__), ZeroOrMore(Alternative(interface, type_alias, enum, const, Series(declaration, Option(Series(Drop(Text(";")), dwsp__))))), Series(Drop(Text("}")), dwsp__))
+    virtual_enum = Series(Option(export), Series(Drop(Text("namespace")), dwsp__), identifier, Series(Drop(Text("{")), dwsp__), ZeroOrMore(Alternative(interface, type_alias, enum, const, Series(declaration, Option(Series(Drop(Text(";")), dwsp__))))), Series(Drop(Text("}")), dwsp__))
     qualifiers = Interleave(readonly, static, Series(Drop(Text('public')), dwsp__), Series(Drop(Text('protected')), dwsp__), Series(Drop(Text('private')), dwsp__), repetitions=[(0, 1), (0, 1), (0, 1), (0, 1), (0, 1)])
     _keyword = Drop(SmartRE(f'(?P<:Text>readonly|function|const|public|private|protected)(?!\\w)', '`readonly`|`function`|`const`|`public`|`private`|`protected` !/\\w/'))
     special = Series(Series(Drop(Text("[")), dwsp__), name, Series(Drop(Text("]")), dwsp__), Series(Drop(Text("(")), dwsp__), Option(arg_list), Series(Drop(Text(")")), dwsp__), Option(Series(Series(Drop(Text(":")), dwsp__), types, mandatory=1)), mandatory=4)
@@ -226,8 +227,8 @@ class ts2pythonGrammar(Grammar):
     type.set(Series(Option(readonly), Alternative(array_of, basic_type, generic_type, indexed_type, Series(type_name, NegativeLookahead(Text("("))), Series(Series(Drop(Text("(")), dwsp__), types, Series(Drop(Text(")")), dwsp__)), mapped_type, declarations_block, type_tuple, declarations_tuple, literal, func_type)))
     types.set(Series(Option(Series(Drop(Text("|")), dwsp__)), Alternative(intersection, type), ZeroOrMore(Series(Series(Drop(Text("|")), dwsp__), Alternative(intersection, type)))))
     arg_list.set(Series(Alternative(Series(argument, ZeroOrMore(Series(Series(Drop(Text(",")), dwsp__), argument)), Option(Series(Series(Drop(Text(",")), dwsp__), arg_tail))), arg_tail), Option(Series(Drop(Text(",")), dwsp__))))
-    function.set(Alternative(Series(Option(Series(Option(Series(Drop(Text("export")), dwsp__)), qualifiers, Option(Series(Drop(Text("function")), dwsp__)), NegativeLookahead(_keyword), identifier, Option(optional), Option(type_parameters))), Series(Drop(Text("(")), dwsp__), Option(arg_list), Series(Drop(Text(")")), dwsp__), Option(Series(Series(Drop(Text(":")), dwsp__), types, mandatory=1)), mandatory=2), special))
-    declaration.set(Series(Option(Series(Drop(Text("export")), dwsp__)), qualifiers, Option(SmartRE(f'(?:let)(?P<comment__>{WSP_RE__})|(?:var)(?P<comment__>{WSP_RE__})', '"let"|"var"')), NegativeLookahead(_keyword), Alternative(_quoted_identifier, pseudo_identifier), Option(optional), NegativeLookahead(Text("(")), Option(Series(Series(Drop(Text(":")), dwsp__), types, mandatory=1))))
+    function.set(Alternative(Series(Option(Series(Option(export), qualifiers, Option(Series(Drop(Text("function")), dwsp__)), NegativeLookahead(_keyword), identifier, Option(optional), Option(type_parameters))), Series(Drop(Text("(")), dwsp__), Option(arg_list), Series(Drop(Text(")")), dwsp__), Option(Series(Series(Drop(Text(":")), dwsp__), types, mandatory=1)), mandatory=2), special))
+    declaration.set(Series(Option(export), qualifiers, Option(SmartRE(f'(?:let)(?P<comment__>{WSP_RE__})|(?:var)(?P<comment__>{WSP_RE__})', '"let"|"var"')), NegativeLookahead(_keyword), Alternative(_quoted_identifier, pseudo_identifier), Option(optional), NegativeLookahead(Text("(")), Option(Series(Series(Drop(Text(":")), dwsp__), types, mandatory=1))))
     declarations_block.set(Series(Series(Drop(Text("{")), dwsp__), Option(Series(Alternative(function, declaration), ZeroOrMore(Series(Option(SmartRE(f'(?:;)(?P<comment__>{WSP_RE__})|(?:,)(?P<comment__>{WSP_RE__})', '";"|","')), Alternative(function, declaration))), Option(SmartRE(f'(?:;)(?P<comment__>{WSP_RE__})|(?:,)(?P<comment__>{WSP_RE__})', '";"|","')))), Option(Series(map_signature, Option(SmartRE(f'(?:;)(?P<comment__>{WSP_RE__})|(?:,)(?P<comment__>{WSP_RE__})', '";"|","')))), Series(Drop(Text("}")), dwsp__)))
     document.set(Series(dwsp__, ZeroOrMore(Alternative(interface, type_alias, _namespace, enum, const, module, _top_level_assignment, _array_ellipsis, _top_level_literal, Series(Import, Option(Series(Drop(Text(";")), dwsp__))), Series(function, Option(Series(Drop(Text(";")), dwsp__))), Series(declaration, Option(Series(Drop(Text(";")), dwsp__)))))))
     root = Series(document, EOF)
@@ -348,6 +349,20 @@ def shift_docstrings(p: Path):
         p[-1].result = tuple(cl)
 
 
+def mark_exported_identifier(p: Path):
+    if len(p) > 1:
+        parent = p[-2]
+        siblings = parent.result
+        if parent.name == "const":
+            siblings = parent['declaration'].result
+        for item in siblings:
+            if item.name == 'identifier':
+                item.attr['export'] = "True"
+                break
+        else:
+           add_error(path, "No related identifier found for export modifier!", ERROR) 
+
+
 ts2python_AST_transformation_table = {
     # AST Transformations for the ts2python-grammar
     # "<": flatten,
@@ -366,6 +381,7 @@ ts2python_AST_transformation_table = {
     "function": apply_if(reduce_single_child, has_child('special')),
     "alias": reduce_single_child,
     "document, root": [],  # declarations_block? # ensures that the transfomations under "*" are not applied, here!
+    "export": [mark_exported_identifier, remove],
     "*": move_fringes(lambda p: p[-1].name in ("comment__", "docstring__"), side="right", merge=False),
     ">": shift_docstrings,
     ">>>": clear_flags
@@ -405,7 +421,8 @@ TS2PYTHON_CONFIG_DEFAULT = {
     'AssumeDeferredEvaluation': False,
     'KeepComments': False,
     'DocComments': '',
-    'UseExtraItems': False
+    'UseExtraItems': False,
+    'GenerateAllSpecial': True
 }
 
 TS2PYTHON_QUALIFIED_CONFIG_KEYS = frozenset(
@@ -746,6 +763,8 @@ class ts2pythonCompiler(Compiler):
             'ts2python.DocComments', defaults['DocComments'])
         self.use_extra_items = ts2python_cfg.get(
             'ts2python.UseExtraItems', defaults['UseExtraItems'])
+        self.generate_all_special = ts2python_cfg.get(
+            'ts2python.GenerateAllSpecial', defaults['GenerateAllSpecial'])
         self.compatibility_level = required_python_version(ts2python_cfg, "compatibility")
         self.feature_level = required_python_version(ts2python_cfg, "features")
         if self.use_type_parameters and not self.use_variadic_generics:
@@ -773,6 +792,7 @@ class ts2pythonCompiler(Compiler):
         self.func_type_parameters: str = ''  # type parameters of the current function header, if any
         self.strip_type_from_const = False
         self.extra_items_type = 'None'
+        self.export = []
 
     def compile(self, node) -> str:
         result = super().compile(node)
@@ -828,6 +848,12 @@ class ts2pythonCompiler(Compiler):
                 + [self.additional_imports, chksum, '\n##### BEGIN OF ts2python generated code\n']
         else:
             code_blocks = []
+        if self.export and self.generate_all_special:
+            self.export.sort()
+            exports = ['\n\n__all__ = (',
+                       ",\n           ".join(self.export), 
+                       ')\n\n']
+            code_blocks.append(''.join(exports))
         code_blocks.append(python_code)
         if self.tree.name == 'root':
             code_blocks.append('\n##### END OF ts2python generated code\n')
@@ -1692,6 +1718,8 @@ class ts2pythonCompiler(Compiler):
 
     def on_identifier(self, node) -> str:
         identifier = node.content
+        if node.get_attr('export', False):
+            self.export.append(f"'{identifier}'")
         if keyword.iskeyword(identifier):
             identifier += '_'
         return identifier

@@ -67,20 +67,20 @@ alias       = identifier
 #
 #######################################################################
 
-interface   = ["export"] ["declare"] ("interface"|"class") §identifier [type_parameters]
+interface   = [export] ["declare"] ("interface"|"class") §identifier [type_parameters]
               [extends] declarations_block [";"]
 extends     = ("extends" | "implements")
               (generic_type|type_name) { "," (generic_type|type_name)}
 
 declarations_block = "{" [ (function|declaration) { [";"|","] (function|declaration) } [";"|","] ]
                          [map_signature [";"|","] ] "}"
-declaration = ["export"] qualifiers ["let"|"var"] !_keyword
+declaration = [export] qualifiers ["let"|"var"] !_keyword
               (_quoted_identifier | pseudo_identifier) [optional] !`(`
               [":" §types]
 
 # @function_resume = /(?=;)/
 
-function    = [["export"] qualifiers
+function    = [[export] qualifiers
                ["function"] !_keyword identifier [optional] [type_parameters]]
               "(" §[arg_list] ")" [":" §types]
             | special
@@ -103,7 +103,7 @@ optional    = "?"
 #
 #######################################################################
 
-type_alias  = ["export"] "type" §identifier [type_parameters] "=" types [";"]
+type_alias  = [export] "type" §identifier [type_parameters] "=" types [";"]
 
 types       = ["|"] (intersection | type) { "|" (intersection | type) }
 intersection = type { "&" §type }+
@@ -152,11 +152,11 @@ func_type   = ["new"] "(" [arg_list] ")" "=>" types
 
 _namespace   = virtual_enum | namespace
 
-virtual_enum = ["export"] "namespace" identifier "{"
+virtual_enum = [export] "namespace" identifier "{"
               { interface | type_alias | enum | const
               | declaration [";"] }  "}"
 
-namespace    = ["export"] "namespace" §identifier "{"
+namespace    = [export] "namespace" §identifier "{"
                { interface | type_alias | enum | const
                | declaration [";"] | function [";"] }  "}"
 
@@ -166,7 +166,7 @@ namespace    = ["export"] "namespace" §identifier "{"
 #
 #######################################################################
 
-enum        = ["export"] "enum" identifier §"{" item { "," item } [","] "}"
+enum        = [export] "enum" identifier §"{" item { "," item } [","] "}"
   item      = _quoted_identifier ["=" literal]
 
 #######################################################################
@@ -175,7 +175,7 @@ enum        = ["export"] "enum" identifier §"{" item { "," item } [","] "}"
 #
 #######################################################################
 
-const       = ["export"] "const" §declaration ["=" (literal | identifier)] ["as" "const"] [";"]
+const       = [export] "const" §declaration ["=" (literal | identifier)] ["as" "const"] [";"]
 _top_level_assignment = assignment
 assignment  = variable "=" (literal | variable) [";"]  # no expressions, yet
 
@@ -213,6 +213,7 @@ basic_type   = (`object` | `array` | `string` | `number` | `boolean` | `null`
 #
 #######################################################################
 
+export       = "export"
 variable     = name
 _quoted_identifier = identifier | '"' identifier '"' | "'" identifier "'"
 pseudo_identifier = _string

@@ -553,7 +553,7 @@ class ts2pythonApp(tk.Tk):
             if re.fullmatch(r'\s*', source):  return
             source += '\n'
         parser = self.root_parser
-        self.compilation_target = self.target_name.get()
+        self.compilation_target = "py"  # self.target_name.get()
         self.compilation_units = 1
         # self.all_results = ts2pythonParser.pipeline(source, self.compilation_target, parser)
         # self.finish_single_unit()
